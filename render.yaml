@@ -6,7 +6,7 @@ services:
     name: puffrpay
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run migrate && npm run seed && npm run build
     startCommand: npm run start
     envVars:
       - key: DATABASE_URL
@@ -28,6 +28,8 @@ services:
       - key: LLM_API_KEY
         sync: false
       - key: GEMINI_MODEL
+        sync: false
+      - key: APP_BASE_URL
         sync: false
 
 databases:

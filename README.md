@@ -95,17 +95,30 @@ Chosen: **Orders v2 create → buyer approves in sandbox → server captures.**
 
 Chosen: **Mode B — two JSON-only calls, no function calling.**
 
-- Could not verify Gemma function-calling support at build time (no API key in
-  the build environment). Mode B needs no function calling, works with any
-  JSON-capable model, and spends at most **2 calls per shopping request** and
-  **1 per audit question** — important on the tight free tier (~20/day).
-- Provider is selected by `LLM_PROVIDER`: `mock` (default; deterministic canned
-  responses — all tests and normal dev use it), `gemma`, or `gemini` (both via
-  `@google/genai`; set `GEMINI_MODEL`, e.g. `gemma-4-27b-it` or
-  `gemini-2.5-flash-lite`). The module retries with backoff on 429 and fails
-  with a friendly message.
-- To switch to Mode A later: implement the tool loop inside `src/lib/agent.ts`
-  against the same `LLM` interface; the policy boundary does not change.
+Provider test (`npx tsx scripts/test-llm.ts`, on the owner's Google AI Studio
+key):
+
+| Model | JSON-only output | Function calling |
+|---|---|---|
+| `gemma-4-26b-a4b-it` | 200, but rambling meta-text | 500 — not supported |
+| `gemma-4-31b-it` | 500 on `responseMimeType` JSON mode | 500 — not supported |
+| `gemini-2.5-flash-lite` | 404 — deprecated for this key | 404 |
+| **`gemini-3.5-flash-lite`** | **200, clean JSON** | **200 — works** |
+
+Gemma 4 cannot do function calling (HTTP 500) and chokes on forced JSON mode,
+so Mode A is out. **Recommended `GEMINI_MODEL=gemini-3.5-flash-lite`** — clean
+JSON confirmed. The provider deliberately does not set `responseMimeType`
+(the request that 500s Gemma); prompts demand JSON and `extractJson` tolerates
+fences/prose.
+
+- Provider via `LLM_PROVIDER`: `mock` (default; deterministic canned responses —
+  all tests and normal dev use it), `gemma`, or `gemini` (both route to the same
+  `GeminiLLM`; `GEMINI_MODEL` picks the model). Retries with backoff on 429 and
+  fails with a friendly message. Mode B spends ≤2 calls per shopping request and
+  1 per audit question — important on the tight free tier (~20/day).
+- To switch to Mode A later: `gemini-3.5-flash-lite` does support function
+  calling — implement the tool loop inside `src/lib/agent.ts` against the same
+  `LLM` interface; the policy boundary does not change.
 
 ## Audit log natural-language queries
 
@@ -144,12 +157,14 @@ always shown; a block triggers a short puff animation.
 
 1. Push to GitHub, then in Render: **New → Blueprint** → pick the repo
    (it reads `render.yaml`, creates the web service + Postgres, and prompts for
-   the `sync: false` secrets).
-2. After first deploy, open the web service **Shell** and run once:
-   ```bash
-   npm run migrate && npm run seed
-   ```
-3. Redeploy. The app is live at the Render URL.
+   the `sync: false` secrets — paste your PayPal/Channel3/Gemini keys there).
+2. The build command runs `npm ci && npm run migrate && npm run seed &&
+   npm run build`, so the schema and demo data are ready on first deploy.
+3. Set `APP_BASE_URL` to the service URL (e.g.
+   `https://puffrpay.onrender.com`) so PayPal's return redirect lands back on
+   the app — on Render, `RENDER_EXTERNAL_URL` is used automatically if
+   `APP_BASE_URL` is unset, so you can skip it there.
+4. The app is live at the Render URL — everything runs in PayPal sandbox.
 
 ## Demo script (~2 min)
 
