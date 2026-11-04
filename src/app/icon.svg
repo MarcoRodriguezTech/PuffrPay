@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Puffr placeholder mascot">
+  <!-- Placeholder pufferfish: plain round fish with spikes. Replace this file
+       with the real artwork; PufferGauge reads MASCOT_SRC. -->
+  <g stroke="#1f1d1a" stroke-width="4" stroke-linecap="round" fill="#e8d44d">
+    <!-- spikes -->
+    <line x1="100" y1="8"  x2="100" y2="30"/>
+    <line x1="140" y1="18" x2="132" y2="38"/>
+    <line x1="168" y1="50" x2="152" y2="62"/>
+    <line x1="184" y1="95" x2="162" y2="98"/>
+    <line x1="60" y1="18"  x2="68"  y2="38"/>
+    <line x1="32" y1="50"  x2="48"  y2="62"/>
+    <line x1="16" y1="95"  x2="38"  y2="98"/>
+    <line x1="140" y1="170" x2="132" y2="152"/>
+    <line x1="168" y1="140" x2="152" y2="130"/>
+    <line x1="60" y1="170" x2="68"  y2="152"/>
+    <line x1="32" y1="140" x2="48"  y2="130"/>
+  </g>
+  <circle cx="100" cy="105" r="72" fill="#e8d44d" stroke="#1f1d1a" stroke-width="4"/>
+  <!-- fins -->
+  <path d="M 30 105 q -22 -14 -18 -30 q 16 2 22 18 z" fill="#d8c23c" stroke="#1f1d1a" stroke-width="3"/>
+  <path d="M 170 105 q 22 -14 18 -30 q -16 2 -22 18 z" fill="#d8c23c" stroke="#1f1d1a" stroke-width="3"/>
+  <!-- eyes -->
+  <circle cx="76" cy="88" r="9" fill="#1f1d1a"/>
+  <circle cx="124" cy="88" r="9" fill="#1f1d1a"/>
+  <circle cx="79" cy="85" r="3" fill="#fff"/>
+  <circle cx="127" cy="85" r="3" fill="#fff"/>
+  <!-- mouth -->
+  <path d="M 88 122 q 12 10 24 0" fill="none" stroke="#1f1d1a" stroke-width="4" stroke-linecap="round"/>
+  <text x="100" y="152" text-anchor="middle" font-family="monospace" font-size="16" font-weight="bold" fill="#1f1d1a">PUFFR</text>
+</svg>

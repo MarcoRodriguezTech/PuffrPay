@@ -57,7 +57,10 @@ export class GeminiLLM implements LLM {
     const apiKey = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY (or LLM_API_KEY) is not set");
     this.ai = new GoogleGenAI({ apiKey });
-    this.model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+    // Tested on the owner's key (scripts/test-llm.ts): gemini-3.5-flash-lite
+    // returns clean JSON and supports function calling; gemma-4 models 500 on
+    // responseMimeType JSON mode and do not support function calling.
+    this.model = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   }
 
   private async generateJson(prompt: string): Promise<string> {
@@ -65,7 +68,8 @@ export class GeminiLLM implements LLM {
       this.ai.models.generateContent({
         model: this.model,
         contents: prompt,
-        config: { responseMimeType: "application/json" },
+        // no responseMimeType: it 500s on Gemma models, and prompts already
+        // demand JSON — extractJson tolerates fences/prose.
       })
     );
     return extractJson(res.text ?? "");
