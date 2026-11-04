@@ -2,3 +2,18 @@
 .env
 .env.*
 !.env.example
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build artifacts
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor junk
+.DS_Store
+Thumbs.db

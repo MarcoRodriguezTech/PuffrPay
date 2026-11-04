@@ -1,0 +1,363 @@
+/* PuffrPay theme — restyle via these variables only. */
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --ink: #1f1d1a;
+  --ink-muted: #6b665e;
+  --line: #d8d3c8;
+  --accent: #20401f;
+  --accent-ink: #ffffff;
+  --danger: #b3322a;
+  --warn: #a86e16;
+  --ok: #2c6b3c;
+  --radius: 6px;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+a {
+  color: var(--accent);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--accent-ink);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius);
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  margin-bottom: 0.25rem;
+}
+
+/* ---------- layout ---------- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.app-header .logo {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.app-nav {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.app-nav a {
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.app-nav a.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 600;
+}
+
+.header-gauge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.card + .card {
+  margin-top: 1rem;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+.row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.spread {
+  justify-content: space-between;
+}
+
+/* ---------- status chips ---------- */
+
+.chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+
+.chip.PURCHASED {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.chip.WAITING {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+.chip.BLOCKED,
+.chip.REJECTED,
+.chip.FAILED {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ---------- puffer gauge ---------- */
+
+.puffer {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.puffer .art {
+  display: block;
+  transform-origin: 50% 60%;
+  transition: transform 0.5s ease, filter 0.5s ease;
+}
+
+.puffer.calm .art {
+  transform: scale(0.82);
+  filter: none;
+}
+.puffer.swelling .art {
+  transform: scale(1);
+  filter: saturate(1.2);
+}
+.puffer.puffed .art {
+  transform: scale(1.14);
+  filter: sepia(0.5) saturate(2.2) hue-rotate(-28deg);
+}
+.puffer.maxed .art {
+  transform: scale(1.26);
+  filter: sepia(0.8) saturate(4) hue-rotate(-38deg) brightness(0.9);
+}
+
+.puffer.puff-flash .art {
+  animation: puff-pop 0.6s ease;
+}
+
+@keyframes puff-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  45% {
+    transform: scale(1.35);
+    filter: sepia(0.8) saturate(4) hue-rotate(-38deg);
+  }
+  100% {
+    transform: scale(1.14);
+  }
+}
+
+.puffer .state-label {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.puffer .blocked-note {
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+/* ---------- agent ---------- */
+
+.agent-log {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  background: var(--surface);
+  white-space: pre-wrap;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.chat-msg {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+}
+
+.chat-msg.owner {
+  border-left: 3px solid var(--accent);
+}
+.chat-msg.agent {
+  border-left: 3px solid var(--line);
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.chat-input input {
+  flex: 1;
+}
+
+.approve-card {
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  margin-top: 1rem;
+  background: var(--surface);
+}
+
+.waiting-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--surface);
+}
+
+/* ---------- policy form ---------- */
+
+.policy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  max-width: 360px;
+}
+
+/* ---------- audit ---------- */
+
+.audit-summary {
+  font-family: var(--mono);
+  padding: 0.6rem 0.8rem;
+  margin: 0.75rem 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.grid-wrap {
+  height: 480px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ---------- misc ---------- */
+
+.notice {
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
+.error {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.8rem;
+  background: var(--surface);
+  font-size: 0.85rem;
+}

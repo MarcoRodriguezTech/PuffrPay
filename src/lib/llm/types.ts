@@ -1,0 +1,44 @@
+import type { ProductResult } from "../types";
+
+/** What the agent's first call returns: a search plan for Channel3. */
+export interface SearchPlan {
+  query: string;
+  maxPriceCents: number;
+}
+
+/** What the agent's second call returns: the chosen product + reasoning. */
+export interface PickResult {
+  productId: string;
+  reasoning: string;
+}
+
+/** One filter clause produced by the audit-query call. */
+export interface AuditFilter {
+  field: string;
+  operator: string;
+  value: string;
+}
+
+/** JSON schema the audit-query LLM call must produce. */
+export interface AuditQuerySpec {
+  filters: AuditFilter[];
+  sort: { field: string; direction: "asc" | "desc" } | null;
+  summary: { type: "count" | "sum"; field?: string } | null;
+}
+
+/**
+ * All LLM access goes through this interface. The mock provider is the
+ * default for tests and development so no real calls are needed.
+ */
+export interface LLM {
+  readonly name: string;
+  /** Turn an owner message into a Channel3 search plan (JSON only). */
+  planSearch(message: string): Promise<SearchPlan>;
+  /** Pick one product from search results and explain why (JSON only). */
+  pickProduct(
+    message: string,
+    products: ProductResult[]
+  ): Promise<PickResult | null>;
+  /** Turn a natural-language audit question into validated filter JSON. */
+  auditQuery(question: string): Promise<AuditQuerySpec>;
+}
