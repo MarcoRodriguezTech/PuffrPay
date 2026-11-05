@@ -32,6 +32,7 @@ interface Purchase {
   id: number;
   productTitle: string;
   merchantUrl: string | null;
+  imageUrl: string | null;
   amountCents: number;
   status: string;
   policyDecision: string;
@@ -333,9 +334,17 @@ export default function AgentPage() {
                       {logLine(s, i)}
                       {i === pickIndex && purchase && (
                         <div className="product-card">
-                          <span className="thumb" aria-hidden="true">
-                            {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
-                          </span>
+                          {purchase.imageUrl ? (
+                            <img
+                              className="thumb"
+                              src={purchase.imageUrl}
+                              alt={purchase.productTitle}
+                            />
+                          ) : (
+                            <span className="thumb" aria-hidden="true">
+                              {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
+                            </span>
+                          )}
                           <span className="meta">
                             <span className="t">{purchase.productTitle}</span>
                             <span className="s">{storeOf(purchase.merchantUrl)}</span>
@@ -383,10 +392,21 @@ export default function AgentPage() {
               <div className="ac-head">Puffr needs your OK</div>
               <div className="ac-body">
                 <div className="ac-detail">
-                  <span className="ac-amount">{fmtDollars(purchase.amountCents)}</span>
-                  <div>{purchase.productTitle}</div>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
-                    {storeOf(purchase.merchantUrl)} — {purchase.agentReasoning}
+                  {purchase.imageUrl && (
+                    <img
+                      className="product-thumb"
+                      src={purchase.imageUrl}
+                      alt={purchase.productTitle}
+                      width={64}
+                      height={64}
+                    />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <span className="ac-amount">{fmtDollars(purchase.amountCents)}</span>
+                    <div>{purchase.productTitle}</div>
+                    <div className="muted" style={{ fontSize: "0.9rem" }}>
+                      {storeOf(purchase.merchantUrl)} — {purchase.agentReasoning}
+                    </div>
                   </div>
                 </div>
                 <div className="actions">
@@ -411,10 +431,21 @@ export default function AgentPage() {
               <div className="ac-head">Finish it in the sandbox</div>
               <div className="ac-body">
                 <div className="ac-detail">
-                  <span className="ac-amount">{fmtDollars(purchase.amountCents)}</span>
-                  <div className="muted" style={{ fontSize: "0.9rem" }}>
-                    {purchase.productTitle} — approve it in the PayPal sandbox
-                    window and it captures automatically.
+                  {purchase.imageUrl && (
+                    <img
+                      className="product-thumb"
+                      src={purchase.imageUrl}
+                      alt={purchase.productTitle}
+                      width={64}
+                      height={64}
+                    />
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    <span className="ac-amount">{fmtDollars(purchase.amountCents)}</span>
+                    <div className="muted" style={{ fontSize: "0.9rem" }}>
+                      {purchase.productTitle} — approve it in the PayPal sandbox
+                      window and it captures automatically.
+                    </div>
                   </div>
                   {pendingErr && (
                     <div className="card-err">

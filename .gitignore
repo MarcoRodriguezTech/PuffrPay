@@ -17,3 +17,7 @@ next-env.d.ts
 # OS / editor junk
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+.playwright-mcp/
+*.png.test

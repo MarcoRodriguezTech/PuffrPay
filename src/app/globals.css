@@ -1126,6 +1126,13 @@ label {
   display: block;
 }
 
+/* When the thumb IS the img (Channel3 cleaned shot), contain so nothing crops */
+.product-card img.thumb {
+  object-fit: contain;
+  padding: 6px;
+  background: var(--paper);
+}
+
 .product-card .meta {
   min-width: 0;
 }
@@ -1186,6 +1193,21 @@ label {
 .approval-card .ac-detail {
   min-width: 0;
   overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+/* Channel3 product photo: square tile, contain so the cleaned shot isn't cropped */
+.product-thumb {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  object-fit: contain;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-ctl);
+  padding: 6px;
 }
 
 .approval-card .actions {
@@ -1723,6 +1745,21 @@ label {
   padding: var(--s4);
   margin-top: var(--s4);
   transition: border-color var(--dur-fast) var(--ease);
+}
+
+.wait-card:has(.wc-thumb) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--s3);
+  align-items: start;
+}
+
+.wait-card .wc-thumb {
+  grid-row: 1 / -1;
+}
+
+.wait-card .wc-thumb ~ * {
+  grid-column: 2;
 }
 
 .wait-card.flash {

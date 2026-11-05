@@ -1,4 +1,4 @@
-import { Channel3 } from "@channel3/sdk";
+import { Channel3, type Channel3Api } from "@channel3/sdk";
 import type { ProductResult } from "./types";
 
 /**
@@ -27,6 +27,7 @@ const FALLBACK_CATALOG: ProductResult[] = [
     priceCents: 34_00,
     currency: "USD",
     merchantUrl: "https://example-outdoor.test/p/chalk-bag",
+    imageUrl: null,
     category: "climbing",
     description: "Basic climbing chalk bag with belt.",
   },
@@ -36,6 +37,7 @@ const FALLBACK_CATALOG: ProductResult[] = [
     priceCents: 18_00,
     currency: "USD",
     merchantUrl: "https://example-shop.test/p/trail-mix",
+    imageUrl: null,
     category: "snacks",
     description: "Box of 12 assorted energy bars.",
   },
@@ -45,6 +47,7 @@ const FALLBACK_CATALOG: ProductResult[] = [
     priceCents: 82_00,
     currency: "USD",
     merchantUrl: "https://example-electronics.test/p/headphones",
+    imageUrl: null,
     category: "electronics",
     description: "Over-ear wireless headphones.",
   },
@@ -54,6 +57,7 @@ const FALLBACK_CATALOG: ProductResult[] = [
     priceCents: 45_00,
     currency: "USD",
     merchantUrl: "https://example-outdoor.test/p/bottle",
+    imageUrl: null,
     category: "outdoor",
     description: "Stainless steel insulated bottle.",
   },
@@ -63,6 +67,7 @@ const FALLBACK_CATALOG: ProductResult[] = [
     priceCents: 60_00,
     currency: "USD",
     merchantUrl: "https://example-cards.test/p/giftcard",
+    imageUrl: null,
     category: "gift cards",
     description: "Digital gift card.",
   },
@@ -109,9 +114,18 @@ export async function searchProducts(
       priceCents: Math.round(offer.price.price * 100),
       currency: offer.price.currency ?? "USD",
       merchantUrl: offer.url ?? null,
+      imageUrl: pickImage(p.images),
       category: p.category?.title ?? p.category?.slug ?? null,
       description: p.description,
     });
   }
   return products;
+}
+
+// Prefer the catalog's main image; cleaned_url is the background-removed
+// square shot meant for product grids — ideal inside our cards.
+function pickImage(images: Channel3Api.ProductImage[] | undefined): string | null {
+  const list = images ?? [];
+  const main = list.find((i) => i.is_main_image) ?? list[0];
+  return main?.cleaned_url ?? main?.url ?? null;
 }

@@ -15,6 +15,7 @@ async function main() {
       priceCents: 3400,
       currency: "USD",
       merchantUrl: null,
+      imageUrl: null,
       category: "climbing",
     },
     {
@@ -23,6 +24,7 @@ async function main() {
       priceCents: 4900,
       currency: "USD",
       merchantUrl: null,
+      imageUrl: null,
       category: "climbing",
     },
   ]);

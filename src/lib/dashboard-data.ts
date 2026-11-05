@@ -25,6 +25,7 @@ function requestRows(purchases: PurchaseRequest[], policy: Policy) {
       createdAt: p.createdAt,
       title: p.productTitle,
       merchantUrl: p.merchantUrl,
+      imageUrl: p.imageUrl,
       category: p.category ?? "Uncategorised",
       amount,
       currency: p.currency,

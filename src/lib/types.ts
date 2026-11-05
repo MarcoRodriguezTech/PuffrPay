@@ -22,6 +22,7 @@ export interface PurchaseRequest {
   productId: string;
   productTitle: string;
   merchantUrl: string | null;
+  imageUrl: string | null;
   category: string | null;
   amountCents: number;
   currency: string;
@@ -49,6 +50,7 @@ export interface ProductResult {
   priceCents: number;
   currency: string;
   merchantUrl: string | null;
+  imageUrl: string | null;
   category: string | null;
   description?: string | null;
 }
