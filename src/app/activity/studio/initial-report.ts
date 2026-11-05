@@ -1,13 +1,22 @@
-// The built-in "Activity" report: one page with the pufferfish gauge, KPI
-// tiles, status charts and the purchase requests grid, as AG Studio report
-// state. Field ids ('requests.spent') refer to the data sources in ./data.ts.
+// The built-in "Activity" report as a bento layout (see the reference board):
+// hero area chart left, Fun money + Recent activity stacked right, a KPI tile
+// row, Spend by day + Requests by status, then the purchase requests grid
+// full width. Charts and cards are custom widgets (./bento-widgets.tsx) that
+// read rows through Studio `context`; only the grid is a Studio widget.
 
 import type { AgPageState, AgReportState, AgWidgetLayoutState } from "ag-studio";
-import { PUFFER_WIDGET_TYPE } from "./puffer-widget";
+import {
+  W_FUN_MONEY,
+  W_KPI_ROW,
+  W_RECENT,
+  W_SPEND_DAY,
+  W_SPEND_TREND,
+  W_STATUS_BARS,
+} from "./bento-widgets";
 
-// --- Helpers ----------------------------------------------------------------------
+// --- Helpers ------------------------------------------------------------------
 
-// Position on the canvas grid, in tracks: 24 columns wide, rows of studioCanvasRowHeight.
+// Position on the canvas grid, in tracks: N columns wide, rows of studioCanvasRowHeight.
 const at = (xTrack: number, yTrack: number, xSpan: number, ySpan: number): AgWidgetLayoutState => ({
   xTrack,
   yTrack,
@@ -15,187 +24,113 @@ const at = (xTrack: number, yTrack: number, xSpan: number, ySpan: number): AgWid
   ySpan,
 });
 const title = (text: string) => ({ title: { enabled: true, text } });
+// Custom widgets draw their own in-card headers — no Studio title chrome.
+const noChrome = { title: { enabled: false } };
 const sum = (id: string) => ({ id, aggregation: "sum" as const });
-const countd = (id: string) => ({ id, aggregation: "countd" as const });
 
-const SANS = 'var(--font-plex-sans), system-ui, sans-serif';
-const MONO = 'var(--font-plex-mono), ui-monospace, monospace';
+// --- Widgets -------------------------------------------------------------------
 
-const typography = (
-  fontSize: number,
-  fontWeight: "normal" | "bold" = "normal",
-  fontFamily: string = SANS
-) => ({
-  fontFamily,
-  fontSize,
-  fontWeight,
-  fontStyle: "normal" as const,
-});
-
-// A KPI tile: mono-caps label, large mono value, optional sparkline along `sparklineX`.
-const kpi = (
-  text: string,
-  value: { id: string; aggregation?: "sum" | "avg" | "countd" },
-  opts: { sparklineX?: string; gold?: boolean; fontSize?: number } = {}
-) => ({
-  type: "value" as const,
-  dataMapping: {
-    value: [value],
-    ...(opts.sparklineX && { sparklineX: [{ id: opts.sparklineX }] }),
-  },
-  format: {
-    title: { enabled: true, text, typography: typography(12, "bold", MONO) },
-    caption: { enabled: true, text: "", typography: typography(0) },
-    style: { typography: typography(opts.fontSize ?? 28, "bold", MONO) },
-    ...(opts.gold && { widget: { backgroundColor: "var(--gold-soft)" } }),
-  },
-});
-
-// --- Page --------------------------------------------------------------------------
-
-// Widget definitions are shared by the desktop and stacked mobile layouts.
 const activityWidgets: AgPageState["widgets"] = {
-    // Custom widget registered in ./puffer-widget.tsx — reads budget via context.
-    "puffer-gauge": {
-      type: PUFFER_WIDGET_TYPE as never,
-      dataMapping: {},
-      format: title("Fun money"),
+  [W_SPEND_TREND]: {
+    type: W_SPEND_TREND as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  [W_FUN_MONEY]: {
+    type: W_FUN_MONEY as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  [W_RECENT]: {
+    type: W_RECENT as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  [W_KPI_ROW]: {
+    type: W_KPI_ROW as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  [W_SPEND_DAY]: {
+    type: W_SPEND_DAY as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  [W_STATUS_BARS]: {
+    type: W_STATUS_BARS as never,
+    dataMapping: {},
+    format: noChrome,
+  },
+  "requests-grid": {
+    type: "grid",
+    dataMapping: {
+      cols: [
+        { id: "requests.createdAt" },
+        { id: "requests.title" },
+        sum("requests.amount"),
+        { id: "requests.status" },
+        { id: "requests.decidedBy" },
+        { id: "requests.reason" },
+      ],
     },
-    "kpi-kept": kpi("KEPT BY THE LEASH", sum("requests.blocked"), { gold: true }),
-    "kpi-spent": kpi("SPENT", sum("requests.spent"), { sparklineX: "calendar::month" }),
-    "kpi-requests": kpi("REQUESTS", countd("requests.ref")),
-    "kpi-waiting": kpi("WAITING ON YOU", sum("requests.waiting")),
-    // Running spend against the monthly cap. Series order is palette order:
-    // cap lands on danger (the line you must not cross), spend on ok.
-    "spend-vs-cap": {
-      type: "line-chart",
-      dataMapping: {
-        categoryKey: [{ id: "requests.createdAt" }],
-        valueKey: [
-          { id: "requests.monthlyCap", aggregation: "max" },
-          { id: "requests.cumulative", aggregation: "max" },
-        ],
-      },
-      format: {
-        ...title("Cumulative spend vs cap"),
-        style: { theme: { common: { legend: { enabled: true } } } },
-      },
-    },
-    // Status goes on the legend (alphabetical => shared palette lands
-    // semantically: BLOCKED=danger, PURCHASED=ok, REJECTED=ink-soft,
-    // WAITING=gold). Donut/pie charts order slices by data appearance, so they
-    // can't hold these colors.
-    "decisions-chart": {
-      type: "column-chart-stacked",
-      dataMapping: {
-        categoryKey: [{ id: "requests.decision" }],
-        valueKey: [countd("requests.ref")],
-        legendKey: [{ id: "requests.status" }],
-      },
-      format: {
-        ...title("Requests by policy decision"),
-        style: { theme: { common: { legend: { enabled: true } } } },
-      },
-    },
-    "category-spend": {
-      type: "column-chart-stacked",
-      dataMapping: {
-        categoryKey: [{ id: "requests.category" }],
-        valueKey: [sum("requests.amount")],
-        legendKey: [{ id: "requests.status" }],
-      },
-      format: {
-        ...title("Requested spend by category and status"),
-        style: { theme: { common: { legend: { enabled: true } } } },
-      },
-    },
-    "requests-grid": {
-      type: "grid",
-      dataMapping: {
-        cols: [
-          { id: "requests.createdAt" },
-          { id: "requests.title" },
-          { id: "requests.category" },
-          sum("requests.amount"),
-          { id: "requests.status" },
-          { id: "requests.decidedBy" },
-          { id: "requests.reason" },
-        ],
-      },
-      sort: [{ field: { id: "requests.createdAt" }, direction: "desc" }],
-      format: {
-        ...title("All purchase requests"),
-        style: {
-          // Columns size to content so every column fits without a sideways
-          // scroll on desktop widths; the grand total row is relabelled in
-          // ./cell-renderers.tsx so it can't read as budget spend.
-          columnAutoSize: true,
-          grandTotalRow: { enabled: true },
-        },
+    sort: [{ field: { id: "requests.createdAt" }, direction: "desc" }],
+    format: {
+      ...title("All purchase requests"),
+      style: {
+        // Columns size to content so every column fits without a sideways
+        // scroll on desktop widths; the grand total row is relabelled in
+        // ./cell-renderers.tsx so it can't read as budget spend.
+        columnAutoSize: true,
+        grandTotalRow: { enabled: true },
       },
     },
+  },
 };
 
-// 12-track canvas: KPI row, then gauge (3 wide, ~270px tall) beside the
-// cumulative spend chart (9), decisions (4) next to category spend (8),
-// and the grid full width underneath.
+// 12-track canvas: hero chart 8 wide, the Fun money / Recent column 4 wide,
+// KPI band full width, two half-width charts, then the grid.
 const activity: AgPageState = {
   id: "activity",
   layout: { columns: 12 },
   widgets: activityWidgets,
   widgetLayout: {
-    "kpi-kept": at(0, 0, 3, 7),
-    "kpi-spent": at(3, 0, 3, 7),
-    "kpi-requests": at(6, 0, 3, 7),
-    "kpi-waiting": at(9, 0, 3, 7),
-    "puffer-gauge": at(0, 7, 3, 15),
-    "spend-vs-cap": at(3, 7, 9, 15),
-    "decisions-chart": at(0, 22, 4, 14),
-    "category-spend": at(4, 22, 8, 14),
-    "requests-grid": at(0, 36, 12, 20),
+    [W_SPEND_TREND]: at(0, 0, 8, 24),
+    [W_FUN_MONEY]: at(8, 0, 4, 15),
+    [W_RECENT]: at(8, 15, 4, 9),
+    [W_KPI_ROW]: at(0, 24, 12, 6),
+    [W_SPEND_DAY]: at(0, 30, 6, 15),
+    [W_STATUS_BARS]: at(6, 30, 6, 15),
+    "requests-grid": at(0, 45, 12, 20),
   },
 };
 
-// Under 1100px the same widgets reflow onto a 6-track canvas: gauge and
-// charts full width, KPI tiles two per row. minWidth below a phone viewport
-// so the canvas fits; the grid keeps its own horizontal scroll inside.
+// Under 1100px the same widgets reflow onto a 6-track canvas: the hero chart
+// full width, Fun money and Recent side by side, then stacked charts.
 const activityCompact: AgPageState = {
   ...activity,
   layout: { columns: 6, minWidth: 280, rowHeight: 16 },
   widgetLayout: {
-    "kpi-kept": at(0, 0, 3, 7),
-    "kpi-spent": at(3, 0, 3, 7),
-    "kpi-requests": at(0, 7, 3, 7),
-    "kpi-waiting": at(3, 7, 3, 7),
-    "puffer-gauge": at(0, 14, 6, 18),
-    "spend-vs-cap": at(0, 32, 6, 14),
-    "decisions-chart": at(0, 46, 6, 14),
-    "category-spend": at(0, 60, 6, 14),
-    "requests-grid": at(0, 74, 6, 26),
+    [W_SPEND_TREND]: at(0, 0, 6, 18),
+    [W_FUN_MONEY]: at(0, 18, 3, 17),
+    [W_RECENT]: at(3, 18, 3, 17),
+    [W_KPI_ROW]: at(0, 35, 6, 8),
+    [W_SPEND_DAY]: at(0, 43, 6, 14),
+    [W_STATUS_BARS]: at(0, 57, 6, 13),
+    "requests-grid": at(0, 70, 6, 26),
   },
 };
 
-// Under 720px everything stacks in one column. Same widgets, but KPI tiles go
-// full width so the numbers never truncate inside a narrow tile.
+// Under 720px everything stacks in one column; the KPI row renders 2×2 inside.
 const activityMobile: AgPageState = {
   ...activityCompact,
-  widgets: {
-    ...activityWidgets,
-    "kpi-kept": kpi("KEPT BY THE LEASH", sum("requests.blocked"), { gold: true, fontSize: 24 }),
-    "kpi-spent": kpi("SPENT", sum("requests.spent"), { sparklineX: "calendar::month", fontSize: 24 }),
-    "kpi-requests": kpi("REQUESTS", countd("requests.ref"), { fontSize: 24 }),
-    "kpi-waiting": kpi("WAITING ON YOU", sum("requests.waiting"), { fontSize: 24 }),
-  },
   widgetLayout: {
-    "kpi-kept": at(0, 0, 6, 7),
-    "kpi-spent": at(0, 7, 6, 7),
-    "kpi-requests": at(0, 14, 6, 7),
-    "kpi-waiting": at(0, 21, 6, 7),
-    "puffer-gauge": at(0, 28, 6, 18),
-    "spend-vs-cap": at(0, 46, 6, 14),
-    "decisions-chart": at(0, 60, 6, 14),
-    "category-spend": at(0, 74, 6, 14),
-    "requests-grid": at(0, 88, 6, 26),
+    [W_SPEND_TREND]: at(0, 0, 6, 26),
+    [W_FUN_MONEY]: at(0, 26, 6, 16),
+    [W_RECENT]: at(0, 42, 6, 15),
+    [W_KPI_ROW]: at(0, 57, 6, 9),
+    [W_SPEND_DAY]: at(0, 66, 6, 14),
+    [W_STATUS_BARS]: at(0, 80, 6, 13),
+    "requests-grid": at(0, 93, 6, 26),
   },
 };
 

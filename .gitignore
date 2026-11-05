@@ -21,3 +21,7 @@ Thumbs.db
 # Test artifacts
 .playwright-mcp/
 *.png.test
+
+# Local verification screenshots (repo root only)
+/v*-*.png
+/shot*.png

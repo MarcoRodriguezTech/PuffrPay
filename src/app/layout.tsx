@@ -1,20 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header";
+import { SideRail } from "@/components/SideRail";
+import { TopBar } from "@/components/TopBar";
 import { Toaster } from "@/components/Toaster";
+import { ASSETS } from "@/lib/assets";
+import { THEME_SCRIPT } from "@/lib/theme";
 
-const display = Bricolage_Grotesque({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["600", "700"],
-  variable: "--font-bricolage",
-  display: "swap",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-plex-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-jakarta",
   display: "swap",
 });
 
@@ -32,16 +28,26 @@ export const metadata: Metadata = {
     template: "%s — PuffrPay",
   },
   description: "Your fun money, on a leash.",
-  icons: { icon: "/mascot/puffr.svg" },
+  icons: {
+    icon: [
+      { url: ASSETS.mascotSvg, type: "image/svg+xml" },
+      { url: ASSETS.icon192, sizes: "192x192", type: "image/png" },
+      { url: ASSETS.icon512, sizes: "512x512", type: "image/png" },
+    ],
+    apple: ASSETS.appleTouchIcon,
+  },
   openGraph: {
     title: "PuffrPay",
     description: "Your fun money, on a leash.",
-    images: [{ url: "/og.png", width: 1200, height: 630 }],
+    images: [{ url: ASSETS.og, width: 1200, height: 630 }],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a1120",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#04080F" },
+    { media: "(prefers-color-scheme: light)", color: "#F3F9FD" },
+  ],
 };
 
 export default function RootLayout({
@@ -50,12 +56,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${display.variable} ${plexSans.variable} ${plexMono.variable}`}>
-        <Header />
-        {children}
+    <html
+      lang="en"
+      data-theme="dark"
+      // Font variables must live on :root — --sans is a :root token, so the
+      // var() chain only resolves if the font vars are defined there too.
+      className={`${jakarta.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        {/* Sets data-theme from localStorage / OS before first paint — no flash */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body>
+        <SideRail />
+        <div className="shell">
+          <TopBar />
+          {children}
+          <footer className="app-footer">Sandbox mode. No real money moves.</footer>
+        </div>
         <Toaster />
-        <footer className="app-footer">Sandbox mode. No real money moves.</footer>
       </body>
     </html>
   );
