@@ -16,6 +16,7 @@ interface Purchase {
   createdAt: string;
   productTitle: string;
   merchantUrl: string | null;
+  imageUrl: string | null;
   amountCents: number;
   status: string;
   policyDecision: string;
@@ -326,6 +327,15 @@ export default function PolicyPage() {
           <div className="queue-grid">
             {waiting?.map((w) => (
               <div className="wait-card" key={w.id}>
+              {w.imageUrl && (
+                <img
+                  className="product-thumb wc-thumb"
+                  src={w.imageUrl}
+                  alt={w.productTitle}
+                  width={64}
+                  height={64}
+                />
+              )}
               <div className="title-row">
                 <strong>{w.productTitle}</strong>
                 <span className="amount">{fmtDollars(w.amountCents)}</span>

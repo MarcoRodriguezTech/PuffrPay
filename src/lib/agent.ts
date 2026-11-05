@@ -109,6 +109,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     productId: product.id,
     productTitle: product.title,
     merchantUrl: product.merchantUrl,
+    imageUrl: product.imageUrl,
     category: product.category,
     amountCents: product.priceCents,
     currency: product.currency,

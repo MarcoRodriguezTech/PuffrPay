@@ -78,6 +78,7 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
           ["createdAt", "Requested", "dateTimeFormat"],
           ["title", "Item", "textFormat"],
           ["merchantUrl", "Item URL", "textFormat", true],
+          ["imageUrl", "Image URL", "textFormat", true],
           ["category", "Category", "textFormat"],
           ["amount", "Amount", "currencyFormat"],
           ["currency", "Currency", "textFormat", true],

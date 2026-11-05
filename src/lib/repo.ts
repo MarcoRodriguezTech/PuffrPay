@@ -35,6 +35,7 @@ interface PurchaseRow {
   product_id: string;
   product_title: string;
   merchant_url: string | null;
+  image_url: string | null;
   category: string | null;
   amount_cents: number;
   currency: string;
@@ -56,6 +57,7 @@ function toPurchase(r: PurchaseRow): PurchaseRequest {
     productId: r.product_id,
     productTitle: r.product_title,
     merchantUrl: r.merchant_url,
+    imageUrl: r.image_url,
     category: r.category,
     amountCents: r.amount_cents,
     currency: r.currency,
@@ -114,6 +116,7 @@ export interface NewPurchaseRequest {
   productId: string;
   productTitle: string;
   merchantUrl: string | null;
+  imageUrl?: string | null;
   category: string | null;
   amountCents: number;
   currency?: string;
@@ -129,14 +132,15 @@ export async function createPurchaseRequest(
 ): Promise<PurchaseRequest> {
   const rows = await query<PurchaseRow>(
     `INSERT INTO purchase_requests
-       (product_id, product_title, merchant_url, category, amount_cents, currency,
+       (product_id, product_title, merchant_url, image_url, category, amount_cents, currency,
         agent_reasoning, policy_decision, policy_reason, status, decided_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      RETURNING *`,
     [
       p.productId,
       p.productTitle,
       p.merchantUrl,
+      p.imageUrl ?? null,
       p.category,
       p.amountCents,
       p.currency ?? "USD",
