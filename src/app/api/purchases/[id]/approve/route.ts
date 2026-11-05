@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/api-error";
 import { approveAndExecute } from "@/lib/executor";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +13,6 @@ export async function POST(
     const result = await approveAndExecute(Number(id));
     return NextResponse.json(result);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const status = /not found/.test(msg) ? 404 : 400;
-    return NextResponse.json({ error: msg }, { status });
+    return friendlyError(err, "approve");
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/api-error";
 import { runAgent, getChatHistory } from "@/lib/agent";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,7 @@ export async function POST(req: Request) {
     const result = await runAgent(message);
     return NextResponse.json(result);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return friendlyError(err, "agent");
   }
 }
 

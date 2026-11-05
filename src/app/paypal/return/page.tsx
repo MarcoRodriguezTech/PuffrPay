@@ -52,7 +52,7 @@ function ReturnInner() {
             <p className="error">{detail}</p>
           </>
         )}
-        <Link href="/agent">← Back to the agent</Link>
+        <Link href="/">← Back to the agent</Link>
       </div>
     </main>
   );

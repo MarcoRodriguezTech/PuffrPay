@@ -36,7 +36,9 @@ allow/block/ask decision.
   (`src/lib/paypal.ts`), tokens fetched and cached in code.
 - **Channel3** — product search via `@channel3/sdk`, server-side only.
 - **Google Gemini/Gemma** — via `@google/genai`, behind a single LLM module.
-- **AG Grid Community** — audit log grid.
+- **AG Grid Community** — classic audit grid (fallback view).
+- **AG Studio** — the Activity report at `/activity` (data sources,
+  relationships, theme and default report in `src/app/activity/studio/`).
 - **Render** — `render.yaml` blueprint deploys web + Postgres.
 
 ## Setup
@@ -46,7 +48,7 @@ cp .env.example .env          # fill in keys (mock works with none)
 docker compose up -d postgres # local Postgres on :5433
 npm install
 npm run migrate
-npm run seed                  # default policy + sample rows
+npm run seed:demo             # polished demo dataset: cap $200, $172 used
 npm run dev                   # http://localhost:3000
 npm test                      # policy engine unit tests
 npm run build                 # production build
@@ -66,6 +68,7 @@ Local Postgres runs on port **5433** (5432 is often taken by other projects):
 | `GEMINI_API_KEY` / `LLM_API_KEY` | Google AI Studio key (either name works) |
 | `GEMINI_MODEL` | model id, e.g. `gemma-4-27b-it` |
 | `DATABASE_URL` | Postgres connection string |
+| `AG_STUDIO` | AG Studio licence key for `/activity` (optional; a trial key works, and Studio still renders without one) |
 
 No keys at all? The app still runs end-to-end: `LLM_PROVIDER=mock` gives canned
 agent/audit behavior, Channel3 falls back to a tiny built-in catalog, and PayPal
@@ -120,13 +123,21 @@ fences/prose.
   calling — implement the tool loop inside `src/lib/agent.ts` against the same
   `LLM` interface; the policy boundary does not change.
 
-## Audit log natural-language queries
+## Natural-language queries
+
+There is exactly one question box:
+
+- When a real LLM is configured (`LLM_PROVIDER` gemma/gemini + key), the
+  Activity page uses the **AG Studio chat panel**; turns are proxied through
+  `POST /api/chat` so the key never reaches the browser.
+- Otherwise a single **Ask box** above the dashboard turns a question into
+  validated page filters via `POST /api/audit/query`. The same endpoint backs
+  the Ask box on the classic log.
 
 `POST /api/audit/query` sends the question + column list to the LLM, which
 returns **JSON only**: `filters`, `sort`, optional `summary` (count/sum). The
 server validates it against a whitelist of fields/operators
-(`src/lib/audit-query.ts`) — the LLM never writes SQL. The client applies the
-spec to AG Grid and prints the summary above it. Answers are cached per
+(`src/lib/audit-query.ts`) — the LLM never writes SQL. Answers are cached per
 question; mock returns canned filters for dev/tests.
 
 ## Data model
@@ -138,20 +149,29 @@ month.
 
 ## Screens
 
-- **Agent** — chat + agent log (search, pick, per-check policy results) +
-  inline approve/reject + payment step; sidebar with gauge and current rules.
-- **Policy** — monthly cap / per-purchase max / auto-approve under / blocked
-  categories; queue of WAITING requests with approve/reject.
-- **Audit log** — large mascot gauge, NL search box, AG Grid (time, item,
-  category, amount, status, reason, reasoning, decided-by, PayPal id).
+- **Agent** (`/`) — chat + agent receipt log (search, pick, per-check policy
+  results) + inline approve/reject + payment step; sidebar with the living
+  gauge and current rules. `/agent` redirects here.
+- **Policy** (`/policy`) — rules ruler + monthly cap / per-purchase max /
+  auto-approve under / blocked categories, a "Would this be allowed?" dry-run
+  panel, and the queue of WAITING requests with approve/reject.
+- **Activity** (`/activity`) — the AG Studio report over `purchase_requests` +
+  the current policy: the custom PufferGauge widget, KPI tiles, status charts,
+  a date-filter toolbar and the purchase requests grid. Editable in the
+  browser; the saved report persists to localStorage. If Studio fails to load
+  the page automatically falls back to the classic log.
+- **Classic log** (`/audit/classic`) — the plain AG Grid view: mascot gauge,
+  Ask box, sortable/filterable grid and a row detail drawer. `/audit` and
+  `/dashboard` redirect to `/activity`.
 
 ## Mascot
 
 `PufferGauge` (`src/components/PufferGauge.tsx`) renders
 `public/mascot/puffr-placeholder.svg` (original placeholder art — swap the file
-or `MASCOT_SRC`). CSS-only states: <50% calm, 50–80% swelling, 80–100% puffed +
-red tint, 100% fully puffed + "agent blocked". Numbers and a text label are
-always shown; a block triggers a short puff animation.
+or `MASCOT_SRC`). CSS-only states: <50% calm, 50–80% swelling, 80–99% puffed
+(red tint + spikes + sweat drops), 100% maxed out + "Max" tag. Numbers and a
+state label are always shown; a block triggers a short puff animation and a
+bubble burst. All motion respects `prefers-reduced-motion`.
 
 ## Deploy on Render
 
@@ -168,14 +188,21 @@ always shown; a block triggers a short puff animation.
 
 ## Demo script (~2 min)
 
-1. **Policy** screen: cap $200, max $50, auto-approve under $20.
-2. **Agent**: "find a birthday gift for my sister, she climbs, under $50" —
-   watch the log: search → pick → each policy check.
-3. A cheap item auto-approves → finish the sandbox payment → PURCHASED.
+Reset the data first with `npm run reset:demo` (or `npm run seed:demo` on an
+empty DB): cap $200, per-purchase max $50, auto-approve under $20, $172 used.
+
+1. **Agent** (`/`): "find a birthday gift for my sister, she climbs, under $50" —
+   watch the receipt: search → pick → each policy check.
+2. A cheap item auto-approves → finish the sandbox payment → PURCHASED.
    A mid-priced item waits → approve it → payment → PURCHASED (visible in the
    PayPal sandbox dashboard).
-4. Ask for something over $50 → BLOCK → the puffer puffs.
-5. **Audit log**: "show everything the agent blocked this week" → grid filters.
+3. Ask for something over $50 → BLOCK → the puffer puffs.
+4. **Policy** (`/policy`): move the fields and watch the rules ruler update;
+   try "Would this be allowed?" on $75.
+5. **Activity** (`/activity`): the Studio report — PufferGauge, "Kept by the
+   leash" KPI, requests-by-decision chart, spend-by-category chart and the
+   requests grid. Ask "blocked this week" in the question box → the whole
+   report filters.
 
 ## Tests
 
@@ -186,9 +213,10 @@ $19 allowed). The engine is pure code — never an LLM.
 ## Repo layout
 
 ```
-src/app            pages (agent, policy, audit) + api routes
-src/lib            db, repo, policy engine, executor, agent, llm/*, channel3, paypal, audit-query
-src/components     Header, PufferGauge
+src/app            pages (agent /, policy, activity, audit/classic) + api routes
+src/app/activity   AG Studio report: studio/{data,theme,initial-report,...}, client shell
+src/lib            db, repo, policy engine, executor, agent, llm/*, channel3, paypal, audit-query, audit-filters, dashboard-data, api-error
+src/components     Header, PufferGauge, LeashBar, StatusBadge, Toaster
 db/migrations      SQL migrations
 scripts            migrate.ts, seed.ts
 public/mascot      placeholder pufferfish

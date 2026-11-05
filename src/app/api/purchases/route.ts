@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/api-error";
 import { listPurchases } from "@/lib/repo";
 import type { PurchaseStatus } from "@/lib/types";
 
@@ -24,7 +25,6 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ purchases });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return friendlyError(err, "purchases");
   }
 }

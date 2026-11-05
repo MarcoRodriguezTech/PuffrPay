@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/api-error";
 import { capturePurchase, getPurchaseByOrderId } from "@/lib/executor";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,6 @@ export async function POST(req: Request) {
     const updated = await capturePurchase(purchase.id);
     return NextResponse.json({ purchase: updated });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return friendlyError(err, "paypal-capture");
   }
 }

@@ -15,6 +15,14 @@ async function main() {
         : { rejectUnauthorized: false },
   });
 
+  // SEED_RESET=1 (or `tsx scripts/seed.ts --reset`) wipes demo rows first.
+  if (process.env.SEED_RESET === "1" || process.argv.includes("--reset")) {
+    await pool.query("DELETE FROM purchase_requests");
+    await pool.query("DELETE FROM policies");
+    await pool.query("DELETE FROM chat_messages");
+    console.log("cleared existing rows (reset)");
+  }
+
   // One demo user policy: cap $200, per-purchase max $50, auto-approve under $20
   const existing = await pool.query("SELECT id FROM policies LIMIT 1");
   if (existing.rows.length === 0) {
@@ -31,75 +39,130 @@ async function main() {
   // A handful of sample purchase requests for demos and screenshots
   const count = await pool.query("SELECT count(*)::int AS n FROM purchase_requests");
   if (count.rows[0].n === 0) {
+    // Demo seed data: purchased rows total exactly $172 to match the gauge.
+    // Realistic products + categories so Activity charts and the grid look real.
     const samples = [
       {
-        title: "Trail Mix Energy Bars (12 pack)",
-        merchant: "https://example-shop.test/p/trail-mix",
+        title: "Japanese snack box assortment (24 pcs)",
+        merchant: "https://snack-shop.test/p/japanese-snack-box",
         category: "snacks",
         cents: 18_00,
         decision: "ALLOW",
         reason: "under auto approve limit",
         status: "PURCHASED",
         decidedBy: "policy",
-        reasoning: "Matches request for snacks; well under the $20 auto-approve limit.",
+        reasoning: "Matches the request; well under the $20 auto-approve limit.",
         orderId: "SEED-ORDER-1",
         captureId: "SEED-CAPTURE-1",
       },
       {
-        title: "Chalk Bag — Climbing",
-        merchant: "https://example-outdoor.test/p/chalk-bag",
+        title: "Chalk bag + bouldering brush set",
+        merchant: "https://crag-gear.test/p/chalk-bag-set",
         category: "climbing",
         cents: 34_00,
         decision: "ASK",
         reason: "needs owner approval",
         status: "WAITING",
         decidedBy: "policy",
-        reasoning: "Top-rated climbing gift under $50. Over the auto-approve limit, so needs your approval.",
+        reasoning: "Top-rated pick under $50. Over the auto-approve limit, so needs your approval.",
         orderId: null,
         captureId: null,
       },
       {
-        title: "Noise-Canceling Headphones",
-        merchant: "https://example-electronics.test/p/headphones",
+        title: "Wireless noise-cancelling earbuds",
+        merchant: "https://volt-store.test/p/anc-earbuds",
         category: "electronics",
         cents: 82_00,
         decision: "BLOCK",
         reason: "over per purchase max",
         status: "BLOCKED",
         decidedBy: "policy",
-        reasoning: "Requested headphones exceed the $50 per-purchase maximum.",
+        reasoning: "Best match for the request, but it exceeds the $50 per-purchase maximum.",
         orderId: null,
         captureId: null,
       },
       {
-        title: "Insulated Water Bottle 1L",
-        merchant: "https://example-outdoor.test/p/bottle",
+        title: "Insulated trail water bottle, 1L",
+        merchant: "https://crag-gear.test/p/trail-bottle-1l",
         category: "outdoor",
         cents: 45_00,
         decision: "ASK",
         reason: "needs owner approval",
         status: "PURCHASED",
         decidedBy: "owner",
-        reasoning: "Durable bottle fits the outdoor gear request; owner approved it.",
+        reasoning: "Durable pick that fits the request; you approved it.",
         orderId: "SEED-ORDER-2",
         captureId: "SEED-CAPTURE-2",
       },
       {
-        title: "$60 Game Store Gift Card",
-        merchant: "https://example-cards.test/p/giftcard",
-        category: "gift cards",
+        title: "National parks annual pass",
+        merchant: "https://park-pass.test/p/annual-pass",
+        category: "outdoor",
         cents: 60_00,
         decision: "BLOCK",
-        reason: "blocked category",
+        reason: "would exceed monthly cap",
         status: "BLOCKED",
         decidedBy: "policy",
-        reasoning: "Gift cards are on the blocked categories list.",
+        reasoning: "Buying this would push the month over the $200 cap.",
+        orderId: null,
+        captureId: null,
+      },
+      {
+        title: "Cast iron mini skillet, 6-inch",
+        merchant: "https://kitchen-row.test/p/mini-skillet",
+        category: "kitchen",
+        cents: 39_00,
+        decision: "ASK",
+        reason: "needs owner approval",
+        status: "PURCHASED",
+        decidedBy: "owner",
+        reasoning: "Well-reviewed pick in the middle of the budget; you approved it.",
+        orderId: "SEED-ORDER-3",
+        captureId: "SEED-CAPTURE-3",
+      },
+      {
+        title: "Paperback sci-fi trilogy box set",
+        merchant: "https://page-corner.test/p/sci-fi-trilogy",
+        category: "books",
+        cents: 40_00,
+        decision: "ASK",
+        reason: "needs owner approval",
+        status: "PURCHASED",
+        decidedBy: "owner",
+        reasoning: "Exactly what was asked for, under the per-purchase max; you approved it.",
+        orderId: "SEED-ORDER-4",
+        captureId: "SEED-CAPTURE-4",
+      },
+      {
+        title: "Hangboard training grips",
+        merchant: "https://crag-gear.test/p/hangboard-grips",
+        category: "climbing",
+        cents: 30_00,
+        decision: "ASK",
+        reason: "needs owner approval",
+        status: "PURCHASED",
+        decidedBy: "owner",
+        reasoning: "Solid mid-range option over the auto-approve limit; you approved it.",
+        orderId: "SEED-ORDER-5",
+        captureId: "SEED-CAPTURE-5",
+      },
+      {
+        title: "Retro arcade joystick controller",
+        merchant: "https://retro-games.test/p/arcade-joystick",
+        category: "games",
+        cents: 42_00,
+        decision: "ASK",
+        reason: "needs owner approval",
+        status: "REJECTED",
+        decidedBy: "owner",
+        reasoning: "Over the auto-approve limit, so it asked you — and you said no.",
         orderId: null,
         captureId: null,
       },
     ];
 
-    // spread the seeded rows across the past 5 days so "this week" queries work
+    // spread the seeded rows over the past ~2 days (by hours) so they all stay
+    // inside the current month and "this week"/"this month" queries hit them
     for (let i = 0; i < samples.length; i++) {
       const s = samples[i];
       await pool.query(
@@ -107,9 +170,9 @@ async function main() {
           (created_at, product_id, product_title, merchant_url, category, amount_cents,
            agent_reasoning, policy_decision, policy_reason, status, decided_by,
            paypal_order_id, paypal_capture_id)
-         VALUES (now() - ($1 || ' days')::interval, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         VALUES (now() - ($1 || ' hours')::interval, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
-          String(i + 1),
+          String(i * 7),
           `seed-${i + 1}`,
           s.title,
           s.merchant,

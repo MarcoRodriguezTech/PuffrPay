@@ -51,11 +51,6 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
-  steps.push({
-    step: "plan",
-    detail: `search Channel3 "${plan.query}" under $${(plan.maxPriceCents / 100).toFixed(2)}`,
-  });
-
   // --- server: Channel3 search ---
   let products: ProductResult[] = [];
   try {
@@ -69,7 +64,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   );
   steps.push({
     step: "search",
-    detail: `Channel3 "${plan.query}" ... ${products.length} results, ${affordable.length} within budget`,
+    detail: `Channel3 '${plan.query}' ... ${products.length} results`,
   });
 
   // --- call 2: pick ---
@@ -89,7 +84,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
   steps.push({
     step: "pick",
-    detail: `[${product.title}] - $${(product.priceCents / 100).toFixed(2)}`,
+    detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
   });
 
   // --- deterministic policy engine (never the LLM) ---
@@ -99,7 +94,9 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     { amountCents: product.priceCents, category: product.category },
     spent
   );
-  steps.push(...describeChecks(policy, product.priceCents, spent, decision.decision, decision.reason));
+  steps.push(
+    ...describeChecks(policy, product.priceCents, spent, product.category)
+  );
 
   const status =
     decision.decision === "BLOCK"
@@ -124,7 +121,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
 
   if (decision.decision === "BLOCK") {
     const reply = `Blocked: ${decision.reason}. "${product.title}" at $${(product.priceCents / 100).toFixed(2)} can't be bought under the current policy.`;
-    steps.push({ step: "result", detail: "BLOCKED" });
+    steps.push({ step: "result", detail: `BLOCKED: ${decision.reason}` });
     await logChat("agent", reply);
     return { steps, reply, purchase, approveUrl: null, stub: false };
   }
@@ -137,13 +134,18 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
 
   // --- ALLOW: executor creates the PayPal sandbox order ---
-  steps.push({ step: "result", detail: "ALLOWED — starting PayPal payment" });
   try {
     const exec = await startPayment(purchase);
     purchase = exec.purchase;
-    const reply = exec.stub
-      ? `Auto-approved: "${product.title}" for $${(product.priceCents / 100).toFixed(2)}. No PayPal keys configured — this is a stub payment; hit "Complete sandbox payment" to finish it.`
-      : `Auto-approved: "${product.title}" for $${(product.priceCents / 100).toFixed(2)}. Finish it in the PayPal sandbox window, then it shows as purchased.`;
+    if (purchase.status === "PURCHASED") {
+      // Dev stub captured immediately — no real checkout involved.
+      steps.push({ step: "result", detail: "BOUGHT" });
+      const reply = `Auto-approved and bought "${product.title}" for $${(product.priceCents / 100).toFixed(2)} (sandbox payment).`;
+      await logChat("agent", reply);
+      return { steps, reply, purchase, approveUrl: null, stub: exec.stub };
+    }
+    steps.push({ step: "result", detail: "PAYMENT STARTED" });
+    const reply = `Auto-approved: "${product.title}" for $${(product.priceCents / 100).toFixed(2)}. Approve it in the PayPal sandbox window and it shows as purchased.`;
     await logChat("agent", reply);
     return { steps, reply, purchase, approveUrl: exec.approveUrl, stub: exec.stub };
   } catch (err) {
@@ -159,42 +161,57 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
 }
 
-/** Wireframe-style per-check policy log lines. */
+/** Wireframe-style per-check policy log lines with dot leaders. */
 function describeChecks(
   policy: Policy,
   amountCents: number,
   monthSpentCents: number,
-  decision: string,
-  reason: string
+  category: string | null
 ): AgentStep[] {
-  const fmt = (c: number) => `$${(c / 100).toFixed(2)}`;
+  const fmt = (c: number) => `$${(c / 100).toFixed(0)}`;
+  const pad = (s: string) => s.padEnd(38, ".");
   const steps: AgentStep[] = [];
   steps.push({
     step: "policy",
-    detail: `per-purchase max ${fmt(policy.perPurchaseMaxCents)} ${
+    detail: `${pad(`per-purchase max ${fmt(policy.perPurchaseMaxCents)}`)} ${
       amountCents > policy.perPurchaseMaxCents ? "FAIL" : "PASS"
     }`,
   });
   steps.push({
     step: "policy",
-    detail: `auto-approve under ${fmt(policy.autoApproveUnderCents)} ${
-      amountCents <= policy.autoApproveUnderCents ? "YES" : "NO"
-    }`,
+    detail: `${pad(
+      `monthly cap ${fmt(policy.monthlyCapCents)} (${fmt(monthSpentCents)} used)`
+    )} ${monthSpentCents + amountCents > policy.monthlyCapCents ? "FAIL" : "PASS"}`,
   });
   steps.push({
     step: "policy",
-    detail: `monthly cap ${fmt(policy.monthlyCapCents)} (${fmt(monthSpentCents)} used) ${
-      monthSpentCents + amountCents > policy.monthlyCapCents ? "FAIL" : "PASS"
+    detail: `${pad(`auto-approve under ${fmt(policy.autoApproveUnderCents)}`)} ${
+      amountCents <= policy.autoApproveUnderCents ? "YES" : "NO"
     }`,
   });
   if (policy.blockedCategories.length > 0) {
+    const hit =
+      category != null &&
+      policy.blockedCategories
+        .map((c) => c.trim().toLowerCase())
+        .includes(category.trim().toLowerCase());
     steps.push({
       step: "policy",
-      detail: `blocked categories: ${policy.blockedCategories.join(", ")}`,
+      detail: `${pad(`blocked categories: ${policy.blockedCategories.join(", ")}`)} ${
+        hit ? "FAIL" : "PASS"
+      }`,
     });
   }
-  steps.push({ step: "policy", detail: `=> ${decision}: ${reason}` });
   return steps;
+}
+
+function storeOf(merchantUrl: string | null): string {
+  if (!merchantUrl) return "store";
+  try {
+    return new URL(merchantUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return merchantUrl;
+  }
 }
 
 async function logChat(role: "owner" | "agent" | "system", content: string) {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #faf7f0; --ink: #2b1a12; --ink-soft: #5e5249; --line: #e3dccd;
+    --gold: #d9a93c; --gold-soft: #f4e6be; --tide: #1f6f78;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: var(--paper);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+  }
+  .wave {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px; letter-spacing: 2px; line-height: 14px;
+    color: var(--line); white-space: nowrap; overflow: hidden;
+    padding: 10px 24px 0;
+  }
+  .card { flex: 1; display: flex; align-items: center; gap: 72px; padding: 0 96px; }
+  .fish { width: 300px; height: 300px; flex: none; }
+  .brand { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 700; font-size: 96px; line-height: 1; letter-spacing: -2px; }
+  .tag { font-size: 40px; color: var(--ink-soft); margin-top: 20px; }
+  .leash { font-family: 'IBM Plex Mono', monospace; font-size: 30px; margin-top: 44px; display: flex; align-items: center; gap: 20px; }
+  .leash .hash { color: var(--ink); }
+  .leash .fish-glyph { color: var(--gold); font-weight: 700; }
+  .leash .empty { color: var(--line); }
+  .leash .amt { font-family: 'IBM Plex Mono', monospace; font-size: 30px; }
+  .foot { font-size: 22px; color: var(--ink-soft); margin-top: 40px; }
+</style>
+</head>
+<body>
+  <div class="wave" aria-hidden="true">~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~</div>
+  <div class="card">
+    <svg class="fish" viewBox="0 0 200 200">
+      <g stroke="#2b1a12" stroke-width="4" stroke-linecap="round" fill="#e8d44d">
+        <line x1="100" y1="8" x2="100" y2="30"/><line x1="140" y1="18" x2="132" y2="38"/>
+        <line x1="168" y1="50" x2="152" y2="62"/><line x1="184" y1="95" x2="162" y2="98"/>
+        <line x1="60" y1="18" x2="68" y2="38"/><line x1="32" y1="50" x2="48" y2="62"/>
+        <line x1="16" y1="95" x2="38" y2="98"/><line x1="140" y1="170" x2="132" y2="152"/>
+        <line x1="168" y1="140" x2="152" y2="130"/><line x1="60" y1="170" x2="68" y2="152"/>
+        <line x1="32" y1="140" x2="48" y2="130"/>
+      </g>
+      <circle cx="100" cy="105" r="72" fill="#e8d44d" stroke="#2b1a12" stroke-width="4"/>
+      <path d="M 30 105 q -22 -14 -18 -30 q 16 2 22 18 z" fill="#d8c23c" stroke="#2b1a12" stroke-width="3"/>
+      <path d="M 170 105 q 22 -14 18 -30 q -16 2 -22 18 z" fill="#d8c23c" stroke="#2b1a12" stroke-width="3"/>
+      <circle cx="76" cy="88" r="9" fill="#2b1a12"/><circle cx="124" cy="88" r="9" fill="#2b1a12"/>
+      <circle cx="79" cy="85" r="3" fill="#fff"/><circle cx="127" cy="85" r="3" fill="#fff"/>
+      <path d="M 88 122 q 12 10 24 0" fill="none" stroke="#2b1a12" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="brand">PuffrPay</div>
+      <div class="tag">Your fun money, on a leash.</div>
+      <div class="leash"><span aria-hidden="true"><span class="hash">#########</span><span class="fish-glyph">&gt;</span><span class="empty">----------</span></span><span class="amt">$172 / $200</span></div>
+      <div class="foot">An AI shopper that stays inside your rules. Sandbox mode. No real money moves.</div>
+    </div>
+  </div>
+  <div class="wave" aria-hidden="true" style="padding-bottom:10px">~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~</div>
+</body>
+</html>

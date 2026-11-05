@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { friendlyError } from "@/lib/api-error";
 import { getPolicy, updatePolicy } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +8,7 @@ export async function GET() {
   try {
     return NextResponse.json(await getPolicy());
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return friendlyError(err, "policy");
   }
 }
 
@@ -44,7 +44,6 @@ export async function PUT(req: Request) {
     });
     return NextResponse.json(policy);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return friendlyError(err, "policy");
   }
 }
