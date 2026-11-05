@@ -28,12 +28,14 @@ export interface ExecuteResult {
 /** Create a PayPal sandbox order (or dev stub) for a purchase request. */
 export async function startPayment(purchase: PurchaseRequest): Promise<ExecuteResult> {
   if (!paypalConfigured()) {
+    // Dev stub: no real checkout exists, so the order captures immediately.
     const stubOrderId = `STUB-ORDER-${purchase.id}-${Date.now()}`;
-    const updated = await updatePurchase(purchase.id, {
+    await updatePurchase(purchase.id, {
       paypalOrderId: stubOrderId,
       status: "WAITING",
     });
-    return { purchase: updated, approveUrl: null, stub: true };
+    const captured = await capturePurchase(purchase.id);
+    return { purchase: captured, approveUrl: null, stub: true };
   }
 
   const order = await createOrder({

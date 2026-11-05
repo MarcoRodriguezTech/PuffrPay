@@ -106,7 +106,7 @@ export async function createOrder(input: {
           experience_context: {
             user_action: "PAY_NOW",
             return_url: `${appBaseUrl()}/paypal/return`,
-            cancel_url: `${appBaseUrl()}/agent`,
+            cancel_url: `${appBaseUrl()}/`,
           },
         },
       },
@@ -118,8 +118,11 @@ export async function createOrder(input: {
       `PayPal create order failed (${res.status}): ${JSON.stringify(json)}`
     );
   }
+  // PayPal returns rel "payer-action" when payment_source is specified,
+  // "approve" otherwise — accept both.
   const approve = (json.links ?? []).find(
-    (l: { rel: string; href: string }) => l.rel === "approve"
+    (l: { rel: string; href: string }) =>
+      l.rel === "approve" || l.rel === "payer-action"
   );
   return { orderId: json.id as string, approveUrl: approve?.href ?? null };
 }

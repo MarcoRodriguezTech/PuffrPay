@@ -10,13 +10,17 @@
     "test": "vitest run",
     "db:up": "docker compose up -d postgres",
     "migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "seed:demo": "tsx scripts/seed.ts",
+    "reset:demo": "tsx scripts/seed.ts --reset"
   },
   "dependencies": {
     "@channel3/sdk": "^4.6.0",
     "@google/genai": "^2.32.0",
     "ag-grid-community": "^36.2.0",
     "ag-grid-react": "^36.2.0",
+    "ag-studio": "3.0.0",
+    "ag-studio-react": "3.0.0",
     "dotenv": "^16.4.5",
     "next": "^16.4.5",
     "pg": "^8.23.1",

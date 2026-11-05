@@ -31,6 +31,10 @@ services:
         sync: false
       - key: APP_BASE_URL
         sync: false
+      # Optional: AG Studio licence key for /dashboard (trial keys work;
+      # Studio renders without it).
+      - key: AG_STUDIO
+        sync: false
 
 databases:
   - name: puffrpay-db
