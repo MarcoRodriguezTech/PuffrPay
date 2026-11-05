@@ -221,7 +221,7 @@ export default function PolicyPage() {
     <main className="page">
       <div className="policy-layout">
         <section>
-          <h2>POLICY</h2>
+          <h2>Rules</h2>
 
           <RulesRuler cap={capC} max={maxC} auto={autoC} />
           <TryIt />

@@ -28,14 +28,15 @@ import {
   type AuditQuerySpec,
 } from "@/lib/audit-filters";
 import { buildStudioData, hasData } from "./studio/data";
-import { puffrStudioTheme } from "./studio/theme";
+import { studioThemeFor } from "./studio/theme";
+import { useTheme } from "@/lib/theme";
 import {
   DEFAULT_PAGE_TITLES,
   initialCompactReport,
   initialMobileReport,
   initialReport,
 } from "./studio/initial-report";
-import { pufferWidgetDef } from "./studio/puffer-widget";
+import { bentoWidgetDefs } from "./studio/bento-widgets";
 import { createCellRenderer } from "./studio/cell-renderers";
 import { specToGridSort, specToStudioFilters, specSummary } from "./studio/ask";
 import { studioChatAdapter } from "./studio/ai-adapter";
@@ -45,7 +46,7 @@ if (process.env.NODE_ENV !== "production") {
   enableStudioDevValidations();
 }
 
-const STORAGE_KEY = "puffrpay:studio-report:v2";
+const STORAGE_KEY = "puffrpay:studio-report:v3";
 const STORAGE_KEY_COMPACT = `${STORAGE_KEY}:compact`;
 const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 
@@ -134,6 +135,10 @@ function StudioDashboard({
   licenseKey?: string;
   chatMode: "studio" | "ask";
 }) {
+  const theme = useTheme();
+  // Studio treats the theme prop as live state — a fresh object every render
+  // makes it re-initialise mid-load and the grid datasource never wires up.
+  const studioTheme = useMemo(() => studioThemeFor(theme), [theme]);
   const apiRef = useRef<AgStudioApi | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -199,7 +204,7 @@ function StudioDashboard({
   // Studio gets the raw rows through `context` for the custom Puffer widget.
   const context = useMemo(() => ({ data }), [data]);
 
-  // Register the PufferGauge widget and the grid's custom cell renderers.
+  // Register the bento widgets and the grid's custom cell renderers.
   const widgets = useMemo(
     () => (defaults: AgWidgetsConfig) =>
       ({
@@ -210,7 +215,7 @@ function StudioDashboard({
               ? { ...d, options: { ...(d as { options?: object }).options, createCellRenderer } }
               : d
           ),
-          pufferWidgetDef,
+          ...bentoWidgetDefs,
         ],
       }) as never,
     []
@@ -425,13 +430,7 @@ function StudioDashboard({
   return (
     <>
       <div className="row spread studio-toolbar">
-        <div>
-          <h1>Activity</h1>
-          <p className="muted studio-sub">
-            Everything Puffr did with your fun money.
-          </p>
-        </div>
-        <div className="row">
+        <div className="row" style={{ marginLeft: "auto" }}>
           <a className="chip" href="/audit/classic">
             Classic log
           </a>
@@ -559,11 +558,20 @@ function StudioDashboard({
         {hasData(data) ? (
           <AgStudioProvider licenseKey={licenseKey}>
             <AgStudio
+              key={theme}
               style={{ height: "auto", width: "100%" }}
-              theme={puffrStudioTheme}
+              theme={studioTheme}
               layout={{ widgetBorderEnabled: true }}
               data={studioData}
               context={context}
+              // Studio appends "(sum)" etc. to aggregated field names — the
+              // column headers and the reference design just want the name.
+              localeText={{
+                aggregationSumFieldName: "${name}",
+                aggregationAvgFieldName: "${name}",
+                aggregationCountFieldName: "${name}",
+                aggregationCountdFieldName: "${name}",
+              }}
               widgets={widgets}
               ai={ai}
               initialState={initialState}

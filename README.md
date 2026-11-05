@@ -215,8 +215,8 @@ $19 allowed). The engine is pure code — never an LLM.
 ```
 src/app            pages (agent /, policy, activity, audit/classic) + api routes
 src/app/activity   AG Studio report: studio/{data,theme,initial-report,...}, client shell
-src/lib            db, repo, policy engine, executor, agent, llm/*, channel3, paypal, audit-query, audit-filters, dashboard-data, api-error
-src/components     Header, PufferGauge, LeashBar, StatusBadge, Toaster
+src/lib            db, repo, policy engine, executor, agent, llm/*, channel3, paypal, audit-query, audit-filters, dashboard-data, api-error, assets, theme
+src/components     SideRail, TopBar, ThemeToggle, PufferGauge, LeashBar, StatusBadge, Toaster
 db/migrations      SQL migrations
 scripts            migrate.ts, seed.ts
 public/mascot      placeholder pufferfish

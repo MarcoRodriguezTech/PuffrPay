@@ -79,7 +79,7 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
           ["title", "Item", "textFormat"],
           ["merchantUrl", "Item URL", "textFormat", true],
           ["imageUrl", "Image URL", "textFormat", true],
-          ["category", "Category", "textFormat"],
+          ["category", "Category", "textFormat", true],
           ["amount", "Amount", "currencyFormat"],
           ["currency", "Currency", "textFormat", true],
           ["decision", "Policy Decision", "textFormat"],

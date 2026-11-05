@@ -18,6 +18,19 @@ const fieldId = (field: AgWidgetField) =>
 const rowValue = (data: Record<string, unknown> | undefined, field: string) =>
   data?.[field] ?? data?.[`requests.${field}`];
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// 'Nov 5, 7:01 PM' — never raw timestamps in the grid.
+function fmtCellDate(iso: unknown): string {
+  const d = new Date(String(iso));
+  if (isNaN(+d)) return String(iso ?? "");
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${h}:${m} ${ap}`;
+}
+
 function StatusCell({ value }: CustomCellRendererProps) {
   return value ? (
     <span className="status-cell">
@@ -26,7 +39,7 @@ function StatusCell({ value }: CustomCellRendererProps) {
   ) : null;
 }
 
-function FirstColCell({ value, valueFormatted, data, node }: CustomCellRendererProps) {
+function FirstColCell({ value, data, node }: CustomCellRendererProps) {
   // The grand total footer sums every status, so its label must not read as
   // spend-against-cap ($172) — spell out what it actually totals. Footer rows
   // carry no row data, which is the reliable tell here.
@@ -36,9 +49,14 @@ function FirstColCell({ value, valueFormatted, data, node }: CustomCellRendererP
   const blocked = rowValue(data as Record<string, unknown>, "status") === "BLOCKED";
   return (
     <span className={blocked ? "blocked-row-mark" : undefined}>
-      {valueFormatted ?? (value == null ? "" : String(value))}
+      {fmtCellDate(value)}
     </span>
   );
+}
+
+function AmountCell({ value }: CustomCellRendererProps) {
+  const n = Number(value);
+  return isNaN(n) ? null : <span className="grid-amount">${n.toFixed(2)}</span>;
 }
 
 function ItemCell({ value, data }: CustomCellRendererProps) {
@@ -59,5 +77,6 @@ export function createCellRenderer(
   if (id === "requests.status" || id === "status") return StatusCell;
   if (id === "requests.createdAt" || id === "createdAt") return FirstColCell;
   if (id === "requests.title" || id === "title") return ItemCell;
+  if (id === "requests.amount" || id === "amount") return AmountCell;
   return undefined;
 }

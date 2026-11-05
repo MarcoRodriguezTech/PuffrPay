@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="PuffrPay logo">
+  <defs>
+    <linearGradient id="lgBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1479c4"/>
+      <stop offset="100%" stop-color="#0b5c99"/>
+    </linearGradient>
+    <radialGradient id="lgBody" cx="42%" cy="34%" r="78%">
+      <stop offset="0%" stop-color="#f9dd75"/>
+      <stop offset="58%" stop-color="#eec055"/>
+      <stop offset="100%" stop-color="#d9973a"/>
+    </radialGradient>
+  </defs>
+  <rect width="48" height="48" rx="14" fill="url(#lgBg)"/>
+  <g transform="translate(24 25) scale(0.135) translate(-100 -102)">
+    <path d="M 34 118 Q 8 112 6 90 Q 24 88 38 104 Q 42 112 34 118 Z" fill="#c98430"/>
+    <path d="M 166 118 Q 192 112 194 90 Q 176 88 162 104 Q 158 112 166 118 Z" fill="#c98430"/>
+    <path d="M 100.0 7.0 L 116.5 29.9 L 141.2 16.4 L 146.1 44.1 L 174.3 42.8 L 166.7 69.9 L 192.6 80.9 L 174.0 102.0 L 192.6 123.1 L 166.7 134.1 L 174.3 161.2 L 146.1 159.9 L 141.2 187.6 L 116.5 174.1 L 100.0 197.0 L 83.5 174.1 L 58.8 187.6 L 53.9 159.9 L 25.7 161.2 L 33.3 134.1 L 7.4 123.1 L 26.0 102.0 L 7.4 80.9 L 33.3 69.9 L 25.7 42.8 L 53.9 44.1 L 58.8 16.4 L 83.5 29.9 Z"
+          fill="url(#lgBody)" stroke="#3b2a14" stroke-width="5" stroke-linejoin="round"/>
+    <ellipse cx="100" cy="140" rx="46" ry="30" fill="#f6df9a" opacity="0.55"/>
+    <circle cx="74" cy="88" r="12" fill="#241a0e"/>
+    <circle cx="126" cy="88" r="12" fill="#241a0e"/>
+    <circle cx="78" cy="84" r="4" fill="#ffffff"/>
+    <circle cx="130" cy="84" r="4" fill="#ffffff"/>
+    <circle cx="60" cy="108" r="7" fill="#e58e6e" opacity="0.5"/>
+    <circle cx="140" cy="108" r="7" fill="#e58e6e" opacity="0.5"/>
+    <path d="M 86 120 Q 100 130 114 120" fill="none" stroke="#241a0e" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>
