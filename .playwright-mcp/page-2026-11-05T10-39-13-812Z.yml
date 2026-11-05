@@ -1,0 +1,35 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link "PuffrPay" [ref=f5e3] [cursor=pointer]:
+      - /url: /
+  - generic [aria-hidden] [ref=f5e4]: ~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~
+  - navigation "Main" [ref=f5e5]:
+    - link "Agent" [ref=f5e6] [cursor=pointer]:
+      - /url: /
+    - link "Policy" [ref=f5e9] [cursor=pointer]:
+      - /url: /policy
+    - link "Activity" [ref=f5e15] [cursor=pointer]:
+      - /url: /activity
+  - main [ref=f5e18]:
+    - generic [ref=f5e19]:
+      - generic [ref=f5e21]:
+        - generic [aria-hidden] [ref=f5e22]: ~~ .-~~~-. ~ ~ ~ ><(((°> ~ ~ ><(((°> ~~ ~ ~~~ ~
+        - heading "What should I buy?" [level=1] [ref=f5e23]
+        - paragraph [ref=f5e24]: Your fun money, on a leash.
+        - generic [ref=f5e25]:
+          - button "Find a birthday gift for my sister under $50" [ref=f5e26] [cursor=pointer]
+          - button "I need a phone charger under $20" [ref=f5e27] [cursor=pointer]
+          - button "Find something over $100" [ref=f5e28] [cursor=pointer]
+      - generic [ref=f5e30]:
+        - generic [ref=f5e31]: Message the agent
+        - textbox "Message the agent" [ref=f5e32]:
+          - /placeholder: What should I buy?
+        - button "Send" [disabled] [ref=f5e33]
+    - complementary [ref=f5e34]:
+      - generic [ref=f5e35]:
+        - generic [ref=f5e36]: Fun money — November
+        - paragraph [ref=f5e37]: Loading...
+  - status
+  - contentinfo [ref=f5e38]: Sandbox mode. No real money moves.
+  - button "Open Next.js Dev Tools" [ref=f5e44] [cursor=pointer]
+  - alert [ref=f5e48]

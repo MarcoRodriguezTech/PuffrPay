@@ -1,0 +1,67 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link "PuffrPay" [ref=f4e3] [cursor=pointer]:
+      - /url: /
+    - navigation "Main" [ref=f4e4]:
+      - link "Agent" [ref=f4e5] [cursor=pointer]:
+        - /url: /
+      - link "Policy" [ref=f4e6] [cursor=pointer]:
+        - /url: /policy
+      - link "Activity" [ref=f4e7] [cursor=pointer]:
+        - /url: /activity
+  - generic [aria-hidden] [ref=f4e8]: ~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~
+  - main [ref=f4e9]:
+    - generic [ref=f4e10]:
+      - generic [ref=f4e11]:
+        - heading "POLICY" [level=2] [ref=f4e12]
+        - generic [ref=f4e14]:
+          - generic [ref=f4e15]:
+            - generic [ref=f4e16]: Amount
+            - generic [ref=f4e17]:
+              - generic [aria-hidden] [ref=f4e18]: $
+              - textbox "Amount" [ref=f4e19]:
+                - /placeholder: "25.00"
+          - generic [ref=f4e20]:
+            - generic [ref=f4e21]: Category
+            - textbox "Category" [ref=f4e22]:
+              - /placeholder: optional
+          - button "Would this be allowed?" [ref=f4e23] [cursor=pointer]
+        - generic [ref=f4e24]:
+          - generic [ref=f4e25]:
+            - generic [ref=f4e26]: Monthly cap
+            - generic [ref=f4e27]:
+              - generic [aria-hidden] [ref=f4e28]: $
+              - textbox "Monthly cap" [ref=f4e29]
+              - generic [ref=f4e30]:
+                - button "Increase Monthly cap" [ref=f4e31] [cursor=pointer]: +
+                - button "Decrease Monthly cap" [ref=f4e32] [cursor=pointer]: −
+            - generic [ref=f4e33]: The most the agent can spend in a calendar month.
+          - generic [ref=f4e34]:
+            - generic [ref=f4e35]: Per-purchase max
+            - generic [ref=f4e36]:
+              - generic [aria-hidden] [ref=f4e37]: $
+              - textbox "Per-purchase max" [ref=f4e38]
+              - generic [ref=f4e39]:
+                - button "Increase Per-purchase max" [ref=f4e40] [cursor=pointer]: +
+                - button "Decrease Per-purchase max" [ref=f4e41] [cursor=pointer]: −
+            - generic [ref=f4e42]: The most for any single purchase.
+          - generic [ref=f4e43]:
+            - generic [ref=f4e44]: Auto-approve under
+            - generic [ref=f4e45]:
+              - generic [aria-hidden] [ref=f4e46]: $
+              - textbox "Auto-approve under" [ref=f4e47]
+              - generic [ref=f4e48]:
+                - button "Increase Auto-approve under" [ref=f4e49] [cursor=pointer]: +
+                - button "Decrease Auto-approve under" [ref=f4e50] [cursor=pointer]: −
+            - generic [ref=f4e51]: Purchases at or under this amount are bought without asking you.
+          - generic [ref=f4e52]:
+            - generic [ref=f4e53]: Blocked categories
+            - textbox "Blocked categories" [ref=f4e54]:
+              - /placeholder: type and press Enter
+          - button "Save rules" [disabled] [ref=f4e56]
+      - generic [ref=f4e57]:
+        - heading "WAITING FOR YOU (0)" [level=2] [ref=f4e58]
+        - paragraph [ref=f4e59]: Loading...
+  - status
+  - contentinfo [ref=f4e60]: Sandbox mode. No real money moves.
+  - button "Open Next.js Dev Tools" [ref=f4e66] [cursor=pointer]
