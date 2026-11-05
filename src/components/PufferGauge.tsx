@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Single source for the mascot art — swap this file to restyle everywhere. */
-export const MASCOT_SRC = "/mascot/puffr-placeholder.svg";
+export const MASCOT_SRC = "/mascot/puffr.svg";
 
 export type PufferState = "calm" | "swelling" | "puffed" | "maxed";
 

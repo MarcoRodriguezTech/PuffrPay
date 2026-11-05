@@ -4,22 +4,25 @@
 
 :root {
   /* --- color ------------------------------------------------------- */
-  --paper: #faf7f0;
-  --card: #ffffff;
-  --ink: #2b1a12;
-  --ink-hover: #3d271c;
-  --ink-soft: #5e5249;
-  --paper-warm: #fdfaf3;
-  --line: #e3dccd;
-  --gold: #d9a93c;
-  --gold-soft: #f4e6be;
-  --tide: #1f6f78;
-  --ok: #1e6b3a;
-  --ok-soft: #eaf3ec;
-  --warn: #7a5200;
-  --danger: #b3382c;
-  --danger-soft: #f7ddd8;
-  --danger-line: #eccfc8;
+  /* Deep-navy "midnight tidepool": iOS-dark style canvas, elevated navy
+     cards, bright blue accent. Gold stays — it is the mascot's colour and
+     the money highlight. */
+  --paper: #0a1120;
+  --card: #141f36;
+  --ink: #edf2fb;
+  --ink-hover: #ffffff;
+  --ink-soft: #8ea0bf;
+  --paper-warm: #0d1628;
+  --line: rgba(142, 160, 191, 0.18);
+  --gold: #f2c34e;
+  --gold-soft: rgba(242, 195, 78, 0.14);
+  --tide: #4da3ff;
+  --ok: #3ecf8e;
+  --ok-soft: rgba(62, 207, 142, 0.13);
+  --warn: #f5b545;
+  --danger: #f26d5f;
+  --danger-soft: rgba(242, 109, 95, 0.15);
+  --danger-line: rgba(242, 109, 95, 0.35);
 
   /* compatibility aliases (older class names) */
   --bg: var(--paper);
@@ -37,7 +40,7 @@
   --chart-4: var(--gold);
   --chart-5: var(--tide);
   --chart-6: var(--warn);
-  --chart-7: #b8943f;
+  --chart-7: #7c9bd4;
   --chart-8: var(--ink);
   --chart-9: var(--line);
   --chart-10: var(--ink-soft);
@@ -61,13 +64,13 @@
   --s6: 24px;
   --s8: 32px;
   --s12: 48px;
-  --radius: 10px;
+  --radius: 14px;
 
   /* fluid layout: full-width pages, clamped side padding, content centred
      once the viewport is wider than 2000px */
   --gutter: clamp(16px, 3vw, 48px);
   --gutter-wide: max(var(--gutter), calc((100vw - 2000px) / 2 + 16px));
-  --radius-ctl: 6px;
+  --radius-ctl: 10px;
 
   /* --- motion ------------------------------------------------------- */
   --dur-fast: 120ms;
@@ -75,7 +78,7 @@
   --dur-slow: 500ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
-  --shadow-raise: 0 6px 20px rgba(43, 26, 18, 0.06);
+  --shadow-raise: 0 8px 24px rgba(3, 7, 15, 0.5);
 }
 
 * {
@@ -90,10 +93,16 @@ body {
 
 body {
   background: var(--paper);
+  /* faint aurora glow at the top of every page — depth without a hero panel */
+  background-image:
+    radial-gradient(1100px 480px at 14% -6%, rgba(77, 163, 255, 0.1), transparent 60%),
+    radial-gradient(900px 420px at 86% -4%, rgba(122, 92, 255, 0.08), transparent 60%);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--sans);
   font-size: var(--t16);
   line-height: 1.45;
+  color-scheme: dark;
 }
 
 a {

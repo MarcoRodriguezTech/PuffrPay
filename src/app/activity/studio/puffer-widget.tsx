@@ -39,7 +39,7 @@ export function PufferWidget(params: AgWidgetParams<PufferWidgetData>) {
 export const pufferWidgetDef: AgWidgetDefinition<string, PufferWidgetData> = {
   id: PUFFER_WIDGET_TYPE,
   label: "Puffr gauge",
-  icon: { url: "/mascot/puffr-placeholder.svg" },
+  icon: { url: "/mascot/puffr.svg" },
   comp: PufferWidget,
   form: ({ createDefaults }) => createDefaults({ dataMappingItems: [] }),
   defaultSize: { width: 220, height: 380 },

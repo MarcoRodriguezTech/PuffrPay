@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     template: "%s — PuffrPay",
   },
   description: "Your fun money, on a leash.",
-  icons: { icon: "/mascot/puffr-placeholder.svg" },
+  icons: { icon: "/mascot/puffr.svg" },
   openGraph: {
     title: "PuffrPay",
     description: "Your fun money, on a leash.",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FAF7F0",
+  themeColor: "#0a1120",
 };
 
 export default function RootLayout({
