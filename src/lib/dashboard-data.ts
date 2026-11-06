@@ -1,4 +1,4 @@
-import { getPolicy, listPurchases } from "./repo";
+import { getPolicy, listOptionSets, listPurchases } from "./repo";
 import type { Policy, PurchaseRequest } from "./types";
 
 // Flat rows for the dashboard's AG Studio data sources. Sources:
@@ -74,12 +74,55 @@ function policyRow(policy: Policy) {
   ];
 }
 
+function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
+  // Per-set aggregates of the carousel payloads so the Activity widgets can
+  // show what happened *before* a purchase row exists: how many options were
+  // auto-ok / needed approval / blocked by rules, and the set's outcome.
+  return sets.map((s) => {
+    const by = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
+    const amt = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
+    let pickedAmt: number | null = null;
+    let totalAmt = 0;
+    for (const i of s.items) {
+      totalAmt += i.priceCents / 100;
+      if (s.picked === i.id) {
+        // The picked item gets its own bar — keep it out of the decision buckets.
+        pickedAmt = i.priceCents / 100;
+        continue;
+      }
+      by[i.decision] = (by[i.decision] ?? 0) + 1;
+      amt[i.decision] = (amt[i.decision] ?? 0) + i.priceCents / 100;
+    }
+    return {
+      ref: String(s.id),
+      createdAt: s.createdAt,
+      options: s.items.length,
+      picked: s.picked != null,
+      dismissed: s.dismissed,
+      open: s.picked == null && !s.dismissed,
+      autoOk: by.ALLOW ?? 0,
+      needsOk: by.ASK ?? 0,
+      blocked: by.BLOCK ?? 0,
+      autoAmt: amt.ALLOW ?? 0,
+      needsAmt: amt.ASK ?? 0,
+      blockedAmt: amt.BLOCK ?? 0,
+      totalAmt,
+      pickedAmt,
+    };
+  });
+}
+
 export async function getDashboardData(asOf = new Date()) {
-  const [policy, purchases] = await Promise.all([getPolicy(), listPurchases()]);
+  const [policy, purchases, optionSets] = await Promise.all([
+    getPolicy(),
+    listPurchases(),
+    listOptionSets(),
+  ]);
 
   return {
     asOf: asOf.toISOString(),
     requests: requestRows(purchases, policy),
+    optionSets: optionSetRows(optionSets),
     policy: policyRow(policy),
   };
 }

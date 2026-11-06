@@ -258,3 +258,49 @@ export async function getBudget(): Promise<BudgetInfo> {
     ratio: capCents > 0 ? spentCents / capCents : 0,
   };
 }
+
+/* ---------- chat option sets ---------- */
+
+// Duck-typed mirror of AgentOptionsPayload in agent.ts (repo can't import
+// agent — agent already imports repo). Only the fields the dashboard needs.
+export interface OptionSetRow {
+  id: number;
+  createdAt: string;
+  items: { id: string; priceCents: number; decision: PolicyDecision }[];
+  picked: string | null;
+  dismissed: boolean;
+}
+
+/**
+ * The agent's carousel payloads, most recent first: every chat message whose
+ * content is a "kind":"options" JSON blob. Malformed blobs are skipped.
+ */
+export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
+  const rows = await query<{ id: number; content: string; created_at: Date }>(
+    `SELECT id, content, created_at FROM chat_messages
+     WHERE role = 'agent' AND content LIKE '%"kind":"options"%'
+     ORDER BY created_at DESC LIMIT $1`,
+    [limit]
+  );
+  const out: OptionSetRow[] = [];
+  for (const r of rows) {
+    try {
+      const p = JSON.parse(r.content);
+      if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
+      out.push({
+        id: r.id,
+        createdAt: r.created_at.toISOString(),
+        items: p.items.map((i: { id?: string; priceCents?: number; decision?: string }) => ({
+          id: String(i.id ?? ""),
+          priceCents: Number(i.priceCents ?? 0),
+          decision: (i.decision ?? "ALLOW") as PolicyDecision,
+        })),
+        picked: typeof p.picked === "string" ? p.picked : null,
+        dismissed: p.dismissed === true,
+      });
+    } catch {
+      /* not an options blob */
+    }
+  }
+  return out;
+}

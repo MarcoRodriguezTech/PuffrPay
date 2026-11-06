@@ -613,8 +613,12 @@ function SpendByDay(params: Ctx) {
 
 /* ---------- Requests by status ---------- */
 
+const useOptionSets = (params: Ctx): DashboardData["optionSets"] =>
+  (params.context as { data?: DashboardData })?.data?.optionSets ?? [];
+
 function StatusBars(params: Ctx) {
   const rows = useRows(params);
+  const sets = useOptionSets(params);
   const counts = STATUS_ORDER.map((key) => ({
     key,
     n: rows.filter((r) => statusKey(r.status, r.decision) === key).length,
@@ -622,7 +626,39 @@ function StatusBars(params: Ctx) {
       .filter((r) => statusKey(r.status, r.decision) === key)
       .reduce((a, r) => a + r.amount, 0),
   })).filter((c) => c.n > 0 || c.key === "PURCHASED");
-  const max = Math.max(...counts.map((c) => c.n), 1);
+
+  // Carousel layer: what the options were stamped with before any pick —
+  // item-level counts/$ so the leash's pre-pick blocking shows up.
+  const opt = {
+    picked: { n: 0, amt: 0 },
+    auto: { n: 0, amt: 0 },
+    needs: { n: 0, amt: 0 },
+    blocked: { n: 0, amt: 0 },
+    skipped: 0,
+    open: 0,
+  };
+  for (const s of sets) {
+    if (s.picked) {
+      opt.picked.n += 1;
+      opt.picked.amt += s.pickedAmt ?? 0;
+    }
+    opt.auto.n += s.autoOk;
+    opt.auto.amt += s.autoAmt;
+    opt.needs.n += s.needsOk;
+    opt.needs.amt += s.needsAmt;
+    opt.blocked.n += s.blocked;
+    opt.blocked.amt += s.blockedAmt;
+    if (s.dismissed) opt.skipped += 1;
+    else if (!s.picked) opt.open += 1;
+  }
+  const optionBars = [
+    { key: "picked", name: "You picked", color: "var(--st-bought)", ...opt.picked },
+    { key: "auto", name: "Auto-ok", color: "var(--st-paypal)", ...opt.auto },
+    { key: "needs", name: "Needed your OK", color: "var(--st-waiting)", ...opt.needs },
+    { key: "blocked", name: "Blocked by rules", color: "var(--st-blocked)", ...opt.blocked },
+  ].filter((b) => b.n > 0);
+  const max = Math.max(...counts.map((c) => c.n), ...optionBars.map((b) => b.n), 1);
+
   const NAME: Record<StatusKey, string> = {
     PURCHASED: "Bought",
     PAYPAL: "Awaiting PayPal",
@@ -631,33 +667,50 @@ function StatusBars(params: Ctx) {
     REJECTED: "Rejected",
     FAILED: "Failed",
   };
+  const bar = (key: string, name: string, n: number, amt: number, color: string) => (
+    <div className="statusbar-row" key={key}>
+      <span className="statusbar-name">{name}</span>
+      <span className="statusbar-track">
+        <span
+          className="statusbar-fill"
+          style={{ width: `${(n / max) * 100}%`, background: color }}
+        />
+      </span>
+      <span className="statusbar-num">
+        {n} — {money(amt)}
+      </span>
+    </div>
+  );
 
   return (
     <div className="bento">
       <div className="bento-head">
         <div>
           <h3 className="bento-title">Requests by status</h3>
-          <p className="bento-sub">Count and amount</p>
+          <p className="bento-sub">Picks + options</p>
         </div>
       </div>
       <div className="statusbars">
-        {counts.map((c) => (
-          <div className="statusbar-row" key={c.key}>
-            <span className="statusbar-name">{NAME[c.key]}</span>
-            <span className="statusbar-track">
-              <span
-                className="statusbar-fill"
-                style={{
-                  width: `${(c.n / max) * 100}%`,
-                  background: STATUS_COLORS[c.key],
-                }}
-              />
-            </span>
-            <span className="statusbar-num">
-              {c.n} — {money(c.amt)}
-            </span>
-          </div>
-        ))}
+        {optionBars.length > 0 && (
+          <span className="statusbars-label">Picks</span>
+        )}
+        {counts.map((c) => bar(c.key, NAME[c.key], c.n, c.amt, STATUS_COLORS[c.key]))}
+        {optionBars.length > 0 && (
+          <>
+            <span className="statusbars-label">Options suggested</span>
+            {optionBars.map((b) => bar(b.key, b.name, b.n, b.amt, b.color))}
+            {(opt.skipped > 0 || opt.open > 0) && (
+              <span className="statusbar-note">
+                {[
+                  opt.skipped > 0 && `${opt.skipped} set${opt.skipped > 1 ? "s" : ""} skipped`,
+                  opt.open > 0 && `${opt.open} still picking`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

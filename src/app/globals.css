@@ -3942,6 +3942,21 @@ img[src*="/mascot/"] {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+.statusbars-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.statusbars-label:not(:first-child) {
+  margin-top: var(--s2);
+}
+.statusbar-note {
+  font-size: var(--t12);
+  color: var(--ink-soft);
+}
 
 /* grid pager strip under the purchases grid */
 .grid-pager {
