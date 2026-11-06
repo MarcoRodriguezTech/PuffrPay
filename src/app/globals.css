@@ -119,37 +119,43 @@
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --paper: #f3f9fd;
-  --card: #ffffff;
-  --card-grad: linear-gradient(150deg, #ffffff 0%, #eef7fd 100%);
-  --ink: #0a1b2b;
-  --ink-hover: #04080f;
-  --ink-soft: #4a6178;
-  --paper-warm: #eef7fd;
-  --line: rgba(11, 92, 153, 0.12);
+  /* Frosted-glass light theme: soft slate canvas, translucent white panels,
+     ocean blue for primary data, emerald only for positive, slate gray for
+     neutral/stopped. --gold/--warn stay as the "needs attention" accent. */
+  --paper: #f1f5f9;
+  --card: rgba(255, 255, 255, 0.65);
+  --card-grad: linear-gradient(160deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.6) 55%, rgba(241, 245, 249, 0.62) 100%);
+  --ink: #0f172a;
+  --ink-hover: #020617;
+  --ink-soft: #64748b;
+  --paper-warm: #e2e8f0;
+  --line: rgba(100, 116, 139, 0.18);
+  --glass-line: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(20px);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --gold: #c98a12;
   --gold-soft: rgba(201, 138, 18, 0.1);
-  --tide: #0b6fb8;
-  --deep: #0b5c99;
-  --ocean-soft: #ddf0fc;
-  --btn-grad: linear-gradient(135deg, #1479c4, #0b5c99);
-  --ok: #12794f;
-  --ok-soft: rgba(18, 121, 79, 0.1);
+  --tide: #2563eb;
+  --deep: #1d4ed8;
+  --ocean-soft: #dbeafe;
+  --btn-grad: linear-gradient(135deg, #2563eb, #0284c7);
+  --ok: #059669;
+  --ok-soft: rgba(5, 150, 105, 0.1);
   --warn: #8a5a00;
   --warn-soft: rgba(138, 90, 0, 0.1);
-  --danger: #b3382c;
-  --danger-soft: rgba(179, 56, 44, 0.08);
-  --danger-line: rgba(179, 56, 44, 0.3);
-  --reject: #4a6178;
-  --st-bought: #0284c7;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --danger-line: rgba(220, 38, 38, 0.3);
+  --reject: #64748b;
+  --st-bought: #10b981;
   --st-paypal: #2563eb;
   --st-waiting: #6366f1;
-  --st-blocked: #475569;
-  --st-rejected: #64748b;
-  --glow: radial-gradient(900px 520px at 0% 0%, rgba(11, 111, 184, 0.07), transparent 65%);
-  --shadow-raise: 0 12px 32px rgba(11, 92, 153, 0.14);
-  --shadow-raise-sm: 0 6px 18px rgba(11, 92, 153, 0.1);
-  --chart-7: #38b6f2;
+  --st-blocked: #64748b;
+  --st-rejected: #94a3b8;
+  --glow: none;
+  --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
+  --shadow-raise-sm: 0 8px 32px rgba(15, 23, 42, 0.05);
+  --chart-7: #94a3b8;
 }
 
 * {
@@ -190,8 +196,15 @@ body::before {
     radial-gradient(52% 44% at 55% 102%, rgba(79, 70, 229, 0.22), transparent 70%);
   filter: blur(100px);
 }
+/* Light theme gets its own pastel lights: pale ocean blue + mint orbs,
+   blurred even harder, so the frosted panels float on soft color. */
 :root[data-theme="light"] body::before {
-  display: none;
+  background:
+    radial-gradient(44% 38% at 10% 6%, rgba(147, 197, 253, 0.55), transparent 70%),
+    radial-gradient(38% 34% at 90% 12%, rgba(110, 231, 183, 0.42), transparent 70%),
+    radial-gradient(54% 46% at 52% 104%, rgba(167, 243, 208, 0.4), transparent 70%),
+    radial-gradient(40% 34% at 68% 42%, rgba(191, 219, 254, 0.35), transparent 70%);
+  filter: blur(120px);
 }
 
 a {
@@ -2704,15 +2717,12 @@ img[src*="/mascot/"] {
 }
 
 /* Widget-loading veil — the same glass recipe as the bento panels it covers:
-   translucent card gradient, hairline border, radius, raise shadow, and in
-   dark theme the backdrop blur + inner top highlight. */
+   translucent card gradient, glass edge, radius, blur + raise shadow. The
+   --glass-* tokens resolve per theme (navy glass dark / frosted white light). */
 .studio-card .ag-studio-layout-widget-skeleton-overlay-container {
   background: var(--card-grad);
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-raise-sm);
-}
-:root[data-theme="dark"] .studio-card .ag-studio-layout-widget-skeleton-overlay-container {
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
@@ -2853,6 +2863,34 @@ img[src*="/mascot/"] {
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
+/* Frosted light glass: same panel list as dark — translucent white bg comes
+   from --card-grad; blur 20px, crisp white edge, soft diffuse shadow. */
+:root[data-theme="light"] .ag-studio-widget,
+:root[data-theme="light"] .kpi-tile,
+:root[data-theme="light"] .rail,
+:root[data-theme="light"] .ask-panel,
+:root[data-theme="light"] .drawer,
+:root[data-theme="light"] .customize-menu,
+:root[data-theme="light"] .ag-studio-panel-container,
+:root[data-theme="light"] .toast,
+:root[data-theme="light"] .notice,
+:root[data-theme="light"] .error,
+:root[data-theme="light"] .msg,
+:root[data-theme="light"] .agent-log,
+:root[data-theme="light"] .product-card,
+:root[data-theme="light"] .approval-card,
+:root[data-theme="light"] .wait-card,
+:root[data-theme="light"] .studio-skeleton {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+/* The one exception to white edges: error panels keep their red border. */
+:root[data-theme="light"] .error {
+  border-color: var(--danger);
+}
+
 /* Backlit line on the spend chart. */
 :root[data-theme="dark"] .spend-trend .series-line {
   filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
@@ -2906,7 +2944,7 @@ img[src*="/mascot/"] {
 
 .ag-studio-widget {
   background: var(--card-grad) !important;
-  border: 1px solid var(--line) !important;
+  border: 1px solid var(--glass-line) !important;
   border-radius: var(--radius) !important;
   animation: fade-up 500ms var(--ease) both;
 }
