@@ -25,3 +25,4 @@ Thumbs.db
 # Local verification screenshots (repo root only)
 /v*-*.png
 /shot*.png
+/small*.png
