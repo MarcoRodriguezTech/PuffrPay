@@ -2699,12 +2699,25 @@ label {
 }
 
 /* The Studio report is not a boxed panel: it flows with the page, so the
-   canvas grows to its content and the page does the scrolling. */
+   canvas grows to its content and the page does the scrolling. No solid
+   block behind the widgets — the page background shows through. */
 .studio-card {
   margin-top: 0;
   position: relative;
-  background: var(--paper);
+  background: transparent;
   height: auto;
+}
+
+.studio-card .ag-studio-layout-canvas {
+  background: transparent;
+}
+
+.studio-card .ag-studio-root {
+  height: auto !important;
+}
+
+.studio-card .ag-studio-root-inner {
+  position: static;
 }
 
 .studio-card .ag-studio-root-inner,

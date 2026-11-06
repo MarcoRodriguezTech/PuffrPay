@@ -47,11 +47,13 @@ export function studioThemeFor(mode: AppTheme) {
     studioWrapperBorder: false,
     studioWrapperBorderRadius: 0,
     studioWrapperSpacing: 0,
-    studioWrapperBackgroundColor: token("paper"),
+    studioWrapperBackgroundColor: "transparent",
     studioCanvasBorder: false,
     studioCanvasBorderRadius: 0,
     studioCanvasShadow: false,
-    studioCanvasBackgroundColor: token("paper"),
+    // Transparent — the report floats on the page background, no dark slab
+    // behind the widgets.
+    studioCanvasBackgroundColor: "transparent",
     studioCanvasPadding: 20,
     studioCanvasRowHeight: 18,
     studioCanvasFontFamily: SANS,
