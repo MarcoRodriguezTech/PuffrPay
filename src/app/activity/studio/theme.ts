@@ -54,7 +54,9 @@ export function studioThemeFor(mode: AppTheme) {
     // Transparent — the report floats on the page background, no dark slab
     // behind the widgets.
     studioCanvasBackgroundColor: "transparent",
-    studioCanvasPadding: 20,
+    // Snug outer inset — the report starts close under the toolbar and widget
+    // edges sit near the page's own padding.
+    studioCanvasPadding: 8,
     studioCanvasRowHeight: 18,
     studioCanvasFontFamily: SANS,
 

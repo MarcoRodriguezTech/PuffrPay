@@ -2731,6 +2731,15 @@ label {
 .studio-card .ag-studio-layout-widget {
   --ag-studio-layout-widget-inset: 12px;
 }
+
+/* The KPI row is four separate tiles, not one framed card — the widget
+   itself is invisible so the tiles carry the only chrome. */
+.studio-card .ag-studio-layout-widget:has(.kpi-row) {
+  --ag-studio-layout-widget-background-color: transparent;
+  --ag-studio-layout-widget-border-color: transparent;
+  --ag-studio-layout-widget-border-width: 0px;
+  --ag-studio-layout-widget-border-radius: 0px;
+}
 @media (min-width: 1440px) {
   .studio-card .ag-studio-layout-widget {
     --ag-studio-layout-widget-inset: 16px;
