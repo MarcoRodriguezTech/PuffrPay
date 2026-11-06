@@ -1649,18 +1649,36 @@ img[src*="/mascot/"] {
   transition: width var(--dur-fast) var(--ease);
 }
 
+/* Collapsed there is no receipt rectangle at all — the wrapper goes
+   chromeless and the title button itself is the chip you click. */
 .input-zone .agent-log.closed {
   width: auto;
-  padding: var(--s1) var(--s3);
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .input-zone .agent-log.closed::before,
 .input-zone .agent-log.closed::after {
-  margin: calc(-1 * var(--s1)) calc(-1 * var(--s3)) var(--s1);
+  content: none;
 }
 
-.input-zone .agent-log.closed::after {
-  margin: var(--s1) calc(-1 * var(--s3)) calc(-1 * var(--s1));
+.input-zone .agent-log.closed .log-title {
+  width: auto;
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card-grad);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+.input-zone .agent-log.closed .log-title:hover {
+  border-color: var(--ink);
 }
 
 /* till-receipt agent log */
