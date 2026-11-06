@@ -3562,10 +3562,10 @@ img[src*="/mascot/"] {
   animation: bar-in 600ms var(--ease) both;
   transform-origin: bottom;
 }
-/* requested-but-not-bought sits on top of the bought gradient, in a lighter
-   tint of the same status green so the stack reads as one money series */
+/* requested-but-not-bought sits on top of the bought gradient in a lighter
+   tint of the same ocean blue so the stack reads as one money series */
 .bento-chart .bar-requested {
-  fill: var(--st-bought);
+  fill: var(--tide);
   fill-opacity: 0.3;
   rx: 6;
 }
@@ -3576,10 +3576,10 @@ img[src*="/mascot/"] {
   rx: 8;
 }
 .legend-pills .lp i.dot-bought {
-  background: linear-gradient(180deg, var(--st-bought), color-mix(in srgb, var(--st-bought) 45%, transparent));
+  background: linear-gradient(180deg, var(--tide), var(--deep));
 }
 .legend-pills .lp i.dot-requested {
-  background: var(--st-bought);
+  background: var(--tide);
   opacity: 0.3;
 }
 @keyframes bar-in {

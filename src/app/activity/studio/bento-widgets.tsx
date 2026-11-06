@@ -616,11 +616,8 @@ function SpendByDay(params: Ctx) {
           >
             <defs>
               <linearGradient id="barBought" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--st-bought)" />
-                <stop
-                  offset="100%"
-                  stopColor="color-mix(in srgb, var(--st-bought) 45%, transparent)"
-                />
+                <stop offset="0%" stopColor="var(--tide)" />
+                <stop offset="100%" stopColor="var(--deep)" />
               </linearGradient>
             </defs>
             {ticks.map((t) => (
