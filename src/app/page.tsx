@@ -173,6 +173,7 @@ export default function AgentPage() {
   const [pendingErr, setPendingErr] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"approved" | "rejected" | null>(null);
   const [choosing, setChoosing] = useState<number | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const appendStep = useCallback((s: Step) => {
@@ -212,6 +213,18 @@ export default function AgentPage() {
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revealKey]);
+
+  // The receipt opens while steps stream in, then folds into a stub you can
+  // re-expand — the "thoughts" disclosure pattern.
+  useEffect(() => {
+    if (busy || shown < steps.length) {
+      setLogOpen(true);
+      return;
+    }
+    if (steps.length === 0) return;
+    const t = setTimeout(() => setLogOpen(false), 1200);
+    return () => clearTimeout(t);
+  }, [busy, shown, steps.length]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -479,41 +492,56 @@ export default function AgentPage() {
               ))}
 
               {(visibleSteps.length > 0 || busy) && (
-                <div className="agent-log" aria-live="polite">
-                  <div className="log-title">AGENT RECEIPT</div>
-                  {visibleSteps.map((s, i) => (
-                    <div key={i}>
-                      {logLine(s, i)}
-                      {i === pickIndex && purchase && (
-                        <div className="product-card">
-                          {purchase.imageUrl ? (
-                            <img
-                              className="thumb"
-                              src={purchase.imageUrl}
-                              alt={purchase.productTitle}
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          ) : (
-                            <span className="thumb" aria-hidden="true">
-                              {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
-                            </span>
+                <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
+                  <button
+                    type="button"
+                    className="log-title"
+                    onClick={() => setLogOpen((o) => !o)}
+                    aria-expanded={logOpen}
+                  >
+                    <svg className="log-chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                      <path d="M2.5 3.5 5 6l2.5-2.5" />
+                    </svg>
+                    AGENT RECEIPT
+                    <span className="log-count">{visibleSteps.length}</span>
+                  </button>
+                  {logOpen && (
+                    <div className="log-body">
+                      {visibleSteps.map((s, i) => (
+                        <div key={i}>
+                          {logLine(s, i)}
+                          {i === pickIndex && purchase && (
+                            <div className="product-card">
+                              {purchase.imageUrl ? (
+                                <img
+                                  className="thumb"
+                                  src={purchase.imageUrl}
+                                  alt={purchase.productTitle}
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              ) : (
+                                <span className="thumb" aria-hidden="true">
+                                  {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
+                                </span>
+                              )}
+                              <span className="meta">
+                                <span className="t">{purchase.productTitle}</span>
+                                <span className="s">{storeOf(purchase.merchantUrl)}</span>
+                                <span className="p">{fmtDollars(purchase.amountCents)}</span>
+                              </span>
+                            </div>
                           )}
-                          <span className="meta">
-                            <span className="t">{purchase.productTitle}</span>
-                            <span className="s">{storeOf(purchase.merchantUrl)}</span>
-                            <span className="p">{fmtDollars(purchase.amountCents)}</span>
-                          </span>
+                          {i === pickIndex && showReasoning && (
+                            <div className="log-reason">{purchase?.agentReasoning}</div>
+                          )}
+                        </div>
+                      ))}
+                      {busy && (
+                        <div className="typing">
+                          Shopping<span className="dots" aria-hidden="true" />
                         </div>
                       )}
-                      {i === pickIndex && showReasoning && (
-                        <div className="log-reason">{purchase?.agentReasoning}</div>
-                      )}
-                    </div>
-                  ))}
-                  {busy && (
-                    <div className="typing">
-                      Shopping<span className="dots" aria-hidden="true" />
                     </div>
                   )}
                 </div>

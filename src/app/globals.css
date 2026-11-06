@@ -1665,12 +1665,43 @@ img[src*="/mascot/"] {
 }
 
 .agent-log .log-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--mono);
   font-size: var(--t12);
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--ink-soft);
-  text-align: center;
+  cursor: pointer;
+}
+.agent-log.open .log-title {
   margin-bottom: var(--s2);
+}
+.agent-log .log-title:hover {
+  color: var(--ink);
+}
+.agent-log .log-chev {
+  transition: transform var(--dur-fast) var(--ease);
+}
+.agent-log.open .log-chev {
+  transform: rotate(180deg);
+}
+.agent-log .log-count {
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: 0.65;
+}
+.agent-log .log-count::before {
+  content: "· ";
+}
+.agent-log .log-count::after {
+  content: " lines";
 }
 
 .agent-log .line {
