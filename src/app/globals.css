@@ -4109,7 +4109,11 @@ img[src*="/mascot/"] {
   margin-top: 0;
 }
 .bento.leash {
-  gap: 6px;
+  gap: 5px;
+}
+.leash-foot {
+  font-size: var(--t12);
+  color: var(--ink-soft);
 }
 .leash-legend .ag-root-wrapper {
   background: transparent;

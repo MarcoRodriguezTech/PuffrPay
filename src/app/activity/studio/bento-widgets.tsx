@@ -804,6 +804,7 @@ function LeashReport(params: Ctx) {
   const needs = sets.reduce((a, s) => a + s.needsOk, 0);
   const stopped = sets.reduce((a, s) => a + s.blocked, 0);
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
+  const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
@@ -834,21 +835,10 @@ function LeashReport(params: Ctx) {
   const stoppedC = useCountUp(stopped, 400);
   const pickedC = useCountUp(picked, 400);
 
-  const offerTip = [
-    auto && `${auto} would pass`,
-    needs && `${needs} would ask you`,
-    stopped && `${stopped} blocked`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <div className="bento leash">
       <div className="bento-head">
-        <div>
-          <h3 className="bento-title">Leash report</h3>
-          <p className="bento-sub">What Puffr offered and what happened</p>
-        </div>
+        <h3 className="bento-title">Leash report</h3>
       </div>
 
       {loading ? (
@@ -859,6 +849,7 @@ function LeashReport(params: Ctx) {
             ))}
           </div>
           <div className="skeleton" style={{ height: 16, borderRadius: 999 }} />
+          <div className="skeleton" style={{ height: 12, width: "70%" }} />
         </>
       ) : sets.length === 0 && rows.length === 0 ? (
         <div className="leash-empty">
@@ -867,14 +858,9 @@ function LeashReport(params: Ctx) {
       ) : (
         <>
           <div className="leash-stats">
-            <div className="leash-stat" tabIndex={0}>
+            <div className="leash-stat">
               <span className="leash-num">{offeredC}</span>
               <span className="leash-cap">Offered</span>
-              {offered > 0 && (
-                <span className="leash-tip" role="tooltip">
-                  {offerTip}
-                </span>
-              )}
             </div>
             <div className="leash-stat hero">
               <svg
@@ -966,6 +952,11 @@ function LeashReport(params: Ctx) {
               </>
             )}
           </div>
+
+          <span className="leash-foot">
+            {auto} pass · {needs} ask · {stopped} blocked
+            {skipped > 0 && ` · ${skipped} skipped`}
+          </span>
         </>
       )}
     </div>
