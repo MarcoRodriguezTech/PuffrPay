@@ -770,16 +770,6 @@ img[src*="/mascot/"] {
   transition: transform var(--dur-slow) ease-out;
 }
 
-.puffer .tint {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--danger);
-  opacity: 0;
-  transition: opacity var(--dur-slow) ease-out;
-  pointer-events: none;
-}
-
 .puffer .fx {
   position: absolute;
   transform: scale(var(--pscale));
@@ -818,14 +808,8 @@ img[src*="/mascot/"] {
 .puffer.puffed {
   --pscale: 1.25;
 }
-.puffer.puffed .tint {
-  opacity: 0.12;
-}
 .puffer.maxed {
   --pscale: 1.35;
-}
-.puffer.maxed .tint {
-  opacity: 0.3;
 }
 
 /* idle bob */
@@ -1621,8 +1605,7 @@ img[src*="/mascot/"] {
     height: 136px !important;
   }
   .agent-side .puffer img.art,
-  .agent-side .puffer .fx,
-  .agent-side .puffer .tint {
+  .agent-side .puffer .fx {
     width: 96px !important;
     height: 96px !important;
     left: 20px !important;

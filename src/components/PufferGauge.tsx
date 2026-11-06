@@ -80,7 +80,6 @@ export function PufferGauge({
           className="art"
           style={{ position: "absolute", left: off, top: off, objectFit: "contain" }}
         />
-        <span className="tint" style={{ left: off, top: off, width: size, height: size }} />
         {decorated && (
           <span
             className="fx"
