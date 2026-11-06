@@ -306,10 +306,17 @@ function StackCard({
     offset,
     (o) => 1 - Math.abs(o) * config.scaleReduction
   );
+  // Three-at-a-time fan: only the centered card and its two neighbours are
+  // visible — cards beyond |offset| ~1.2 fade out instead of crowding.
   const opacity = useTransform(
     offset,
-    [-total / 2, -total / 2 + 0.5, 0, total / 2 - 0.5, total / 2],
+    [-1.5, -1.15, 0, 1.15, 1.5],
     [0, 1, 1, 1, 0]
+  );
+  // A faded-out card must also drop its × button — opacity:0 still
+  // hit-tests, and the drag surface underneath should keep the area.
+  const removePointer = useTransform(offset, (o) =>
+    Math.abs(o) < 1.2 ? ("auto" as const) : ("none" as const)
   );
   const zIndex = useTransform(offset, (o) =>
     Math.round(100 - Math.abs(o) * 10)
@@ -345,15 +352,16 @@ function StackCard({
       <motion.div style={{ opacity: shadeOpacity }} className="stack-shade" />
       {/* pointer-events:auto lets the × receive clicks despite the card's
           pointer-events:none — it sits beside (not under) the drag surface */}
-      <button
+      <motion.button
         type="button"
         className="stack-remove"
         aria-label={`Remove ${item.title}`}
         onClick={onRemove}
         disabled={busy}
+        style={{ pointerEvents: removePointer }}
       >
         ×
-      </button>
+      </motion.button>
       <span className="stack-badge">{item.tag}</span>
       <motion.div style={{ opacity: metaOpacity }} className="stack-meta">
         <span className="stack-title">{item.title}</span>

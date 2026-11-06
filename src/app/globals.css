@@ -1479,8 +1479,10 @@ img[src*="/mascot/"] {
 .stack-close {
   width: 40px;
   height: 40px;
+  aspect-ratio: 1;
+  min-height: 0;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--ink-soft);
@@ -1512,8 +1514,10 @@ img[src*="/mascot/"] {
   z-index: 5;
   width: 32px;
   height: 32px;
+  aspect-ratio: 1;
+  min-height: 0;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--ink-soft);
