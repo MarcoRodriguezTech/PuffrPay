@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import dynamic from "next/dynamic";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LeashBar } from "@/components/LeashBar";
-import { OptionStack } from "@/components/OptionStack";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import {
   consumePuffFlag,
@@ -17,6 +18,11 @@ import {
   toast,
   useCountUp,
 } from "@/lib/ui";
+
+// motion (~140KB) only loads when a live options set actually renders.
+const OptionStack = dynamic(() =>
+  import("@/components/OptionStack").then((m) => m.OptionStack)
+);
 
 interface ChatMsg {
   id: number;
@@ -47,13 +53,22 @@ interface OptionsPayload {
   dismissed?: boolean;
 }
 
+// JSON.parse per message per render is real work once history grows — the
+// content string is immutable per message, so cache by it.
+const optionsCache = new Map<string, OptionsPayload | null>();
+
 function parseOptions(content: string): OptionsPayload | null {
+  const hit = optionsCache.get(content);
+  if (hit !== undefined) return hit;
+  let parsed: OptionsPayload | null = null;
   try {
     const p = JSON.parse(content);
-    return p?.kind === "options" && Array.isArray(p.items) ? p : null;
+    if (p?.kind === "options" && Array.isArray(p.items)) parsed = p;
   } catch {
-    return null;
+    /* plain text message */
   }
+  optionsCache.set(content, parsed);
+  return parsed;
 }
 
 function markPicked(content: string, productId: string): string {
@@ -255,7 +270,7 @@ export default function AgentPage() {
     }
   }
 
-  async function choose(messageId: number, productId: string) {
+  const choose = useCallback(async (messageId: number, productId: string) => {
     if (choosing != null || busy) return;
     setChoosing(messageId);
     setBusyError(false);
@@ -301,15 +316,15 @@ export default function AgentPage() {
       setChoosing(null);
       refresh();
     }
-  }
+  }, [busy, choosing, policy, refresh]);
 
   // Non-pick edits to the live options set: bail entirely ("wasn't able to
   // choose") or drop one card (e.g. a blocked item). Server persists the
   // payload so the change survives reload.
-  async function editOptions(
+  const editOptions = useCallback(async (
     messageId: number,
     change: { dismiss?: boolean; remove?: string }
-  ) {
+  ) => {
     if (choosing != null || busy) return;
     setChoosing(messageId);
     try {
@@ -332,7 +347,7 @@ export default function AgentPage() {
     } finally {
       setChoosing(null);
     }
-  }
+  }, [busy, choosing]);
 
   async function decide(action: "approve" | "reject") {
     if (!purchase || deciding) return;
@@ -440,8 +455,7 @@ export default function AgentPage() {
         <div className="chat-scroll" ref={scrollRef}>
           {messages.length === 0 && steps.length === 0 && !busy ? (
             <div className="chat-empty">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={MASCOT_SRC} alt="" width={140} height={140} />
+              <Image src={MASCOT_SRC} alt="" width={140} height={140} />
               <h1>What should I buy?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">
@@ -454,74 +468,15 @@ export default function AgentPage() {
             </div>
           ) : (
             <>
-              {messages.map((m) => {
-                const opts = m.role === "agent" ? parseOptions(m.content) : null;
-                if (opts) {
-                  if (opts.dismissed) {
-                    return (
-                      <div key={m.id} className="msg agent">
-                        <div>{opts.text}</div>
-                        <div className="opt-skipped">Skipped — nothing picked.</div>
-                      </div>
-                    );
-                  }
-                  if (opts.picked) {
-                    const it = opts.items.find((x) => x.id === opts.picked);
-                    return (
-                      <div key={m.id} className="msg agent opt-wrap">
-                        <div>{opts.text}</div>
-                        {it && (
-                          <div className="opt-picked-card">
-                            {it.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                className="product-thumb"
-                                src={it.imageUrl}
-                                alt={it.title}
-                                width={64}
-                                height={64}
-                              />
-                            ) : (
-                              <span className="product-thumb" aria-hidden="true">
-                                {it.title?.[0]?.toUpperCase() ?? "?"}
-                              </span>
-                            )}
-                            <span className="meta">
-                              <span className="t">{it.title}</span>
-                              <span className="s">{storeOf(it.merchantUrl)}</span>
-                              <span className="p">{fmtDollars(it.priceCents)}</span>
-                            </span>
-                            <span className="opt-chip allow">Picked</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-                  // The live (latest, unpicked) options render as the stacked
-                  // carousel above the input — the message keeps just its text.
-                  if (activeOptions && m.id === activeOptions.msgId) {
-                    return (
-                      <div key={m.id} className="msg agent">
-                        {opts.text}
-                      </div>
-                    );
-                  }
-                  return (
-                    <OptionCarousel
-                      key={m.id}
-                      msgId={m.id}
-                      payload={opts}
-                      busy={choosing === m.id}
-                      onPick={choose}
-                    />
-                  );
-                }
-                return (
-                  <div key={m.id} className={`msg ${m.role}`}>
-                    {m.content}
-                  </div>
-                );
-              })}
+              {messages.map((m) => (
+                <ChatMessageRow
+                  key={m.id}
+                  m={m}
+                  live={activeOptions?.msgId === m.id}
+                  busy={choosing === m.id}
+                  onPick={choose}
+                />
+              ))}
 
               {(visibleSteps.length > 0 || busy) && (
                 <div className="agent-log" aria-live="polite">
@@ -536,6 +491,8 @@ export default function AgentPage() {
                               className="thumb"
                               src={purchase.imageUrl}
                               alt={purchase.productTitle}
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <span className="thumb" aria-hidden="true">
@@ -596,6 +553,8 @@ export default function AgentPage() {
                       alt={purchase.productTitle}
                       width={64}
                       height={64}
+                      loading="lazy"
+                      decoding="async"
                     />
                   )}
                   <div style={{ minWidth: 0 }}>
@@ -635,6 +594,8 @@ export default function AgentPage() {
                       alt={purchase.productTitle}
                       width={64}
                       height={64}
+                      loading="lazy"
+                      decoding="async"
                     />
                   )}
                   <div style={{ minWidth: 0 }}>
@@ -774,6 +735,74 @@ export default function AgentPage() {
   );
 }
 
+/** One chat row — memoized so keystrokes / reveal ticks don't rebuild history. */
+const ChatMessageRow = memo(function ChatMessageRow({
+  m,
+  live,
+  busy,
+  onPick,
+}: {
+  m: ChatMsg;
+  live: boolean;
+  busy: boolean;
+  onPick: (messageId: number, productId: string) => void;
+}) {
+  const opts = m.role === "agent" ? parseOptions(m.content) : null;
+  if (opts) {
+    if (opts.dismissed) {
+      return (
+        <div className="msg agent">
+          <div>{opts.text}</div>
+          <div className="opt-skipped">Skipped — nothing picked.</div>
+        </div>
+      );
+    }
+    if (opts.picked) {
+      const it = opts.items.find((x) => x.id === opts.picked);
+      return (
+        <div className="msg agent opt-wrap">
+          <div>{opts.text}</div>
+          {it && (
+            <div className="opt-picked-card">
+              {it.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="product-thumb"
+                  src={it.imageUrl}
+                  alt={it.title}
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : (
+                <span className="product-thumb" aria-hidden="true">
+                  {it.title?.[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="meta">
+                <span className="t">{it.title}</span>
+                <span className="s">{storeOf(it.merchantUrl)}</span>
+                <span className="p">{fmtDollars(it.priceCents)}</span>
+              </span>
+              <span className="opt-chip allow">Picked</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    // The live (latest, unpicked) options render as the stacked carousel above
+    // the input — the message keeps just its text.
+    if (live) {
+      return <div className="msg agent">{opts.text}</div>;
+    }
+    return (
+      <OptionCarousel msgId={m.id} payload={opts} busy={busy} onPick={onPick} />
+    );
+  }
+  return <div className={`msg ${m.role}`}>{m.content}</div>;
+});
+
 /** Horizontal suggestion row the agent leaves in chat; the owner picks a card. */
 function OptionCarousel({
   msgId,
@@ -807,6 +836,7 @@ function OptionCarousel({
                   src={it.imageUrl}
                   alt=""
                   loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <span className="product-thumb opt-thumb" aria-hidden="true">

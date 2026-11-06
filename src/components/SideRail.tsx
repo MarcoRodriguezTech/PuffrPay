@@ -64,6 +64,9 @@ export function SideRail() {
           <Link
             key={n.href}
             href={n.href}
+            // Activity carries ~5.6MB of ag-studio/ag-grid chunks — don't let
+            // the viewport prefetch pull them on every page.
+            prefetch={n.href === "/activity" ? false : undefined}
             className={`rail-btn${isActive(n.href, pathname) ? " active" : ""}`}
             aria-label={n.label}
             title={n.label}

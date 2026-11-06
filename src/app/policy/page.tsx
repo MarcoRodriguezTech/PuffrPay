@@ -109,7 +109,11 @@ export default function PolicyPage() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 10_000);
+    // Skip ticks while the tab is hidden — the focus listener refetches on
+    // return anyway, so visible cadence is unchanged.
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 10_000);
     const onFocus = () => load();
     window.addEventListener("focus", onFocus);
     return () => {

@@ -17,6 +17,8 @@ import {
   animate,
   useMotionValueEvent,
   useReducedMotion,
+  LazyMotion,
+  domAnimation,
   type PanInfo,
   type MotionValue,
 } from "motion/react";
@@ -148,6 +150,7 @@ export function OptionStack({
                   src={it.imageUrl}
                   alt=""
                   loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <span className="product-thumb opt-thumb" aria-hidden="true">
@@ -192,7 +195,10 @@ export function OptionStack({
   }
 
   return (
-    <div className="stack-wrap">
+    // LazyMotion ships the small feature bundle — drag/transform/animate are
+    // all covered by domAnimation. Same physics, less JS.
+    <LazyMotion features={domAnimation}>
+      <div className="stack-wrap">
       <div className="stack-zone" ref={zoneRef}>
         {/* transparent drag surface above the cards */}
         <motion.div
@@ -260,7 +266,8 @@ export function OptionStack({
           </span>
         </div>
       )}
-    </div>
+      </div>
+    </LazyMotion>
   );
 }
 
@@ -322,7 +329,13 @@ function StackCard({
       <div className="stack-imgwrap">
         {item.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img className="stack-img" src={item.imageUrl} alt={item.title} />
+          <img
+            className="stack-img"
+            src={item.imageUrl}
+            alt={item.title}
+            loading="lazy"
+            decoding="async"
+          />
         ) : (
           <span className="stack-img stack-noimg" aria-hidden="true">
             {item.title?.[0]?.toUpperCase() ?? "?"}

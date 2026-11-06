@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 /** Single source for the mascot art — swap files in /public/mascot to restyle. */
@@ -71,8 +72,7 @@ export function PufferGauge({
       aria-label={`Allowance gauge: ${STATE_LABELS[state]}`}
     >
       <span className="art-wrap" style={{ width: box, height: box }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={MASCOT_ART[state]}
           width={size}
           height={size}

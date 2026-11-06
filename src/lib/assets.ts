@@ -12,7 +12,9 @@ export const ASSETS = {
   icon512: "/icons/icon-512.png",
   iconMaskable512: "/icons/icon-maskable-512.png",
   appleTouchIcon: "/icons/apple-touch-icon.png", // 180x180
-  ownerAvatar: "/avatar/owner.png", // 256x256
+  // No owner.png exists yet — null skips the request entirely and TopBar
+  // renders the initials avatar. Point this at the file once it ships.
+  ownerAvatar: null as string | null,
   productPlaceholder: "/placeholders/product.svg",
   og: "/og.png", // 1200x630
   emptyAgent: "/empty/agent.svg",

@@ -19,7 +19,7 @@ function AvatarChip() {
   const [broken, setBroken] = useState(false);
   return (
     <span className="avatar-chip" title="Account owner">
-      {broken ? (
+      {!ASSETS.ownerAvatar || broken ? (
         <span className="avatar-initials" aria-hidden="true">PP</span>
       ) : (
         /* eslint-disable-next-line @next/next/no-img-element */
