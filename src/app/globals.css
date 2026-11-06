@@ -1340,7 +1340,7 @@ img[src*="/mascot/"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  height: 600px;
   overflow: hidden;
 }
 
@@ -1358,8 +1358,8 @@ img[src*="/mascot/"] {
 
 .stack-card {
   position: absolute;
-  width: 176px;
-  height: 244px;
+  width: 352px;
+  height: 488px;
   border-radius: var(--radius-ctl);
   overflow: hidden;
   background: var(--card-grad);
@@ -1373,7 +1373,7 @@ img[src*="/mascot/"] {
   flex: 1;
   display: flex;
   background: var(--paper);
-  padding: 10px;
+  padding: 16px;
   min-height: 0;
 }
 
@@ -1400,8 +1400,8 @@ img[src*="/mascot/"] {
 
 .stack-badge {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   border: 1px solid var(--tide);
   border-radius: 999px;
   background: var(--card);
@@ -1413,7 +1413,7 @@ img[src*="/mascot/"] {
 }
 
 .stack-meta {
-  padding: var(--s2) var(--s3) var(--s3);
+  padding: var(--s3) var(--s3) var(--s4);
   text-align: center;
   color: var(--ink);
 }
@@ -1424,7 +1424,7 @@ img[src*="/mascot/"] {
   -webkit-line-clamp: 2;
   overflow: hidden;
   font-weight: 600;
-  font-size: var(--t14);
+  font-size: var(--t16);
   min-height: 2.6em;
 }
 
@@ -1521,12 +1521,12 @@ img[src*="/mascot/"] {
 
 @media (max-width: 639px) {
   .stack-zone {
-    height: 240px;
+    height: 470px;
   }
 
   .stack-card {
-    width: 144px;
-    height: 200px;
+    width: 288px;
+    height: 400px;
   }
 }
 

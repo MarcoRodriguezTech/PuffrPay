@@ -39,8 +39,8 @@ const getConfig = (width: number): StackConfig => {
       distanceDivisor: 120,
       velocityDivisor: 500,
       sensitivity: 180,
-      xMultiplier: 92,
-      yMultiplier: 18,
+      xMultiplier: 184,
+      yMultiplier: 34,
       rotationMultiplier: 8,
       scaleReduction: 0.06,
     };
@@ -49,8 +49,8 @@ const getConfig = (width: number): StackConfig => {
     distanceDivisor: 200,
     velocityDivisor: 800,
     sensitivity: 250,
-    xMultiplier: 150,
-    yMultiplier: 32,
+    xMultiplier: 300,
+    yMultiplier: 56,
     rotationMultiplier: 10,
     scaleReduction: 0.1,
   };
