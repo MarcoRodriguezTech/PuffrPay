@@ -204,7 +204,7 @@ function SpendTrend(params: Ctx) {
           >
             <defs>
               <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--tide)" stopOpacity="0.35" />
+                <stop offset="0%" stopColor="var(--tide)" stopOpacity="0.5" />
                 <stop offset="100%" stopColor="var(--tide)" stopOpacity="0" />
               </linearGradient>
             </defs>

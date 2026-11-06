@@ -8,21 +8,26 @@
   color-scheme: dark;
 
   /* --- color ------------------------------------------------------- */
-  --paper: #04080f;
-  --card: #0a1626;
-  /* surfaces: the one place a background gradient is allowed */
-  --card-grad: linear-gradient(150deg, #0e2238 0%, #0a1626 55%, #070e18 100%);
-  --ink: #eaf4ff;
+  --paper: #04070d;
+  --card: rgba(15, 23, 42, 0.55);
+  /* surfaces: translucent navy panels over the ambient light field —
+     the backdrop blur below lets the glow bleed through every card */
+  --card-grad: linear-gradient(160deg, rgba(30, 41, 82, 0.55) 0%, rgba(15, 23, 42, 0.45) 60%, rgba(8, 12, 22, 0.5) 100%);
+  --glass: rgba(15, 23, 42, 0.5);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+  --glass-hi: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --ink: #ffffff;
   --ink-hover: #ffffff;
-  --ink-soft: #9bb4cc;
+  --ink-soft: #8ea3c4;
   --paper-warm: #070e18;
-  --line: rgba(124, 203, 243, 0.14);
+  --line: rgba(255, 255, 255, 0.08);
   --gold: #f2c34e; /* the mascot's gold — stays on the fish */
   --gold-soft: rgba(242, 195, 78, 0.14);
-  --tide: #38b6f2;
-  --deep: #0b5c99;
-  --ocean-soft: rgba(56, 182, 242, 0.12);
-  --btn-grad: linear-gradient(135deg, #1479c4, #0b5c99);
+  --tide: #38bdf8;
+  --deep: #2563eb;
+  --ocean-soft: rgba(56, 189, 248, 0.12);
+  --btn-grad: linear-gradient(135deg, #2563eb, #06b6d4);
   --ok: #2bc48a;
   --ok-soft: rgba(43, 196, 138, 0.13);
   --warn: #f2b84b;
@@ -31,7 +36,7 @@
   --danger-soft: rgba(255, 107, 94, 0.15);
   --danger-line: rgba(255, 107, 94, 0.35);
   --reject: #8fa3b8;
-  --glow: radial-gradient(900px 520px at 0% 0%, rgba(31, 143, 214, 0.18), transparent 65%);
+  --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
 
@@ -155,6 +160,25 @@ body {
   font-family: var(--sans);
   font-size: var(--t16);
   line-height: 1.45;
+}
+
+/* Dark glassmorphism: the UI is backlit by soft colored lights — blurred
+   radial blobs of electric blue, cyan and indigo fixed behind every panel.
+   The translucent cards + backdrop-filter blur let this glow bleed through. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 36% at 12% 4%, rgba(37, 99, 235, 0.32), transparent 70%),
+    radial-gradient(36% 32% at 88% 12%, rgba(34, 211, 238, 0.22), transparent 70%),
+    radial-gradient(52% 44% at 55% 102%, rgba(79, 70, 229, 0.22), transparent 70%);
+  filter: blur(100px);
+}
+:root[data-theme="light"] body::before {
+  display: none;
 }
 
 a {
@@ -2646,6 +2670,9 @@ img[src*="/mascot/"] {
    gap, 16px gives 32px on wide screens. */
 .studio-card .ag-studio-layout-widget {
   --ag-studio-layout-widget-inset: 12px;
+  /* Studio paints an opaque swatch on the positioning box — transparent so
+     the ambient glow bleeds through the glass widget inside. */
+  --ag-studio-layout-widget-background-color: transparent;
 }
 
 /* The KPI row is four separate tiles, not one framed card — the widget
@@ -2759,6 +2786,47 @@ img[src*="/mascot/"] {
 .activity-footer p {
   margin: 0;
   font-size: var(--t14);
+}
+
+/* ---------- dark glassmorphism ---------- */
+
+/* Every panel: translucent navy (via --card-grad), backdrop blur so the
+   ambient lights bleed through, hairline edge, and an inner top highlight —
+   the "lit glass" edge. */
+:root[data-theme="dark"] .ag-studio-widget,
+:root[data-theme="dark"] .kpi-tile,
+:root[data-theme="dark"] .rail,
+:root[data-theme="dark"] .ask-panel,
+:root[data-theme="dark"] .drawer,
+:root[data-theme="dark"] .customize-menu,
+:root[data-theme="dark"] .ag-studio-panel-container,
+:root[data-theme="dark"] .toast,
+:root[data-theme="dark"] .notice,
+:root[data-theme="dark"] .error,
+:root[data-theme="dark"] .msg,
+:root[data-theme="dark"] .agent-log,
+:root[data-theme="dark"] .product-card,
+:root[data-theme="dark"] .approval-card,
+:root[data-theme="dark"] .wait-card,
+:root[data-theme="dark"] .studio-skeleton {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+/* Highlighted panel: the fun-money card gets the rich navy→indigo gradient —
+   mostly opaque but still blurred so it glows against the ambient field. */
+:root[data-theme="dark"] .funmoney {
+  background: linear-gradient(160deg, rgba(30, 58, 138, 0.8) 0%, rgba(15, 23, 42, 0.6) 55%, rgba(4, 7, 13, 0.65) 100%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi), var(--shadow-raise);
+}
+
+/* Backlit line on the spend chart. */
+:root[data-theme="dark"] .spend-trend .series-line {
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
 }
 
 /* ---------- misc ---------- */
