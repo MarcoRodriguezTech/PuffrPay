@@ -1791,6 +1791,43 @@ img[src*="/mascot/"] {
   padding: var(--s4);
 }
 
+.gate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.gate-head + .money,
+.gate-head + .helper {
+  margin-top: var(--s2);
+}
+
+.seg-toggle {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.seg-toggle button {
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--t12);
+  font-weight: 600;
+  line-height: 1;
+  min-height: 0;
+  padding: 6px 14px;
+}
+
+.seg-toggle button.on {
+  background: var(--btn-grad);
+  color: #fff;
+}
+
 .field .helper {
   color: var(--ink-soft);
   font-size: var(--t14);

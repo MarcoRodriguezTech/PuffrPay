@@ -47,16 +47,19 @@ const HELPERS = {
   perPurchaseMax: "The most for any single purchase.",
   autoApproveUnder:
     "Purchases at or under this amount are bought without asking you.",
+  autoApproveOff: "Every purchase asks you first.",
 };
 
 export default function PolicyPage() {
   const [form, setForm] = useState({ cap: "", max: "", auto: "" });
+  const [autoOn, setAutoOn] = useState(true);
   const [cats, setCats] = useState<string[]>([]);
   const [catInput, setCatInput] = useState("");
   const [baseline, setBaseline] = useState<{
     cap: string;
     max: string;
     auto: string;
+    autoOn: boolean;
     cats: string[];
   } | null>(null);
   const [touched, setTouched] = useState(false);
@@ -69,21 +72,31 @@ export default function PolicyPage() {
   const [cardBusy, setCardBusy] = useState<number | null>(null);
   const [cardErr, setCardErr] = useState<Record<number, string>>({});
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const dirtyRef = useRef(false);
+  const lastAutoRef = useRef("20.00");
 
   const load = useCallback(async () => {
     const [p, w] = await Promise.all([
       fetch("/api/policy").then((r) => r.json()).catch(() => null),
       fetch("/api/purchases?status=WAITING").then((r) => r.json()).catch(() => null),
     ]);
-    if (p?.monthlyCapCents != null) {
+    if (p?.monthlyCapCents != null && !dirtyRef.current) {
       const next = {
         cap: toDollars(p.monthlyCapCents),
         max: toDollars(p.perPurchaseMaxCents),
-        auto: toDollars(p.autoApproveUnderCents),
+        auto:
+          p.autoApproveUnderCents > 0
+            ? toDollars(p.autoApproveUnderCents)
+            : lastAutoRef.current,
       };
       setForm(next);
+      setAutoOn(p.autoApproveUnderCents > 0);
       setCats(p.blockedCategories);
-      setBaseline({ ...next, cats: p.blockedCategories });
+      setBaseline({
+        ...next,
+        autoOn: p.autoApproveUnderCents > 0,
+        cats: p.blockedCategories,
+      });
     }
     if (w?.purchases) {
       setWaiting(
@@ -112,13 +125,14 @@ export default function PolicyPage() {
     const auto = parseDollars(form.auto);
     if (cap == null || cap <= 0) e.cap = "Enter an amount greater than $0.";
     if (max == null || max <= 0) e.max = "Enter an amount greater than $0.";
-    if (auto == null || auto <= 0) e.auto = "Enter an amount greater than $0.";
+    if (autoOn && (auto == null || auto <= 0))
+      e.auto = "Enter an amount greater than $0.";
     if (!e.max && !e.cap && (max as number) > (cap as number))
       e.max = "Per-purchase max must be less than or equal to the monthly cap.";
-    if (!e.auto && !e.max && (auto as number) > (max as number))
+    if (autoOn && !e.auto && !e.max && (auto as number) > (max as number))
       e.auto = "Auto-approve must be less than or equal to the per-purchase max.";
     return e;
-  }, [form]);
+  }, [form, autoOn]);
 
   const dirty = useMemo(() => {
     if (!baseline) return false;
@@ -126,9 +140,19 @@ export default function PolicyPage() {
       form.cap !== baseline.cap ||
       form.max !== baseline.max ||
       form.auto !== baseline.auto ||
+      autoOn !== baseline.autoOn ||
       cats.join("\n") !== baseline.cats.join("\n")
     );
-  }, [form, cats, baseline]);
+  }, [form, autoOn, cats, baseline]);
+
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  useEffect(() => {
+    const v = parseDollars(form.auto);
+    if (v != null && v > 0) lastAutoRef.current = form.auto;
+  }, [form.auto]);
 
   const valid = Object.keys(errors).length === 0;
 
@@ -145,13 +169,13 @@ export default function PolicyPage() {
         body: JSON.stringify({
           monthlyCapCents: parseDollars(form.cap),
           perPurchaseMaxCents: parseDollars(form.max),
-          autoApproveUnderCents: parseDollars(form.auto),
+          autoApproveUnderCents: autoOn ? parseDollars(form.auto) : 0,
           blockedCategories: cats,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "save failed");
-      setBaseline({ ...form, cats });
+      setBaseline({ ...form, autoOn, cats });
       setTouched(false);
       setSavedAt(Date.now());
       if (savedTimer.current) clearTimeout(savedTimer.current);
@@ -223,7 +247,7 @@ export default function PolicyPage() {
         <section>
           <h2>Rules</h2>
 
-          <RulesRuler cap={capC} max={maxC} auto={autoC} />
+          <RulesRuler cap={capC} max={maxC} auto={autoOn ? autoC : 0} />
           <TryIt />
 
           <form className="policy-form" onSubmit={save}>
@@ -257,6 +281,14 @@ export default function PolicyPage() {
               value={form.auto}
               helper={HELPERS.autoApproveUnder}
               error={touched ? errors.auto : undefined}
+              gate={{
+                on: autoOn,
+                offNote: HELPERS.autoApproveOff,
+                onChange: (on) => {
+                  setTouched(true);
+                  setAutoOn(on);
+                },
+              }}
               onStep={(d) => nudge("auto", d * 500)}
               onChange={(v) => {
                 setTouched(true);
@@ -420,6 +452,7 @@ function MoneyField({
   value,
   helper,
   error,
+  gate,
   onChange,
   onStep,
 }: {
@@ -428,42 +461,75 @@ function MoneyField({
   value: string;
   helper: string;
   error?: string;
+  gate?: { on: boolean; offNote: string; onChange: (on: boolean) => void };
   onChange: (v: string) => void;
   onStep?: (delta: number) => void;
 }) {
+  const off = gate != null && !gate.on;
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <div className="money">
-        <span aria-hidden="true">$</span>
-        <input
-          id={id}
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${id}-err` : `${id}-help`}
-        />
-        {onStep && (
-          <span className="step">
+      <div className={gate ? "gate-head" : undefined}>
+        <label htmlFor={off ? undefined : id}>{label}</label>
+        {gate && (
+          <div
+            className="seg-toggle"
+            role="group"
+            aria-label={`${label} — on or off`}
+          >
             <button
               type="button"
-              aria-label={`Increase ${label}`}
-              onClick={() => onStep(1)}
+              className={gate.on ? "on" : ""}
+              aria-pressed={gate.on}
+              onClick={() => gate.onChange(true)}
             >
-              +
+              Yes
             </button>
             <button
               type="button"
-              aria-label={`Decrease ${label}`}
-              onClick={() => onStep(-1)}
+              className={!gate.on ? "on" : ""}
+              aria-pressed={!gate.on}
+              onClick={() => gate.onChange(false)}
             >
-              −
+              No
             </button>
-          </span>
+          </div>
         )}
       </div>
-      {error ? (
+      {off ? (
+        <div className="helper">{gate.offNote}</div>
+      ) : (
+        <div className="money">
+          <span aria-hidden="true">$</span>
+          <input
+            id={id}
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${id}-err` : `${id}-help`}
+          />
+          {onStep && (
+            <span className="step">
+              <button
+                type="button"
+                aria-label={`Increase ${label}`}
+                onClick={() => onStep(1)}
+              >
+                +
+              </button>
+              <button
+                type="button"
+                aria-label={`Decrease ${label}`}
+                onClick={() => onStep(-1)}
+              >
+                −
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+      {!off &&
+        (error ? (
         <div className="err" id={`${id}-err`}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <path d="M6 2v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
@@ -471,11 +537,11 @@ function MoneyField({
           </svg>
           {error}
         </div>
-      ) : (
-        <div className="helper" id={`${id}-help`}>
-          {helper}
-        </div>
-      )}
+        ) : (
+          <div className="helper" id={`${id}-help`}>
+            {helper}
+          </div>
+        ))}
     </div>
   );
 }
