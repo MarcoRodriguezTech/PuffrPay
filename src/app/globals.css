@@ -1626,7 +1626,8 @@ img[src*="/mascot/"] {
 
 .policy-layout {
   display: grid;
-  grid-template-columns: 440px 1fr;
+  /* Rules and the queue share the row evenly */
+  grid-template-columns: 1fr 1fr;
   gap: var(--s8);
 }
 
