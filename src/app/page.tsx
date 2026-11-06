@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LeashBar } from "@/components/LeashBar";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { usePufferDrift } from "@/components/puffer-drift";
 import {
   consumePuffFlag,
   fmtDollars,
@@ -118,8 +117,6 @@ export default function AgentPage() {
   const [pendingErr, setPendingErr] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"approved" | "rejected" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const mascotRef = useRef<HTMLSpanElement>(null);
-  usePufferDrift(mascotRef, ".gauge-block", null, ".gauge-amount", budget != null);
 
   const appendStep = useCallback((s: Step) => {
     setSteps((prev) => [...prev, s]);
@@ -527,9 +524,7 @@ export default function AgentPage() {
           <div className="side-title">Fun money — {MONTH}</div>
           {budget ? (
             <div className="gauge-block">
-              <span className="gauge-mascot" ref={mascotRef}>
-                <PufferGauge ratio={budget.ratio} size={160} blockedAt={blockedAt} />
-              </span>
+              <PufferGauge ratio={budget.ratio} size={160} blockedAt={blockedAt} />
               <div className="gauge-amount">
                 {fmtWhole(spentDisplay)}
                 <span className="of"> of {fmtWhole(budget.capCents)}</span>

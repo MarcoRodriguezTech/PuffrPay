@@ -1508,22 +1508,6 @@ img[src*="/mascot/"] {
   padding-top: 36px;
 }
 
-/* same fish-tank drift as the Activity fun-money card — the wrapper stays in
-   flow and only its transform moves, so the amount text never reflows */
-.gauge-block .gauge-mascot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  position: relative;
-  z-index: 0;
-  pointer-events: none;
-  will-change: transform;
-}
-.gauge-block .gauge-mascot img.art.flip {
-  scale: -1 1;
-}
-
 .gauge-amount {
   font-size: var(--t44);
   font-family: var(--display);
@@ -1531,8 +1515,6 @@ img[src*="/mascot/"] {
   margin-top: var(--s3);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
-  position: relative;
-  z-index: 1;
 }
 
 .gauge-amount .of {
@@ -2715,17 +2697,25 @@ img[src*="/mascot/"] {
   --ag-studio-layout-widget-border-radius: 0px;
 }
 
-/* Loading veil over widgets — same glass as the panels it covers. */
-.studio-card .ag-studio-layout-widget-skeleton-overlay-container {
-  background: var(--card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
 /* The collapsed Filters rail is dead chrome on the report's right edge;
    the toolbar Filters button still expands it into a drawer. */
 .studio-card .ag-studio-root-panel-container:has(.ag-studio-panel-collapsed) {
   display: none;
+}
+
+/* Widget-loading veil — the same glass recipe as the bento panels it covers:
+   translucent card gradient, hairline border, radius, raise shadow, and in
+   dark theme the backdrop blur + inner top highlight. */
+.studio-card .ag-studio-layout-widget-skeleton-overlay-container {
+  background: var(--card-grad);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-raise-sm);
+}
+:root[data-theme="dark"] .studio-card .ag-studio-layout-widget-skeleton-overlay-container {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 @media (min-width: 1440px) {
   .studio-card .ag-studio-layout-widget {
