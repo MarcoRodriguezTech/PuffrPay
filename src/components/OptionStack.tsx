@@ -10,7 +10,6 @@
  */
 
 import * as React from "react";
-import { createPortal } from "react-dom";
 import {
   motion,
   useMotionValue,
@@ -128,36 +127,9 @@ export function OptionStack({
   const active = total > 0 ? items[wrapIndex(activeIdx, total)] : undefined;
   const activeBlocked = active?.decision === "BLOCK";
 
-  // Popup modal: portal to <body> so the glass theme's filters/transforms
-  // can't create an ancestor containing block. Backdrop click or Escape
-  // bails — same "wasn't able to choose" path as the × button.
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onDismiss(msgId);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [msgId, onDismiss]);
-
-  const overlay = (inner: React.ReactNode) =>
-    createPortal(
-      <div
-        className="stack-overlay"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Pick a product"
-        onClick={() => onDismiss(msgId)}
-      >
-        <div className="stack-modal" onClick={(e) => e.stopPropagation()}>
-          {inner}
-        </div>
-      </div>,
-      document.body
-    );
-
   if (reduced) {
     // No physics under prefers-reduced-motion: a plain scrollable row.
-    return overlay(
+    return (
       <div className="stack-wrap">
         <div className="stack-fallback" role="list">
           {items.map((it) => (
@@ -222,7 +194,7 @@ export function OptionStack({
     );
   }
 
-  return overlay(
+  return (
     // LazyMotion ships the small feature bundle — drag/transform/animate are
     // all covered by domAnimation. Same physics, less JS.
     <LazyMotion features={domAnimation}>

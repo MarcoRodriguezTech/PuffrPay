@@ -645,7 +645,7 @@ function StudioDashboard({
           <div className="ask-scroll" ref={askScrollRef}>
             {turns.length === 0 && !askBusy ? (
               <div className="ask-hello">
-                <Image src={ASSETS.mascot} alt="" width={44} height={44} />
+                <Image src={ASSETS.mascot} alt="" width={44} height={44} quality={90} />
                 <p className="ask-hello-q">How can I help you today?</p>
                 <ul className="ask-suggest">
                   {ASK_CHIPS.map((c) => (

@@ -455,7 +455,7 @@ export default function AgentPage() {
         <div className="chat-scroll" ref={scrollRef}>
           {messages.length === 0 && steps.length === 0 && !busy ? (
             <div className="chat-empty">
-              <Image src={MASCOT_SRC} alt="" width={140} height={140} />
+              <Image src={MASCOT_SRC} alt="" width={140} height={140} quality={90} />
               <h1>What should I buy?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">
@@ -695,7 +695,7 @@ export default function AgentPage() {
           <div className="side-title">Fun money — {MONTH}</div>
           {budget ? (
             <div className="gauge-block">
-              <PufferGauge ratio={budget.ratio} size={160} blockedAt={blockedAt} />
+              <PufferGauge ratio={budget.ratio} size={200} blockedAt={blockedAt} />
               <div className="gauge-amount">
                 {fmtWhole(spentDisplay)}
                 <span className="of"> of {fmtWhole(budget.capCents)}</span>

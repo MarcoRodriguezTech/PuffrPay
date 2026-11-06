@@ -6,18 +6,20 @@ import { useEffect, useRef, useState } from "react";
 /** Single source for the mascot art — swap files in /public/mascot to restyle. */
 export const MASCOT_SRC = "/mascot/puffr.png";
 
-export type PufferState = "calm" | "swelling" | "puffed" | "maxed";
+export type PufferState = "calm" | "swelling" | "puffed" | "super" | "maxed";
 
-// One render per gauge state; maxed reuses the puffed art plus the Max tag.
+// One render per gauge state; maxed reuses the super-puffed art plus the Max tag.
 const MASCOT_ART: Record<PufferState, string> = {
   calm: "/mascot/puffr-calm.png",
   swelling: "/mascot/puffr-swelling.png",
   puffed: "/mascot/puffr-puffed.png",
-  maxed: "/mascot/puffr-puffed.png",
+  super: "/mascot/puffr-super-puffed.png",
+  maxed: "/mascot/puffr-super-puffed.png",
 };
 
 export function stateForRatio(ratio: number): PufferState {
   if (ratio >= 1) return "maxed";
+  if (ratio >= 0.9) return "super";
   if (ratio >= 0.8) return "puffed";
   if (ratio >= 0.5) return "swelling";
   return "calm";
@@ -27,6 +29,7 @@ export const STATE_LABELS: Record<PufferState, string> = {
   calm: "Calm",
   swelling: "Swelling",
   puffed: "Puffed",
+  super: "Super puffed",
   maxed: "Maxed out",
 };
 
@@ -76,6 +79,7 @@ export function PufferGauge({
           src={MASCOT_ART[state]}
           width={size}
           height={size}
+          quality={90}
           alt=""
           className="art"
           style={{ position: "absolute", left: off, top: off, objectFit: "contain" }}

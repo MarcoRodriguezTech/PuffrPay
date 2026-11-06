@@ -808,6 +808,9 @@ img[src*="/mascot/"] {
 .puffer.puffed {
   --pscale: 1.25;
 }
+.puffer.super {
+  --pscale: 1.32;
+}
 .puffer.maxed {
   --pscale: 1.35;
 }
@@ -820,6 +823,7 @@ img[src*="/mascot/"] {
   animation-duration: 4.5s;
 }
 .puffer.puffed .art,
+.puffer.super .art,
 .puffer.maxed .art {
   animation-duration: 3.6s;
 }
@@ -870,6 +874,8 @@ img[src*="/mascot/"] {
 .puffer.swelling .drop.d1,
 .puffer.puffed .drop.d1,
 .puffer.puffed .drop.d2,
+.puffer.super .drop.d1,
+.puffer.super .drop.d2,
 .puffer.maxed .drop.d1,
 .puffer.maxed .drop.d2 {
   opacity: 1;
@@ -1331,30 +1337,7 @@ img[src*="/mascot/"] {
   box-shadow: 0 0 0 2px var(--ocean-soft);
 }
 
-/* stacked coverflow carousel — live options, modal popup over the app */
-.stack-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgb(4 8 15 / 0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-
-.stack-modal {
-  width: min(980px, 94vw);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stack-modal .stack-zone {
-  height: min(600px, 62dvh);
-}
-
+/* stacked coverflow carousel — live options, above the input */
 .stack-wrap {
   width: 100%;
 }
@@ -1629,10 +1612,6 @@ img[src*="/mascot/"] {
 @media (max-width: 639px) {
   .stack-zone {
     height: 470px;
-  }
-
-  .stack-modal .stack-zone {
-    height: min(470px, 56dvh);
   }
 
   .stack-card {
