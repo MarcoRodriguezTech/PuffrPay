@@ -684,6 +684,12 @@ label {
   }
 }
 
+/* The Activity report hugs the toolbar — tighter top padding than the
+   generic page rhythm. */
+.studio-page {
+  padding-top: var(--s2);
+}
+
 /* ---------- progress bars ---------- */
 
 .progress {
@@ -2567,8 +2573,8 @@ label {
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--s3);
-  margin-top: var(--s4);
-  margin-bottom: var(--gap);
+  margin-top: var(--s2);
+  margin-bottom: var(--s3);
 }
 @media (min-width: 1100px) {
   .studio-filters-bar {
@@ -2710,6 +2716,12 @@ label {
 
 .studio-card .ag-studio-layout-canvas {
   background: transparent;
+  /* Report starts right under the toolbar — side/bottom insets stay. */
+  padding-top: 0;
+}
+
+.studio-card .ag-studio-layout-content-container {
+  top: 0;
 }
 
 .studio-card .ag-studio-root {
