@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image
 
 TOL = 42          # distance from bg color that counts as background
+GB_TOL = 12       # green-blue gap: belly is cream-yellow, bg is neutral gray
 SOFT_TOL = 14     # extra soft ring outside the fill, feathered by distance
 
 
@@ -27,7 +28,10 @@ def cut(src: str, dst: str, pad_ratio: float = 0.04) -> None:
     bg = np.median(border, axis=0)
     dist = np.sqrt(((a - bg) ** 2).sum(axis=2))
 
-    cand = dist < TOL
+    # Background is light AND neutral; the cream belly is the same lightness
+    # but yellow (higher g-b), so it can't be flooded away.
+    gb = a[:, :, 1] - a[:, :, 2]
+    cand = (dist < TOL) & (gb < GB_TOL)
     seen = np.zeros((h, w), bool)
     dq = deque()
     for x in range(w):

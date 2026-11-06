@@ -725,6 +725,11 @@ label {
 
 /* ---------- puffer gauge ---------- */
 
+/* Mascot art isn't square — letterbox inside fixed-size <img> boxes. */
+img[src*="/mascot/"] {
+  object-fit: contain;
+}
+
 .puffer {
   --pscale: 1;
   display: inline-flex;
