@@ -2814,14 +2814,15 @@ img[src*="/mascot/"] {
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
-/* Highlighted panel: the fun-money card gets the rich navy→indigo gradient —
-   mostly opaque but still blurred so it glows against the ambient field. */
+/* Uniform glass: every panel shares the same translucent navy — the fun
+   money card only gets a whisper of a dark-navy gradient on top of it.
+   Vibrant cyan/blue is reserved for progress bars, chart lines, accents. */
 :root[data-theme="dark"] .funmoney {
-  background: linear-gradient(160deg, rgba(30, 58, 138, 0.8) 0%, rgba(15, 23, 42, 0.6) 55%, rgba(4, 7, 13, 0.65) 100%);
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.4) 55%, rgba(8, 12, 22, 0.45) 100%);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border-color: var(--glass-line);
-  box-shadow: var(--glass-hi), var(--shadow-raise);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
 /* Backlit line on the spend chart. */
