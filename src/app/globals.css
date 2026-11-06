@@ -1126,7 +1126,9 @@ img[src*="/mascot/"] {
 .agent-page {
   width: 100%;
   margin: 0 auto;
-  padding-inline: var(--gutter-wide);
+  padding-left: var(--gutter-wide);
+  /* the aside pins itself to the viewport's right edge */
+  padding-right: 0;
   display: flex;
   animation: page-in var(--dur) var(--ease);
 }
