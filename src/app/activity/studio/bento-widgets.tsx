@@ -341,7 +341,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
         </span>
       </div>
       <span className="fm-mascot" ref={mascotRef}>
-        <PufferGauge ratio={ratio} size={110} showLabel={false} />
+        <PufferGauge ratio={ratio} size={80} showLabel={false} />
       </span>
       <div className="fm-amount">
         {money(spent)} <span className="of">of {money(cap)}</span>

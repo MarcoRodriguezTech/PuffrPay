@@ -3245,11 +3245,11 @@ img[src*="/mascot/"] {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  min-height: 92px;
+  min-height: 80px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--card-grad);
-  padding: 14px 18px;
+  padding: 12px 16px;
 }
 .kpi-tile .kpi-label {
   font-size: 12px;
@@ -3258,7 +3258,7 @@ img[src*="/mascot/"] {
 }
 .kpi-tile .kpi-value {
   margin-top: 4px;
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -3271,7 +3271,7 @@ img[src*="/mascot/"] {
 }
 
 /* Recent activity rows — 5 visible rows, no inner scroll: the card is sized
-   to fit (64px rows, 12px vertical padding, 1px dividers). */
+   to fit (52px rows, compact padding, 1px dividers). */
 .recent-list {
   display: flex;
   flex-direction: column;
@@ -3283,16 +3283,16 @@ img[src*="/mascot/"] {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  min-height: 62px;
-  padding: 11px 4px;
+  min-height: 52px;
+  padding: 6px 4px;
   transition: background var(--dur-fast) var(--ease);
 }
 .recent-row + .recent-row {
   border-top: 1px solid var(--line);
 }
 .recent-thumb {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: 12px;
   flex: none;
   object-fit: contain;

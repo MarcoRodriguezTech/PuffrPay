@@ -57,7 +57,7 @@ export function studioThemeFor(mode: AppTheme) {
     // Snug outer inset — the report starts close under the toolbar and widget
     // edges sit near the page's own padding.
     studioCanvasPadding: 8,
-    studioCanvasRowHeight: 18,
+    studioCanvasRowHeight: 16,
     studioCanvasFontFamily: SANS,
 
     // Widgets are the app's cards. The rounded 22px shape + gradient come from

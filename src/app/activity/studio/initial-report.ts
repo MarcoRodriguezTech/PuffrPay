@@ -95,8 +95,9 @@ const gridFilter = {
   widget: { "requests-grid": gridPageFilter(1) as never },
 };
 
-// 12-track canvas, 18px rows: KPI band -> chart + fun money -> three equal
-// cards -> grid -> pager.
+// 12-track canvas, 16px rows: KPI band -> chart + fun money -> three equal
+// cards -> grid -> pager. Sized so the KPI row, hero chart, fun money card
+// and the twin cards all fit a ~900px viewport without scrolling.
 const activity: AgPageState = {
   id: "activity",
   layout: { columns: 12 },
@@ -104,13 +105,13 @@ const activity: AgPageState = {
   filter: gridFilter,
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 12, 7),
-    [W_SPEND_TREND]: at(0, 7, 8, 22),
+    [W_SPEND_TREND]: at(0, 7, 8, 20),
     // Tall right column: Fun money on top, Recent activity below — one card.
-    [W_FUN_RECENT]: at(8, 7, 4, 46),
+    [W_FUN_RECENT]: at(8, 7, 4, 42),
     // Spend by day takes Recent's old slot; Requests by status takes Spend's.
-    [W_SPEND_DAY]: at(0, 29, 4, 24),
-    [W_STATUS_BARS]: at(4, 29, 4, 24),
-    "requests-grid": at(0, 53, 12, 26),
+    [W_SPEND_DAY]: at(0, 27, 4, 22),
+    [W_STATUS_BARS]: at(4, 27, 4, 22),
+    "requests-grid": at(0, 49, 12, 30),
     [W_GRID_PAGER]: at(0, 79, 12, 4),
   },
 };
