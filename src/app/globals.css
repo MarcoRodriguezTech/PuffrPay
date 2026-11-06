@@ -3214,8 +3214,40 @@ img[src*="/mascot/"] {
   border: 1px solid var(--line);
   text-align: center;
 }
+/* In light mode the fun money card keeps the dark-glass look — the tinted
+   navy reads as glass where the pale tile read flat. Every token its innards
+   consume is re-scoped to the dark-theme value inside this card only, so
+   text, badges, buttons and the budget bar render exactly like dark mode. */
 :root[data-theme="light"] .funmoney {
-  background: linear-gradient(160deg, #e8f4fd 0%, #ffffff 70%);
+  --card: rgba(15, 23, 42, 0.55);
+  --card-grad: linear-gradient(160deg, rgba(30, 41, 82, 0.55) 0%, rgba(15, 23, 42, 0.45) 60%, rgba(8, 12, 22, 0.5) 100%);
+  --ink: #ffffff;
+  --ink-soft: #8ea3c4;
+  --line: rgba(255, 255, 255, 0.08);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+  --glass-hi: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --ocean-soft: rgba(56, 189, 248, 0.12);
+  --tide: #38bdf8;
+  --deep: #2563eb;
+  --btn-grad: linear-gradient(135deg, #2563eb, #06b6d4);
+  --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
+  --st-bought: #38bdf8;
+  --st-paypal: #60a5fa;
+  --st-waiting: #818cf8;
+  --st-blocked: #94a3b8;
+  --st-rejected: #64748b;
+  /* higher alpha than the dark rule — the same 45% navy over a light canvas
+     washes to milk; ~85% lands on the deep-navy look dark mode renders */
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.85) 55%, rgba(8, 12, 22, 0.88) 100%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+/* Product thumbs keep their white tile like dark mode. */
+:root[data-theme="light"] .funmoney .recent-thumb {
+  background: #ffffff;
 }
 .funmoney .fm-head {
   width: 100%;
