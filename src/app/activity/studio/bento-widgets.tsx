@@ -273,7 +273,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
       <div className="bento-head fm-head">
         <h3 className="bento-title">Fun money</h3>
         <span className="fm-leash-pill" aria-hidden="true">
-          <LeashBar ratio={ratio} width={10} />
+          <LeashBar ratio={ratio} width={56} />
         </span>
       </div>
       <span className="fm-mascot">

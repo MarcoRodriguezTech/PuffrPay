@@ -17,26 +17,20 @@
     display: flex;
     flex-direction: column;
   }
-  .wave {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px; letter-spacing: 2px; line-height: 14px;
-    color: var(--line); white-space: nowrap; overflow: hidden;
-    padding: 10px 24px 0;
-  }
+  .wave { height: 4px; background: repeating-linear-gradient(90deg, var(--line) 0 12px, transparent 12px 24px); }
   .card { flex: 1; display: flex; align-items: center; gap: 72px; padding: 0 96px; }
   .fish { width: 300px; height: 300px; flex: none; }
   .brand { font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 700; font-size: 96px; line-height: 1; letter-spacing: -2px; }
   .tag { font-size: 40px; color: var(--ink-soft); margin-top: 20px; }
-  .leash { font-family: 'IBM Plex Mono', monospace; font-size: 30px; margin-top: 44px; display: flex; align-items: center; gap: 20px; }
-  .leash .hash { color: var(--ink); }
-  .leash .fish-glyph { color: var(--gold); font-weight: 700; }
-  .leash .empty { color: var(--line); }
+  .leash { margin-top: 44px; display: flex; align-items: center; gap: 20px; }
+  .leash .track { width: 300px; height: 16px; border-radius: 8px; background: var(--line); overflow: hidden; }
+  .leash .track i { display: block; height: 100%; width: 86%; border-radius: 8px; background: var(--tide); }
   .leash .amt { font-family: 'IBM Plex Mono', monospace; font-size: 30px; }
   .foot { font-size: 22px; color: var(--ink-soft); margin-top: 40px; }
 </style>
 </head>
 <body>
-  <div class="wave" aria-hidden="true">~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~</div>
+  <div class="wave" aria-hidden="true"></div>
   <div class="card">
     <svg class="fish" viewBox="0 0 200 200">
       <g stroke="#2b1a12" stroke-width="4" stroke-linecap="round" fill="#e8d44d">
@@ -57,10 +51,10 @@
     <div>
       <div class="brand">PuffrPay</div>
       <div class="tag">Your fun money, on a leash.</div>
-      <div class="leash"><span aria-hidden="true"><span class="hash">#########</span><span class="fish-glyph">&gt;</span><span class="empty">----------</span></span><span class="amt">$172 / $200</span></div>
+      <div class="leash"><span class="track" aria-hidden="true"><i></i></span><span class="amt">$172 / $200</span></div>
       <div class="foot">An AI shopper that stays inside your rules. Sandbox mode. No real money moves.</div>
     </div>
   </div>
-  <div class="wave" aria-hidden="true" style="padding-bottom:10px">~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~~^~-~~^~</div>
+  <div class="wave" aria-hidden="true"></div>
 </body>
 </html>

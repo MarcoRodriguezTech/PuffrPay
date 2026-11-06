@@ -649,7 +649,6 @@ function StudioDashboard({
       </div>
 
       <footer className="activity-footer">
-        <pre className="ascii" aria-hidden="true">{`  ><(((°>  ~ ~`}</pre>
         <p className="muted">Puffr never spends without the rules.</p>
       </footer>
 

@@ -535,14 +535,8 @@ label {
   white-space: nowrap;
 }
 
-.budget-pill .leash {
-  color: var(--ink-soft);
-  letter-spacing: -1px;
-}
-
-.budget-pill .leash b {
-  color: var(--ink);
-  font-weight: 400;
+.budget-pill .leash-bar {
+  flex: none;
 }
 
 .avatar-chip {
@@ -624,9 +618,8 @@ label {
 }
 
 @media (max-width: 719px) {
-  /* The ASCII leash inside the pill makes it ~290px wide — over half the
+  /* The leash bar inside the pill makes it ~290px wide — over half the
      phone viewport. Mascot + numbers + % stay. */
-  .budget-pill .leash,
   .budget-pill .leash-bar {
     display: none;
   }
@@ -706,26 +699,22 @@ label {
   background: var(--gold);
 }
 
-/* ASCII leash progress: real progressbar with text drawn on top */
+/* Leash progress: a mini pill bar with the ocean gradient fill */
 .leash-bar {
-  position: relative;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 16px;
-  letter-spacing: -1px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  user-select: none;
+  display: inline-block;
+  height: 8px;
+  border-radius: var(--pill);
+  background: var(--ocean-soft);
+  overflow: hidden;
+  vertical-align: middle;
+  flex: none;
 }
 
 .leash-bar .leash-fill {
-  color: var(--ink);
-}
-
-.leash-bar .leash-fish {
-  color: var(--gold);
-  font-weight: 700;
-  text-shadow: 0 0 1px var(--ink);
+  display: block;
+  height: 100%;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
 }
 
 /* ---------- puffer gauge ---------- */
@@ -2814,22 +2803,13 @@ label {
   background: var(--danger);
 }
 
-/* activity footer: tiny ASCII fish + the house rule */
+/* activity footer: the house rule */
 .activity-footer {
   margin-top: var(--s6);
   display: flex;
   align-items: center;
   gap: var(--s3);
   color: var(--ink-soft);
-}
-
-.activity-footer .ascii {
-  font-family: var(--mono);
-  font-size: var(--t12);
-  line-height: var(--t12);
-  color: var(--line);
-  margin: 0;
-  user-select: none;
 }
 
 .activity-footer p {
@@ -3164,13 +3144,10 @@ label {
 .fm-leash-pill {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: var(--pill);
   background: var(--paper);
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--tide);
 }
 .funmoney .fm-mascot {
   display: inline-flex;

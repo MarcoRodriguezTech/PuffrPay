@@ -532,7 +532,7 @@ export default function AgentPage() {
                 <span className="of"> of {fmtWhole(budget.capCents)}</span>
               </div>
               <div style={{ width: "100%", marginTop: "var(--s3)" }}>
-                <LeashBar ratio={budget.ratio} width={26} />
+                <LeashBar ratio={budget.ratio} width={180} />
               </div>
               <div className="gauge-state">
                 {Math.round(budget.ratio * 100)}% — {STATE_LABELS[state]}

@@ -95,7 +95,7 @@ export function TopBar() {
             <span>
               {fmtWhole(budget.spentCents)} / {fmtWhole(budget.capCents)}
             </span>
-            <LeashBar ratio={budget.ratio} width={10} />
+            <LeashBar ratio={budget.ratio} width={56} />
             <span>{pct}%</span>
           </Link>
         )}
