@@ -9,18 +9,104 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useLayoutEffect, useEffect } from "react";
+import { AgGridReact } from "ag-grid-react";
+import {
+  AllCommunityModule,
+  ModuleRegistry,
+  themeQuartz,
+  type ColDef,
+  type ICellRendererParams,
+  type RowClassParams,
+  type RowClickedEvent,
+} from "ag-grid-community";
 import type { AgWidgetDefinition } from "ag-studio-react";
-import type { AgWidgetData, AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
+import type {
+  AgFilterState,
+  AgWidgetData,
+  AgWidgetDataFormat,
+  AgWidgetParams,
+} from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { StatusBadge, statusKey, type StatusKey } from "@/components/StatusBadge";
+import { StatusBadge } from "@/components/StatusBadge";
+import {
+  STATUSES,
+  activeStatusKey,
+  isStatusFilterEntry,
+  statusFilterEntries,
+  statusKey,
+  type StatusKey,
+} from "@/lib/status";
 import { fmtDollars, useCountUp } from "@/lib/ui";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 type Row = DashboardData["requests"][number];
 type Ctx = AgWidgetParams<AgWidgetData<Record<string, never>, AgWidgetDataFormat<unknown>>>;
 
 const useRows = (params: Ctx): Row[] =>
   (params.context as { data?: DashboardData })?.data?.requests ?? [];
+
+/* ---------- page-filter plumbing ---------- */
+
+// `pages[].filter.page` is the cross-widget filter slot — the Ask box writes
+// it and Studio applies it to its own widgets (the purchases grid). Custom
+// widgets read raw context, so they evaluate the same entries client-side.
+const usePageFilters = (params: Ctx): AgFilterState[] => {
+  const st = params.api.getState();
+  const page = st.pages.find((p) => p.id === st.selectedPageId);
+  return (page?.filter?.page ?? []) as AgFilterState[];
+};
+
+const reqField = (id: string | undefined) =>
+  id?.startsWith("requests.") ? id.slice("requests.".length) : null;
+
+const ci = (v: unknown) => String(v ?? "").toLowerCase();
+const numOrDate = (v: unknown): number => {
+  if (typeof v === "number") return v;
+  const s = String(v ?? "");
+  const n = Number(s);
+  return s.trim() !== "" && !Number.isNaN(n) ? n : Date.parse(s);
+};
+
+function matchCell(raw: unknown, op?: string, v?: unknown): boolean {
+  switch (op) {
+    case "equals":
+      return typeof raw === "number" ? numOrDate(v) === raw : ci(raw) === ci(v);
+    case "notEqual":
+      return typeof raw === "number" ? numOrDate(v) !== raw : ci(raw) !== ci(v);
+    case "contains":
+      return ci(raw).includes(ci(v));
+    case "notContains":
+      return !ci(raw).includes(ci(v));
+    case "greaterThan":
+      return numOrDate(raw) > numOrDate(v);
+    case "greaterThanOrEqual":
+      return numOrDate(raw) >= numOrDate(v);
+    case "lessThan":
+      return numOrDate(raw) < numOrDate(v);
+    case "lessThanOrEqual":
+      return numOrDate(raw) <= numOrDate(v);
+    default:
+      return true;
+  }
+}
+
+function applyPageFilters(rows: Row[], filters: AgFilterState[]): Row[] {
+  let out = rows;
+  for (const f of filters) {
+    const key = reqField(f?.field?.id);
+    if (!key) continue;
+    const model = f?.model as { operator?: string; value?: unknown } | undefined;
+    out = out.filter((r) =>
+      matchCell((r as Record<string, unknown>)[key], model?.operator, model?.value)
+    );
+  }
+  return out;
+}
+
+const useFilteredRows = (params: Ctx): Row[] =>
+  applyPageFilters(useRows(params), usePageFilters(params));
 
 const noMap = ({ createDefaults }: { createDefaults: (o: object) => unknown }) =>
   createDefaults({ dataMappingItems: [] });
@@ -93,7 +179,7 @@ const eachDay = function* (from: string, to: string) {
 };
 
 function SpendTrend(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   const [range, setRange] = useState<RangeKey>("month");
   const [hover, setHover] = useState<number | null>(null);
   const [ref, { w, h }] = useSize<HTMLDivElement>();
@@ -355,7 +441,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
 }
 
 function FunMoney(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   return (
     <div className="funmoney">
       <FunMoneyBody rows={rows} />
@@ -412,7 +498,7 @@ function RecentBody({ rows }: { rows: Row[] }) {
 }
 
 function Recent(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   return (
     <div className="bento">
       <RecentBody rows={rows} />
@@ -423,7 +509,7 @@ function Recent(params: Ctx) {
 /* ---------- Fun money + Recent activity in one tall card ---------- */
 
 function FunRecent(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   return (
     <div className="funmoney funrecent">
       <FunMoneyBody rows={rows} />
@@ -436,7 +522,7 @@ function FunRecent(params: Ctx) {
 /* ---------- KPI tile row ---------- */
 
 function KpiRow(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   const spent = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
   const kept = rows.reduce((s, r) => s + (r.blocked ? r.amount : 0), 0);
   const waiting = rows.reduce((s, r) => s + (r.waiting ?? 0), 0);
@@ -473,7 +559,7 @@ function KpiRow(params: Ctx) {
 /* ---------- Spend by day ---------- */
 
 function SpendByDay(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   const [hover, setHover] = useState<number | null>(null);
   const [ref, { w, h }] = useSize<HTMLDivElement>();
   const today = todayKey();
@@ -530,8 +616,11 @@ function SpendByDay(params: Ctx) {
           >
             <defs>
               <linearGradient id="barBought" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--tide)" />
-                <stop offset="100%" stopColor="var(--deep)" />
+                <stop offset="0%" stopColor="var(--st-bought)" />
+                <stop
+                  offset="100%"
+                  stopColor="color-mix(in srgb, var(--st-bought) 45%, transparent)"
+                />
               </linearGradient>
             </defs>
             {ticks.map((t) => (
@@ -614,11 +703,103 @@ function SpendByDay(params: Ctx) {
 const useData = (params: Ctx): DashboardData | undefined =>
   (params.context as { data?: DashboardData })?.data;
 
+// One legend row per non-zero canonical status; the badge re-derives the
+// display key from status+decision, so PAYPAL stays WAITING/ALLOW underneath.
+type LegendRow = {
+  key: StatusKey;
+  status: string;
+  decision: string | null;
+  n: number;
+  amt: number;
+};
+
+// Compact transparent theme — the card's glass surface shows through the grid.
+const legendTheme = themeQuartz.withParams({
+  backgroundColor: "transparent",
+  foregroundColor: "var(--ink)",
+  borderColor: "transparent",
+  rowHoverColor: "var(--ocean-soft)",
+  rowHeight: 28,
+  headerHeight: 0,
+  fontSize: 12,
+  spacing: 4,
+  rowBorder: false,
+  headerRowBorder: false,
+  footerRowBorder: false,
+  wrapperBorderRadius: 0,
+});
+
+const legendCols: ColDef<LegendRow>[] = [
+  {
+    field: "status",
+    flex: 1,
+    cellRenderer: (p: ICellRendererParams<LegendRow>) =>
+      p.data ? (
+        <StatusBadge status={p.data.status} decision={p.data.decision} />
+      ) : null,
+  },
+  {
+    field: "n",
+    width: 44,
+    cellClass: "leash-col-num",
+    cellStyle: { justifyContent: "flex-end" },
+  },
+  {
+    field: "amt",
+    width: 84,
+    cellClass: "leash-col-amt",
+    cellStyle: { justifyContent: "flex-end" },
+    valueFormatter: (p) => money(p.value ?? 0),
+  },
+];
+
 function LeashReport(params: Ctx) {
   const data = useData(params);
   const rows = data?.requests ?? [];
   const sets = data?.optionSets ?? [];
   const loading = !data;
+
+  // Status cross-filter: the bar/legend select, other widgets (and the grid)
+  // react. Active state derives from the live page filter so it mirrors an
+  // ask-set status filter too.
+  const pageFilters = usePageFilters(params);
+  const [active, setActive] = useState<StatusKey | null>(() =>
+    activeStatusKey(pageFilters)
+  );
+  const filtersSig = JSON.stringify(pageFilters);
+  useEffect(() => {
+    setActive(activeStatusKey(pageFilters));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersSig]);
+
+  const toggleStatus = (key: StatusKey) => {
+    const st = params.api.getState();
+    const current = activeStatusKey(
+      (st.pages.find((p) => p.id === st.selectedPageId)?.filter?.page ??
+        []) as AgFilterState[]
+    );
+    const next = current === key ? null : key;
+    params.api.setState({
+      ...st,
+      pages: st.pages.map((pg) =>
+        pg.id === st.selectedPageId
+          ? {
+              ...pg,
+              filter: {
+                ...pg.filter,
+                page: [
+                  ...((pg.filter?.page ?? []) as AgFilterState[]).filter(
+                    (f) => !isStatusFilterEntry(f)
+                  ),
+                  ...(next ? statusFilterEntries(next) : []),
+                ],
+              },
+            }
+          : pg
+      ),
+    });
+    setActive(next);
+  };
 
   // Carousel layer, item level: everything Puffr ever put on the stack.
   const offered = sets.reduce((a, s) => a + s.options, 0);
@@ -629,57 +810,30 @@ function LeashReport(params: Ctx) {
   const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
   const open = sets.reduce((a, s) => a + (s.open ? 1 : 0), 0);
 
-  // Pick outcomes: the purchase rows those picks (and direct asks) created.
-  const bucket = (keys: StatusKey[]) =>
-    rows.filter((r) => keys.includes(statusKey(r.status, r.decision)));
-  const bought = bucket(["PURCHASED"]);
-  const progress = bucket(["PAYPAL", "WAITING"]);
-  const stoppedPicks = bucket(["BLOCKED", "REJECTED", "FAILED"]);
-  const segs = [
-    {
-      key: "bought",
-      name: "Bought",
-      color: "var(--ok)",
-      n: bought.length,
-      amt: bought.reduce((a, r) => a + r.amount, 0),
-      tip: `${bought.length} bought`,
-    },
-    {
-      key: "progress",
-      name: "In progress",
-      color: "var(--warn)",
-      n: progress.length,
-      amt: progress.reduce((a, r) => a + r.amount, 0),
-      tip: [
-        bucket(["PAYPAL"]).length &&
-          `${bucket(["PAYPAL"]).length} awaiting PayPal`,
-        bucket(["WAITING"]).length &&
-          `${bucket(["WAITING"]).length} waiting for you`,
-      ]
-        .filter(Boolean)
-        .join(", "),
-    },
-    {
-      key: "stopped",
-      name: "Stopped or rejected",
-      color: "var(--danger)",
-      n: stoppedPicks.length,
-      amt: stoppedPicks.reduce((a, r) => a + r.amount, 0),
-      tip: [
-        bucket(["BLOCKED"]).length && `${bucket(["BLOCKED"]).length} blocked`,
-        bucket(["REJECTED"]).length &&
-          `${bucket(["REJECTED"]).length} rejected`,
-        bucket(["FAILED"]).length && `${bucket(["FAILED"]).length} failed`,
-      ]
-        .filter(Boolean)
-        .join(", "),
-    },
-  ];
+  // Pick outcomes, one canonical status per segment — the bar, legend, badges
+  // and charts all read the same status config.
+  const segs = STATUSES.map((st) => {
+    const list = rows.filter((r) => statusKey(r.status, r.decision) === st.key);
+    const amt = list.reduce((a, r) => a + r.amount, 0);
+    return {
+      key: st.key,
+      label: st.label,
+      color: st.colorVar,
+      n: list.length,
+      amt,
+      tip: `${st.label}: ${list.length} — ${money(amt)}`,
+      legend: {
+        key: st.key,
+        status: st.key === "PAYPAL" ? "WAITING" : st.key,
+        decision:
+          st.key === "PAYPAL" ? "ALLOW" : st.key === "WAITING" ? "ASK" : null,
+        n: list.length,
+        amt,
+      } as LegendRow,
+    };
+  }).filter((s) => s.n > 0);
   const totalPicks = segs.reduce((a, s) => a + s.n, 0);
-  const ariaBar = segs
-    .filter((s) => s.n > 0)
-    .map((s) => `${s.name} ${s.n} — ${money(s.amt)}`)
-    .join("; ");
+  const ariaBar = segs.map((s) => `${s.label} ${s.n} — ${money(s.amt)}`).join("; ");
 
   const offeredC = useCountUp(offered, 400);
   const stoppedC = useCountUp(stopped, 400);
@@ -769,35 +923,50 @@ function LeashReport(params: Ctx) {
               </div>
             ) : (
               <>
-                <div className="leashbar" role="img" aria-label={ariaBar}>
-                  {segs
-                    .filter((s) => s.n > 0)
-                    .map((s) => (
-                      <span
-                        key={s.key}
-                        className="leash-seg"
-                        tabIndex={0}
-                        style={{
-                          flexGrow: s.n,
-                          minWidth: 10,
-                          background: s.color,
-                        }}
-                      >
-                        <span className="leash-tip" role="tooltip">
-                          {s.name}: {s.tip}
-                        </span>
-                      </span>
-                    ))}
-                </div>
-                <div className="leash-legs">
+                <div
+                  className="leashbar"
+                  role="group"
+                  aria-label={`Picks by status: ${ariaBar}`}
+                >
                   {segs.map((s) => (
-                    <div className="leash-leg" key={s.key}>
-                      <i className="leash-dot" style={{ background: s.color }} />
-                      <span className="leash-leg-name">{s.name}</span>
-                      <span className="leash-leg-n">{s.n}</span>
-                      <span className="leash-leg-amt">{money(s.amt)}</span>
-                    </div>
+                    <button
+                      type="button"
+                      key={s.key}
+                      className={`leash-seg${s.key === active ? " active" : ""}`}
+                      aria-pressed={s.key === active}
+                      aria-label={`${s.label}: ${s.n} — ${money(s.amt)}. ${
+                        s.key === active ? "Clear" : "Apply"
+                      } the status filter.`}
+                      onClick={() => toggleStatus(s.key)}
+                      style={{
+                        flexGrow: s.n,
+                        minWidth: 10,
+                        background: s.color,
+                      }}
+                    >
+                      <span className="leash-tip" role="tooltip">
+                        {s.tip}
+                      </span>
+                    </button>
                   ))}
+                </div>
+                <div className="leash-legend" aria-label="Purchases by status">
+                  <AgGridReact<LegendRow>
+                    theme={legendTheme}
+                    rowData={segs.map((s) => s.legend)}
+                    columnDefs={legendCols}
+                    domLayout="autoHeight"
+                    headerHeight={0}
+                    suppressCellFocus
+                    onRowClicked={(e: RowClickedEvent<LegendRow>) =>
+                      e.data && toggleStatus(e.data.key)
+                    }
+                    rowClassRules={{
+                      "leash-row-active": (p: RowClassParams<LegendRow>) =>
+                        p.data?.key === active,
+                    }}
+                    getRowId={(p) => p.data.key}
+                  />
                 </div>
               </>
             )}
@@ -834,7 +1003,7 @@ const pageFilter = (page: number) => [
 export const gridPageFilter = pageFilter;
 
 function GridPager(params: Ctx) {
-  const rows = useRows(params);
+  const rows = useFilteredRows(params);
   const api = params.api;
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -968,7 +1137,7 @@ export const bentoWidgetDefs = [
     comp: LeashReport as never,
     form: noMap as never,
     defaultSize: { width: 460, height: 260 },
-    minSize: { width: 240, height: 300 },
+    minSize: { width: 240, height: 400 },
   }),
   def<D>({
     id: W_GRID_PAGER,

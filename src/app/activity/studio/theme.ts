@@ -13,10 +13,11 @@ const line = (color: string) => ({ width: 1, color: token(color) });
 // Explicit stack — never let Studio fall back to its serif default.
 const SANS = "'Plus Jakarta Sans', system-ui, 'Segoe UI', Arial, sans-serif";
 
-// Palette order matches the statuses the charts list alphabetically:
-// BLOCKED, PURCHASED, REJECTED, WAITING, then extras.
+// Palette order matches the raw statuses the charts list alphabetically:
+// BLOCKED, FAILED, PURCHASED, REJECTED, WAITING, then extras — all read from
+// the shared --st-* status tokens (src/lib/status.tsx).
 const palette = Object.fromEntries(
-  ["st-blocked", "st-bought", "st-rejected", "st-waiting", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
+  ["st-blocked", "st-failed", "st-bought", "st-rejected", "st-waiting", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
     (name, i) => [
       [`chartPaletteFills${i + 1}Color`, token(name)],
       [`chartPaletteStrokes${i + 1}Color`, token(name)],

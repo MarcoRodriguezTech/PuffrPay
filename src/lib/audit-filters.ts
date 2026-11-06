@@ -16,6 +16,8 @@ export interface AuditQuerySpec {
   understood: string;
 }
 
+import { statusLabel } from "./status";
+
 const OP_SYM: Record<string, string> = {
   eq: "=",
   neq: "≠",
@@ -31,7 +33,7 @@ const fmtDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 export function filterLabel(f: AuditFilter): string {
   if (f.field === "created_at" && f.value === "week") return "last 7 days";
   if (f.field === "created_at" && f.value === "month") return "this month";
-  if (f.field === "status") return `status = ${f.value}`;
+  if (f.field === "status") return `status = ${statusLabel(f.value) ?? f.value}`;
   if (f.field === "decided_by")
     return `decided by = ${f.value === "owner" ? "you" : f.value}`;
   if (f.field === "amount_cents")

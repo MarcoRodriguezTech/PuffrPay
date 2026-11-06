@@ -36,14 +36,15 @@
   --danger-soft: rgba(255, 107, 94, 0.15);
   --danger-line: rgba(255, 107, 94, 0.35);
   --reject: #8fa3b8;
-  /* request statuses stay inside the blue family: vivid = alive/moving,
-     muted slate = stopped or rejected. --ok/--warn/--danger remain for
+  /* request statuses: one token per canonical status (src/lib/status.tsx),
+     each >=4.5:1 on card surfaces. --ok/--warn/--danger stay reserved for
      genuine warnings (cap line, errors, delta chips). */
-  --st-bought: #38bdf8;
+  --st-bought: #2bc48a;
   --st-paypal: #60a5fa;
-  --st-waiting: #818cf8;
-  --st-blocked: #94a3b8;
-  --st-rejected: var(--danger);
+  --st-waiting: #f2b84b;
+  --st-blocked: #ff6b5e;
+  --st-rejected: #94a3b8;
+  --st-failed: #fb923c;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
@@ -147,11 +148,12 @@
   --danger-soft: rgba(220, 38, 38, 0.08);
   --danger-line: rgba(220, 38, 38, 0.3);
   --reject: #64748b;
-  --st-bought: #0284c7;
+  --st-bought: #047857;
   --st-paypal: #2563eb;
-  --st-waiting: #6366f1;
-  --st-blocked: #64748b;
-  --st-rejected: var(--danger);
+  --st-waiting: #8a5a00;
+  --st-blocked: #dc2626;
+  --st-rejected: #64748b;
+  --st-failed: #c2410c;
   --glow: none;
   --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
   --shadow-raise-sm: 0 8px 32px rgba(15, 23, 42, 0.05);
@@ -990,8 +992,8 @@ img[src*="/mascot/"] {
   border-color: var(--st-blocked);
 }
 .status-badge.FAILED {
-  color: var(--st-rejected);
-  border-color: var(--st-rejected);
+  color: var(--st-failed);
+  border-color: var(--st-failed);
 }
 .status-badge.REJECTED {
   color: var(--st-rejected);
@@ -1288,16 +1290,16 @@ img[src*="/mascot/"] {
 
 .opt-chip.allow {
   color: var(--st-bought);
-  background: var(--ocean-soft);
+  background: var(--ok-soft);
 }
 
 .opt-chip.ask {
-  color: var(--st-paypal);
-  background: var(--ocean-soft);
+  color: var(--st-waiting);
+  background: var(--warn-soft);
 }
 
 .opt-chip.block {
-  color: var(--st-rejected);
+  color: var(--st-blocked);
   background: var(--danger-soft);
 }
 
@@ -1324,7 +1326,7 @@ img[src*="/mascot/"] {
 
 .opt-blocked {
   margin-top: auto;
-  color: var(--st-rejected);
+  color: var(--st-blocked);
   font-size: var(--t12);
 }
 
@@ -3561,9 +3563,9 @@ img[src*="/mascot/"] {
   transform-origin: bottom;
 }
 /* requested-but-not-bought sits on top of the bought gradient, in a lighter
-   tint so the two money types stay distinguishable stacked */
+   tint of the same status green so the stack reads as one money series */
 .bento-chart .bar-requested {
-  fill: var(--tide);
+  fill: var(--st-bought);
   fill-opacity: 0.3;
   rx: 6;
 }
@@ -3574,10 +3576,10 @@ img[src*="/mascot/"] {
   rx: 8;
 }
 .legend-pills .lp i.dot-bought {
-  background: linear-gradient(180deg, var(--tide), var(--deep));
+  background: linear-gradient(180deg, var(--st-bought), color-mix(in srgb, var(--st-bought) 45%, transparent));
 }
 .legend-pills .lp i.dot-requested {
-  background: var(--tide);
+  background: var(--st-bought);
   opacity: 0.3;
 }
 @keyframes bar-in {
@@ -3972,7 +3974,7 @@ img[src*="/mascot/"] {
   display: grid;
   /* the hero tile is text-heaviest — it gets the widest share so the row
      doesn't balloon to 5 wrapped lines */
-  grid-template-columns: 0.9fr 1.4fr 0.9fr;
+  grid-template-columns: 0.85fr 1.55fr 0.85fr;
   gap: 12px;
 }
 .leash-stat {
@@ -3980,10 +3982,10 @@ img[src*="/mascot/"] {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
   min-height: 58px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 16px;
   background: var(--ocean-soft);
 }
@@ -4055,7 +4057,7 @@ img[src*="/mascot/"] {
 .leash-outcome {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 .leashbar {
   display: flex;
@@ -4070,9 +4072,18 @@ img[src*="/mascot/"] {
   position: relative;
   display: block;
   height: 100%;
+  min-height: 0;
+  border: 0;
+  padding: 0;
   border-radius: 999px;
+  cursor: pointer;
 }
 .leash-seg:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.leash-seg.active {
+  outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
 .leashbar.empty {
@@ -4087,34 +4098,33 @@ img[src*="/mascot/"] {
   color: var(--ink-soft);
 }
 
-.leash-legs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Legend: compact ag-grid table — transparent so the card's glass shows
+   through; rows are click filters like the bar segments. */
+.leash-legend {
+  margin-top: 2px;
 }
-.leash-leg {
-  display: grid;
-  grid-template-columns: auto 1fr auto minmax(56px, auto);
-  align-items: center;
-  gap: var(--s2);
-  font-size: var(--t12);
+.leash-legend .ag-root-wrapper {
+  background: transparent;
+  border: none;
 }
-.leash-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.leash-legend .ag-row {
+  cursor: pointer;
+  border: none;
 }
-.leash-leg-name {
-  color: var(--ink-soft);
+.leash-legend .ag-row.leash-row-active {
+  background: var(--ocean-soft);
+  box-shadow: inset 2px 0 0 var(--ink);
 }
-.leash-leg-n {
+.leash-legend .leash-col-num {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.leash-leg-amt {
+.leash-legend .leash-col-amt {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+}
+.leash-legend .status-badge {
+  height: 22px;
 }
 .leash-foot {
   margin-top: auto;
@@ -4152,6 +4162,9 @@ img[src*="/mascot/"] {
   }
   .leash-stat.hero {
     grid-column: 1 / -1;
+    /* hero last: Offered + Picked pair up on row 1, hero spans row 2 —
+       DOM order would leave a hole next to Offered (sparse packing) */
+    order: 1;
     flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
