@@ -18,6 +18,9 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
+# Local logs
+*.log
+
 # Test artifacts
 .playwright-mcp/
 *.png.test
