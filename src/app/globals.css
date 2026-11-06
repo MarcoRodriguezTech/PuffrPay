@@ -2716,8 +2716,10 @@ label {
   height: auto !important;
 }
 
+/* In-flow (not absolute) so the canvas height drives page height — but still
+   positioned, since side panels/popups anchor to it. */
 .studio-card .ag-studio-root-inner {
-  position: static;
+  position: relative;
 }
 
 .studio-card .ag-studio-root-inner,
@@ -2739,6 +2741,12 @@ label {
   --ag-studio-layout-widget-border-color: transparent;
   --ag-studio-layout-widget-border-width: 0px;
   --ag-studio-layout-widget-border-radius: 0px;
+}
+
+/* The collapsed Filters rail is dead chrome on the report's right edge;
+   the toolbar Filters button still expands it into a drawer. */
+.studio-card .ag-studio-root-panel-container:has(.ag-studio-panel-collapsed) {
+  display: none;
 }
 @media (min-width: 1440px) {
   .studio-card .ag-studio-layout-widget {
