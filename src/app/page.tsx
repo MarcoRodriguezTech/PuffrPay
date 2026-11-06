@@ -491,62 +491,6 @@ export default function AgentPage() {
                 />
               ))}
 
-              {(visibleSteps.length > 0 || busy) && (
-                <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
-                  <button
-                    type="button"
-                    className="log-title"
-                    onClick={() => setLogOpen((o) => !o)}
-                    aria-expanded={logOpen}
-                  >
-                    <svg className="log-chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                      <path d="M2.5 3.5 5 6l2.5-2.5" />
-                    </svg>
-                    AGENT RECEIPT
-                    <span className="log-count">{visibleSteps.length}</span>
-                  </button>
-                  {logOpen && (
-                    <div className="log-body">
-                      {visibleSteps.map((s, i) => (
-                        <div key={i}>
-                          {logLine(s, i)}
-                          {i === pickIndex && purchase && (
-                            <div className="product-card">
-                              {purchase.imageUrl ? (
-                                <img
-                                  className="thumb"
-                                  src={purchase.imageUrl}
-                                  alt={purchase.productTitle}
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              ) : (
-                                <span className="thumb" aria-hidden="true">
-                                  {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
-                                </span>
-                              )}
-                              <span className="meta">
-                                <span className="t">{purchase.productTitle}</span>
-                                <span className="s">{storeOf(purchase.merchantUrl)}</span>
-                                <span className="p">{fmtDollars(purchase.amountCents)}</span>
-                              </span>
-                            </div>
-                          )}
-                          {i === pickIndex && showReasoning && (
-                            <div className="log-reason">{purchase?.agentReasoning}</div>
-                          )}
-                        </div>
-                      ))}
-                      {busy && (
-                        <div className="typing">
-                          Shopping<span className="dots" aria-hidden="true" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {blockedReason && !busy && (
                 <div className="blocked-strip" role="status">
                   <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -693,28 +637,86 @@ export default function AgentPage() {
             />
           )}
 
-          <form
-            className="chat-input"
-            onSubmit={(e) => {
-              e.preventDefault();
-              send();
-            }}
-          >
-            <label className="visually-hidden" htmlFor="agent-msg">
-              Message the agent
-            </label>
-            <input
-              id="agent-msg"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="What should I buy?"
-              disabled={busy}
-              autoComplete="off"
-            />
-            <button type="submit" disabled={busy || !input.trim()}>
-              Send
-            </button>
-          </form>
+          <div className="input-zone">
+            {(visibleSteps.length > 0 || busy) && (
+              <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
+                <button
+                  type="button"
+                  className="log-title"
+                  onClick={() => setLogOpen((o) => !o)}
+                  aria-expanded={logOpen}
+                >
+                  <svg className="log-chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                    <path d="M2.5 3.5 5 6l2.5-2.5" />
+                  </svg>
+                  AGENT RECEIPT
+                  <span className="log-count">{visibleSteps.length}</span>
+                </button>
+                {logOpen && (
+                  <div className="log-body">
+                    {visibleSteps.map((s, i) => (
+                      <div key={i}>
+                        {logLine(s, i)}
+                        {i === pickIndex && purchase && (
+                          <div className="product-card">
+                            {purchase.imageUrl ? (
+                              <img
+                                className="thumb"
+                                src={purchase.imageUrl}
+                                alt={purchase.productTitle}
+                                loading="lazy"
+                                decoding="async"
+                              />
+                            ) : (
+                              <span className="thumb" aria-hidden="true">
+                                {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
+                              </span>
+                            )}
+                            <span className="meta">
+                              <span className="t">{purchase.productTitle}</span>
+                              <span className="s">{storeOf(purchase.merchantUrl)}</span>
+                              <span className="p">{fmtDollars(purchase.amountCents)}</span>
+                            </span>
+                          </div>
+                        )}
+                        {i === pickIndex && showReasoning && (
+                          <div className="log-reason">{purchase?.agentReasoning}</div>
+                        )}
+                      </div>
+                    ))}
+                    {busy && (
+                      <div className="typing">
+                        Shopping<span className="dots" aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <form
+              className="chat-input"
+              onSubmit={(e) => {
+                e.preventDefault();
+                send();
+              }}
+            >
+              <label className="visually-hidden" htmlFor="agent-msg">
+                Message the agent
+              </label>
+              <input
+                id="agent-msg"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="What should I buy?"
+                disabled={busy}
+                autoComplete="off"
+              />
+              <button type="submit" disabled={busy || !input.trim()}>
+                Send
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 

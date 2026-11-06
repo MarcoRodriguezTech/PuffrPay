@@ -1151,6 +1151,7 @@ img[src*="/mascot/"] {
 
 .chat-scroll {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: var(--s6) var(--s8);
   display: flex;
@@ -1627,6 +1628,39 @@ img[src*="/mascot/"] {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
+}
+
+/* The receipt is a floating drawer pinned just above the input — bottom-
+   anchored so expanding grows upward over the chat instead of pushing the
+   input (or the option stack) below the fold. Collapsed it hugs its
+   content as a small pill in the stack zone's empty corner. */
+.input-zone {
+  position: relative;
+}
+
+.input-zone .agent-log {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--s2));
+  z-index: 60;
+  width: min(480px, 100%);
+  max-height: 240px;
+  box-shadow: var(--glass-hi), var(--shadow-raise);
+  transition: width var(--dur-fast) var(--ease);
+}
+
+.input-zone .agent-log.closed {
+  width: auto;
+  padding: var(--s1) var(--s3);
+}
+
+.input-zone .agent-log.closed::before,
+.input-zone .agent-log.closed::after {
+  margin: calc(-1 * var(--s1)) calc(-1 * var(--s3)) var(--s1);
+}
+
+.input-zone .agent-log.closed::after {
+  margin: var(--s1) calc(-1 * var(--s3)) calc(-1 * var(--s1));
 }
 
 /* till-receipt agent log */
