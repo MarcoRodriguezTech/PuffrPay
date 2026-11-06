@@ -1679,11 +1679,11 @@ img[src*="/mascot/"] {
 }
 
 .rules-ruler .seg.auto {
-  background: var(--gold-soft);
+  background: var(--ocean-soft);
 }
 
 .rules-ruler .seg.ask {
-  background: var(--gold);
+  background: var(--tide);
 }
 
 .rules-ruler .seg.block {
@@ -1761,11 +1761,11 @@ img[src*="/mascot/"] {
 }
 
 .rules-ruler .zone-labels .swatch.auto {
-  background: var(--gold-soft);
+  background: var(--ocean-soft);
 }
 
 .rules-ruler .zone-labels .swatch.ask {
-  background: var(--gold);
+  background: var(--tide);
 }
 
 .rules-ruler .zone-labels .swatch.block {
