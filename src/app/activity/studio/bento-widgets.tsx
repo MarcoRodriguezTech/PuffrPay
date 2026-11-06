@@ -334,7 +334,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
   return (
     <>
       <div className="bento-head fm-head">
-        <h3 className="bento-title">Fun money</h3>
+        <h3 className="bento-title">Fish tank money</h3>
       </div>
       <span className="fm-mascot" ref={mascotRef}>
         <PufferGauge ratio={ratio} size={80} showLabel={false} />
