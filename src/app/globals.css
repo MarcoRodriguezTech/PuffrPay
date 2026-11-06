@@ -1330,6 +1330,206 @@ img[src*="/mascot/"] {
   box-shadow: 0 0 0 2px var(--ocean-soft);
 }
 
+/* stacked coverflow carousel — live options, above the input */
+.stack-wrap {
+  width: 100%;
+}
+
+.stack-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  overflow: hidden;
+}
+
+.stack-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.stack-surface:active {
+  cursor: grabbing;
+}
+
+.stack-card {
+  position: absolute;
+  width: 176px;
+  height: 244px;
+  border-radius: var(--radius-ctl);
+  overflow: hidden;
+  background: var(--card-grad);
+  border: 1px solid var(--line);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.stack-imgwrap {
+  flex: 1;
+  display: flex;
+  background: var(--paper);
+  padding: 10px;
+  min-height: 0;
+}
+
+.stack-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stack-img.stack-noimg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.stack-shade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.stack-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid var(--tide);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--tide);
+  font-size: var(--t12);
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 10px;
+}
+
+.stack-meta {
+  padding: var(--s2) var(--s3) var(--s3);
+  text-align: center;
+  color: var(--ink);
+}
+
+.stack-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: var(--t14);
+  min-height: 2.6em;
+}
+
+.stack-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stack-price .s {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: var(--t12);
+}
+
+.stack-pickrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s1);
+}
+
+.stack-active {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink);
+  font-size: var(--t14);
+  max-width: 100%;
+}
+
+.stack-active strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.stack-pick-btn {
+  min-width: 160px;
+}
+
+.stack-hint {
+  color: var(--ink-soft);
+  font-size: var(--t12);
+}
+
+/* plain row fallback for prefers-reduced-motion */
+.stack-fallback {
+  display: flex;
+  gap: var(--s3);
+  overflow-x: auto;
+  padding-bottom: var(--s2);
+}
+
+/* compact history state once a pick is made */
+.opt-picked-card {
+  margin-top: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-ctl);
+  background: var(--card-grad);
+  padding: var(--s2) var(--s3);
+  max-width: 340px;
+  color: var(--ink);
+}
+
+.opt-picked-card .meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.opt-picked-card .t {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-picked-card .s {
+  color: var(--ink-soft);
+  font-size: var(--t12);
+}
+
+.opt-picked-card .p {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 639px) {
+  .stack-zone {
+    height: 240px;
+  }
+
+  .stack-card {
+    width: 144px;
+    height: 200px;
+  }
+}
+
 .chat-bottom {
   padding: 0 var(--s8) var(--s6);
   display: flex;

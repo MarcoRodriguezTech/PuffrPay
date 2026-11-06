@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LeashBar } from "@/components/LeashBar";
+import { OptionStack } from "@/components/OptionStack";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import {
   consumePuffFlag,
@@ -38,6 +39,7 @@ interface OptionItem {
 }
 
 interface OptionsPayload {
+  v: 1;
   kind: "options";
   text: string;
   items: OptionItem[];
@@ -378,6 +380,20 @@ export default function AgentPage() {
     !purchase.paypalOrderId;
   const paymentPending = purchase?.status === "WAITING" && !!purchase.paypalOrderId;
 
+  // The live options set is the latest options message — live only while
+  // nothing's been picked from it. Older unpicked sets render as the plain
+  // inline carousel; picked ones collapse to the chosen product's card.
+  const activeOptions = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== "agent") continue;
+      const p = parseOptions(m.content);
+      if (!p) continue;
+      return p.picked ? null : { msgId: m.id, payload: p };
+    }
+    return null;
+  }, [messages]);
+
   const visibleSteps = steps.slice(0, shown);
   const pickIndex = visibleSteps.findIndex((s) => s.step === "pick");
   const showReasoning = pickIndex >= 0 && !!purchase?.agentReasoning;
@@ -408,6 +424,47 @@ export default function AgentPage() {
               {messages.map((m) => {
                 const opts = m.role === "agent" ? parseOptions(m.content) : null;
                 if (opts) {
+                  if (opts.picked) {
+                    const it = opts.items.find((x) => x.id === opts.picked);
+                    return (
+                      <div key={m.id} className="msg agent opt-wrap">
+                        <div>{opts.text}</div>
+                        {it && (
+                          <div className="opt-picked-card">
+                            {it.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                className="product-thumb"
+                                src={it.imageUrl}
+                                alt={it.title}
+                                width={64}
+                                height={64}
+                              />
+                            ) : (
+                              <span className="product-thumb" aria-hidden="true">
+                                {it.title?.[0]?.toUpperCase() ?? "?"}
+                              </span>
+                            )}
+                            <span className="meta">
+                              <span className="t">{it.title}</span>
+                              <span className="s">{storeOf(it.merchantUrl)}</span>
+                              <span className="p">{fmtDollars(it.priceCents)}</span>
+                            </span>
+                            <span className="opt-chip allow">Picked</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  // The live (latest, unpicked) options render as the stacked
+                  // carousel above the input — the message keeps just its text.
+                  if (activeOptions && m.id === activeOptions.msgId) {
+                    return (
+                      <div key={m.id} className="msg agent">
+                        {opts.text}
+                      </div>
+                    );
+                  }
                   return (
                     <OptionCarousel
                       key={m.id}
@@ -593,6 +650,15 @@ export default function AgentPage() {
                 Retry
               </button>
             </div>
+          )}
+
+          {activeOptions && (
+            <OptionStack
+              msgId={activeOptions.msgId}
+              payload={activeOptions.payload}
+              busy={choosing === activeOptions.msgId}
+              onPick={choose}
+            />
           )}
 
           <form
