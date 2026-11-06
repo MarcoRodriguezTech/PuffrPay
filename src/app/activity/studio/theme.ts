@@ -16,7 +16,7 @@ const SANS = "'Plus Jakarta Sans', system-ui, 'Segoe UI', Arial, sans-serif";
 // Palette order matches the statuses the charts list alphabetically:
 // BLOCKED, PURCHASED, REJECTED, WAITING, then extras.
 const palette = Object.fromEntries(
-  ["danger", "ok", "reject", "warn", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
+  ["st-blocked", "st-bought", "st-rejected", "st-waiting", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
     (name, i) => [
       [`chartPaletteFills${i + 1}Color`, token(name)],
       [`chartPaletteStrokes${i + 1}Color`, token(name)],

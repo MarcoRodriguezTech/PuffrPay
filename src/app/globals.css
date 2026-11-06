@@ -36,6 +36,14 @@
   --danger-soft: rgba(255, 107, 94, 0.15);
   --danger-line: rgba(255, 107, 94, 0.35);
   --reject: #8fa3b8;
+  /* request statuses stay inside the blue family: vivid = alive/moving,
+     muted slate = stopped or rejected. --ok/--warn/--danger remain for
+     genuine warnings (cap line, errors, delta chips). */
+  --st-bought: #38bdf8;
+  --st-paypal: #60a5fa;
+  --st-waiting: #818cf8;
+  --st-blocked: #94a3b8;
+  --st-rejected: #64748b;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
@@ -133,6 +141,11 @@
   --danger-soft: rgba(179, 56, 44, 0.08);
   --danger-line: rgba(179, 56, 44, 0.3);
   --reject: #4a6178;
+  --st-bought: #0284c7;
+  --st-paypal: #2563eb;
+  --st-waiting: #6366f1;
+  --st-blocked: #475569;
+  --st-rejected: #64748b;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(11, 111, 184, 0.07), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(11, 92, 153, 0.14);
   --shadow-raise-sm: 0 6px 18px rgba(11, 92, 153, 0.1);
@@ -958,28 +971,28 @@ img[src*="/mascot/"] {
 }
 
 .status-badge.PURCHASED {
-  color: var(--ok);
-  border-color: var(--ok);
+  color: var(--st-bought);
+  border-color: var(--st-bought);
 }
 .status-badge.PAYPAL {
-  color: var(--tide);
-  border-color: var(--tide);
+  color: var(--st-paypal);
+  border-color: var(--st-paypal);
 }
 .status-badge.WAITING {
-  color: var(--warn);
-  border-color: var(--warn);
+  color: var(--st-waiting);
+  border-color: var(--st-waiting);
 }
 .status-badge.BLOCKED {
-  color: var(--danger);
-  border-color: var(--danger);
+  color: var(--st-blocked);
+  border-color: var(--st-blocked);
 }
 .status-badge.FAILED {
-  color: var(--chart-7);
-  border-color: var(--chart-7);
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
 }
 .status-badge.REJECTED {
-  color: var(--reject);
-  border-color: var(--reject);
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
 }
 
 /* ---------- chips ---------- */
@@ -2771,7 +2784,7 @@ img[src*="/mascot/"] {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--danger);
+  background: var(--st-blocked);
 }
 
 /* activity footer: the house rule */

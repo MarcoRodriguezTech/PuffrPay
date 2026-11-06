@@ -16,12 +16,12 @@ export function statusKey(status: string, decision?: string | null): StatusKey {
 }
 
 export const STATUS_COLORS: Record<StatusKey, string> = {
-  PURCHASED: "var(--ok)",
-  PAYPAL: "var(--tide)",
-  WAITING: "var(--warn)",
-  BLOCKED: "var(--danger)",
-  REJECTED: "var(--reject)",
-  FAILED: "var(--chart-7)",
+  PURCHASED: "var(--st-bought)",
+  PAYPAL: "var(--st-paypal)",
+  WAITING: "var(--st-waiting)",
+  BLOCKED: "var(--st-blocked)",
+  REJECTED: "var(--st-rejected)",
+  FAILED: "var(--st-rejected)",
 };
 
 const ICONS: Record<StatusKey, React.ReactNode> = {
