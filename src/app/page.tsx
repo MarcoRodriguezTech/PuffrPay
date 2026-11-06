@@ -44,6 +44,7 @@ interface OptionsPayload {
   text: string;
   items: OptionItem[];
   picked?: string;
+  dismissed?: boolean;
 }
 
 function parseOptions(content: string): OptionsPayload | null {
@@ -302,6 +303,37 @@ export default function AgentPage() {
     }
   }
 
+  // Non-pick edits to the live options set: bail entirely ("wasn't able to
+  // choose") or drop one card (e.g. a blocked item). Server persists the
+  // payload so the change survives reload.
+  async function editOptions(
+    messageId: number,
+    change: { dismiss?: boolean; remove?: string }
+  ) {
+    if (choosing != null || busy) return;
+    setChoosing(messageId);
+    try {
+      const res = await fetch("/api/agent/choose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, ...change }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "update failed");
+      if (data.payload) {
+        const json = JSON.stringify(data.payload);
+        setMessages((m) =>
+          m.map((x) => (x.id === messageId ? { ...x, content: json } : x))
+        );
+      }
+    } catch (err) {
+      console.error("[agent] options edit failed:", err);
+      toast(friendlyClientError(err));
+    } finally {
+      setChoosing(null);
+    }
+  }
+
   async function decide(action: "approve" | "reject") {
     if (!purchase || deciding) return;
     setDeciding(true);
@@ -389,7 +421,8 @@ export default function AgentPage() {
       if (m.role !== "agent") continue;
       const p = parseOptions(m.content);
       if (!p) continue;
-      return p.picked ? null : { msgId: m.id, payload: p };
+      const done = p.picked || p.dismissed || p.items.length === 0;
+      return done ? null : { msgId: m.id, payload: p };
     }
     return null;
   }, [messages]);
@@ -424,6 +457,14 @@ export default function AgentPage() {
               {messages.map((m) => {
                 const opts = m.role === "agent" ? parseOptions(m.content) : null;
                 if (opts) {
+                  if (opts.dismissed) {
+                    return (
+                      <div key={m.id} className="msg agent">
+                        <div>{opts.text}</div>
+                        <div className="opt-skipped">Skipped — nothing picked.</div>
+                      </div>
+                    );
+                  }
                   if (opts.picked) {
                     const it = opts.items.find((x) => x.id === opts.picked);
                     return (
@@ -658,6 +699,8 @@ export default function AgentPage() {
               payload={activeOptions.payload}
               busy={choosing === activeOptions.msgId}
               onPick={choose}
+              onDismiss={(id) => editOptions(id, { dismiss: true })}
+              onRemove={(id, pid) => editOptions(id, { remove: pid })}
             />
           )}
 

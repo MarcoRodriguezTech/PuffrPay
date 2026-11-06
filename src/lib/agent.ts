@@ -43,6 +43,7 @@ export interface AgentOptionsPayload {
   text: string;
   items: OptionsItem[];
   picked?: string;
+  dismissed?: boolean;
 }
 
 const MAX_OPTIONS = 5;
@@ -215,6 +216,44 @@ export async function chooseOption(
     // the picked marker is cosmetic — never fail the purchase on it
   }
   return result;
+}
+
+/**
+ * Non-pick edits to an options message: dismiss the whole set ("wasn't able
+ * to choose") or drop one card (e.g. a blocked option). Persists so the
+ * change survives reload. Returns the updated payload, or null if the
+ * message isn't a live options set.
+ */
+export async function updateOptions(
+  messageId: number,
+  change: { dismiss?: boolean; removeId?: string }
+): Promise<AgentOptionsPayload | null> {
+  const rows = await query<{ content: string }>(
+    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent'",
+    [messageId]
+  );
+  let payload: AgentOptionsPayload | null = null;
+  try {
+    const parsed = JSON.parse(rows[0]?.content ?? "");
+    if (parsed?.kind === "options" && Array.isArray(parsed.items)) {
+      payload = parsed as AgentOptionsPayload;
+    }
+  } catch {
+    /* not an options message */
+  }
+  if (!payload || payload.picked) return null;
+
+  if (change.removeId) {
+    payload.items = payload.items.filter((i) => i.id !== change.removeId);
+  }
+  if (change.dismiss || payload.items.length === 0) {
+    payload.dismissed = true;
+  }
+  await query("UPDATE chat_messages SET content = $1 WHERE id = $2", [
+    JSON.stringify(payload),
+    messageId,
+  ]);
+  return payload;
 }
 
 /**

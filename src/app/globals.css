@@ -1216,6 +1216,7 @@ img[src*="/mascot/"] {
 .opt-card {
   flex: 0 0 186px;
   scroll-snap-align: start;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1466,6 +1467,85 @@ img[src*="/mascot/"] {
 
 .stack-pick-btn {
   min-width: 160px;
+}
+
+/* exit / remove controls */
+.stack-btnrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.stack-close {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.stack-close:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.stack-close:disabled,
+.stack-remove:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* per-card × — pointer-events:auto escapes the card's pointer-events:none
+   (the card lets drags fall through to the surface; the button stays live) */
+.stack-remove {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+
+.stack-remove:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.opt-card .stack-remove {
+  top: 8px;
+  left: 8px;
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.opt-skipped {
+  margin-top: var(--s2);
+  color: var(--ink-soft);
+  font-size: var(--t12);
+  font-style: italic;
 }
 
 .stack-hint {

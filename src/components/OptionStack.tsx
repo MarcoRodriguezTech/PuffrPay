@@ -64,11 +64,15 @@ export function OptionStack({
   payload,
   busy,
   onPick,
+  onDismiss,
+  onRemove,
 }: {
   msgId: number;
   payload: AgentOptionsPayload;
   busy: boolean;
   onPick: (messageId: number, productId: string) => void;
+  onDismiss: (messageId: number) => void;
+  onRemove: (messageId: number, productId: string) => void;
 }) {
   const items = payload.items;
   const total = items.length;
@@ -118,48 +122,71 @@ export function OptionStack({
     });
   };
 
-  const active = items[activeIdx];
+  const active = total > 0 ? items[wrapIndex(activeIdx, total)] : undefined;
   const activeBlocked = active?.decision === "BLOCK";
 
   if (reduced) {
     // No physics under prefers-reduced-motion: a plain scrollable row.
     return (
-      <div className="stack-fallback" role="list">
-        {items.map((it) => (
-          <div key={it.id} role="listitem" className="opt-card">
-            {it.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="product-thumb opt-thumb"
-                src={it.imageUrl}
-                alt=""
-                loading="lazy"
-              />
-            ) : (
-              <span className="product-thumb opt-thumb" aria-hidden="true">
-                {it.title?.[0]?.toUpperCase() ?? "?"}
-              </span>
-            )}
-            <span className="opt-tag">{it.tag}</span>
-            <span className="opt-title">{it.title}</span>
-            <span className="opt-price">
-              {fmtDollars(it.priceCents)}
-              <span className="s">{storeOf(it.merchantUrl)}</span>
-            </span>
-            {it.decision === "BLOCK" ? (
-              <span className="opt-blocked">{it.decisionReason}</span>
-            ) : (
+      <div className="stack-wrap">
+        <div className="stack-fallback" role="list">
+          {items.map((it) => (
+            <div key={it.id} role="listitem" className="opt-card">
               <button
                 type="button"
-                className="opt-pick"
-                onClick={() => onPick(msgId, it.id)}
+                className="stack-remove"
+                aria-label={`Remove ${it.title}`}
+                onClick={() => onRemove(msgId, it.id)}
                 disabled={busy}
               >
-                Pick this
+                ×
               </button>
-            )}
-          </div>
-        ))}
+              {it.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="product-thumb opt-thumb"
+                  src={it.imageUrl}
+                  alt=""
+                  loading="lazy"
+                />
+              ) : (
+                <span className="product-thumb opt-thumb" aria-hidden="true">
+                  {it.title?.[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="opt-tag">{it.tag}</span>
+              <span className="opt-title">{it.title}</span>
+              <span className="opt-price">
+                {fmtDollars(it.priceCents)}
+                <span className="s">{storeOf(it.merchantUrl)}</span>
+              </span>
+              {it.decision === "BLOCK" ? (
+                <span className="opt-blocked">{it.decisionReason}</span>
+              ) : (
+                <button
+                  type="button"
+                  className="opt-pick"
+                  onClick={() => onPick(msgId, it.id)}
+                  disabled={busy}
+                >
+                  Pick this
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="stack-pickrow">
+          <button
+            type="button"
+            className="stack-close"
+            aria-label="Skip these picks"
+            onClick={() => onDismiss(msgId)}
+            disabled={busy}
+          >
+            ×
+          </button>
+          <span className="stack-hint">not into any of these?</span>
+        </div>
       </div>
     );
   }
@@ -187,6 +214,8 @@ export function OptionStack({
             total={total}
             progress={scrollProgress}
             config={config}
+            busy={busy}
+            onRemove={() => onRemove(msgId, it.id)}
           />
         ))}
       </div>
@@ -205,17 +234,30 @@ export function OptionStack({
           {activeBlocked ? (
             <span className="opt-blocked">{active.decisionReason}</span>
           ) : (
-            <button
-              type="button"
-              className="opt-pick stack-pick-btn"
-              onClick={() => onPick(msgId, active.id)}
-              disabled={busy}
-            >
-              {busy && <span className="spinner" aria-hidden="true" />}
-              Pick this
-            </button>
+            <span className="stack-btnrow">
+              <button
+                type="button"
+                className="opt-pick stack-pick-btn"
+                onClick={() => onPick(msgId, active.id)}
+                disabled={busy}
+              >
+                {busy && <span className="spinner" aria-hidden="true" />}
+                Pick this
+              </button>
+              <button
+                type="button"
+                className="stack-close"
+                aria-label="Skip these picks"
+                onClick={() => onDismiss(msgId)}
+                disabled={busy}
+              >
+                ×
+              </button>
+            </span>
           )}
-          <span className="stack-hint">drag to browse</span>
+          <span className="stack-hint">
+            {activeBlocked ? "drag to browse — × removes it" : "drag to browse · × to bail"}
+          </span>
         </div>
       )}
     </div>
@@ -228,12 +270,16 @@ function StackCard({
   total,
   progress,
   config,
+  busy,
+  onRemove,
 }: {
   item: OptionsItem;
   index: number;
   total: number;
   progress: MotionValue<number>;
   config: StackConfig;
+  busy: boolean;
+  onRemove: () => void;
 }) {
   const offset = useTransform(progress, (p) => {
     let diff = (index - p) % total;
@@ -284,6 +330,17 @@ function StackCard({
         )}
       </div>
       <motion.div style={{ opacity: shadeOpacity }} className="stack-shade" />
+      {/* pointer-events:auto lets the × receive clicks despite the card's
+          pointer-events:none — it sits beside (not under) the drag surface */}
+      <button
+        type="button"
+        className="stack-remove"
+        aria-label={`Remove ${item.title}`}
+        onClick={onRemove}
+        disabled={busy}
+      >
+        ×
+      </button>
       <span className="stack-badge">{item.tag}</span>
       <motion.div style={{ opacity: metaOpacity }} className="stack-meta">
         <span className="stack-title">{item.title}</span>
