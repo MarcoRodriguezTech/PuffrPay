@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LeashBar } from "@/components/LeashBar";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import {
@@ -459,6 +459,68 @@ export default function AgentPage() {
   const pickIndex = visibleSteps.findIndex((s) => s.step === "pick");
   const showReasoning = pickIndex >= 0 && !!purchase?.agentReasoning;
   const blockedReason = purchase?.status === "BLOCKED" ? purchase.policyReason : null;
+
+  // The receipt is the dropdown that leads the response: while a reply is
+  // in flight it sits at the tail of the feed; once the reply lands it
+  // tucks in right before that bubble.
+  const showReceipt = visibleSteps.length > 0 || busy;
+  const lastIsAgent = messages[messages.length - 1]?.role === "agent";
+  const receiptIdx = !busy && lastIsAgent ? messages.length - 1 : messages.length;
+  const receiptEl = showReceipt && (
+    <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
+      <button
+        type="button"
+        className="log-title"
+        onClick={() => setLogOpen((o) => !o)}
+        aria-expanded={logOpen}
+      >
+        <svg className="log-chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M2.5 3.5 5 6l2.5-2.5" />
+        </svg>
+        AGENT RECEIPT
+        <span className="log-count">{visibleSteps.length}</span>
+      </button>
+      {logOpen && (
+        <div className="log-body">
+          {visibleSteps.map((s, i) => (
+            <div key={i}>
+              {logLine(s, i)}
+              {i === pickIndex && purchase && (
+                <div className="product-card">
+                  {purchase.imageUrl ? (
+                    <img
+                      className="thumb"
+                      src={purchase.imageUrl}
+                      alt={purchase.productTitle}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span className="thumb" aria-hidden="true">
+                      {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
+                    </span>
+                  )}
+                  <span className="meta">
+                    <span className="t">{purchase.productTitle}</span>
+                    <span className="s">{storeOf(purchase.merchantUrl)}</span>
+                    <span className="p">{fmtDollars(purchase.amountCents)}</span>
+                  </span>
+                </div>
+              )}
+              {i === pickIndex && showReasoning && (
+                <div className="log-reason">{purchase?.agentReasoning}</div>
+              )}
+            </div>
+          ))}
+          {busy && (
+            <div className="typing">
+              Shopping<span className="dots" aria-hidden="true" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
   const spentDisplay = useCountUp(budget?.spentCents ?? 0);
   const state = budget ? stateForRatio(budget.ratio) : "calm";
 
@@ -481,15 +543,18 @@ export default function AgentPage() {
             </div>
           ) : (
             <>
-              {messages.map((m) => (
-                <ChatMessageRow
-                  key={m.id}
-                  m={m}
-                  live={activeOptions?.msgId === m.id}
-                  busy={choosing === m.id}
-                  onPick={choose}
-                />
+              {messages.map((m, i) => (
+                <Fragment key={m.id}>
+                  {i === receiptIdx && receiptEl}
+                  <ChatMessageRow
+                    m={m}
+                    live={activeOptions?.msgId === m.id}
+                    busy={choosing === m.id}
+                    onPick={choose}
+                  />
+                </Fragment>
               ))}
+              {receiptIdx === messages.length && receiptEl}
 
               {blockedReason && !busy && (
                 <div className="blocked-strip" role="status">
@@ -637,86 +702,28 @@ export default function AgentPage() {
             />
           )}
 
-          <div className="input-zone">
-            {(visibleSteps.length > 0 || busy) && (
-              <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
-                <button
-                  type="button"
-                  className="log-title"
-                  onClick={() => setLogOpen((o) => !o)}
-                  aria-expanded={logOpen}
-                >
-                  <svg className="log-chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-                    <path d="M2.5 3.5 5 6l2.5-2.5" />
-                  </svg>
-                  AGENT RECEIPT
-                  <span className="log-count">{visibleSteps.length}</span>
-                </button>
-                {logOpen && (
-                  <div className="log-body">
-                    {visibleSteps.map((s, i) => (
-                      <div key={i}>
-                        {logLine(s, i)}
-                        {i === pickIndex && purchase && (
-                          <div className="product-card">
-                            {purchase.imageUrl ? (
-                              <img
-                                className="thumb"
-                                src={purchase.imageUrl}
-                                alt={purchase.productTitle}
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            ) : (
-                              <span className="thumb" aria-hidden="true">
-                                {purchase.productTitle?.[0]?.toUpperCase() ?? "?"}
-                              </span>
-                            )}
-                            <span className="meta">
-                              <span className="t">{purchase.productTitle}</span>
-                              <span className="s">{storeOf(purchase.merchantUrl)}</span>
-                              <span className="p">{fmtDollars(purchase.amountCents)}</span>
-                            </span>
-                          </div>
-                        )}
-                        {i === pickIndex && showReasoning && (
-                          <div className="log-reason">{purchase?.agentReasoning}</div>
-                        )}
-                      </div>
-                    ))}
-                    {busy && (
-                      <div className="typing">
-                        Shopping<span className="dots" aria-hidden="true" />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <form
-              className="chat-input"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
-            >
-              <label className="visually-hidden" htmlFor="agent-msg">
-                Message the agent
-              </label>
-              <input
-                id="agent-msg"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="What should I buy?"
-                disabled={busy}
-                autoComplete="off"
-              />
-              <button type="submit" disabled={busy || !input.trim()}>
-                Send
-              </button>
-            </form>
-          </div>
+          <form
+            className="chat-input"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+          >
+            <label className="visually-hidden" htmlFor="agent-msg">
+              Message the agent
+            </label>
+            <input
+              id="agent-msg"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="What should I buy?"
+              disabled={busy}
+              autoComplete="off"
+            />
+            <button type="submit" disabled={busy || !input.trim()}>
+              Send
+            </button>
+          </form>
         </div>
       </div>
 

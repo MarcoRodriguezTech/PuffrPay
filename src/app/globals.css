@@ -1630,43 +1630,25 @@ img[src*="/mascot/"] {
   gap: var(--s3);
 }
 
-/* The receipt is a floating drawer pinned just above the input — bottom-
-   anchored so expanding grows upward over the chat instead of pushing the
-   input (or the option stack) below the fold. Collapsed it hugs its
-   content as a small pill in the stack zone's empty corner. */
-.input-zone {
-  position: relative;
-}
-
-.input-zone .agent-log {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + var(--s2));
-  z-index: 60;
-  width: min(480px, 100%);
-  max-height: 240px;
-  box-shadow: var(--glass-hi), var(--shadow-raise);
-  transition: width var(--dur-fast) var(--ease);
-}
-
 /* Collapsed there is no receipt rectangle at all — the wrapper goes
-   chromeless and the title button itself is the chip you click. */
-.input-zone .agent-log.closed {
-  width: auto;
+   chromeless and the title button itself is the chip you click, sitting
+   in the feed like any other message row. */
+.agent-log.closed {
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  overflow: visible;
 }
 
-.input-zone .agent-log.closed::before,
-.input-zone .agent-log.closed::after {
+.agent-log.closed::before,
+.agent-log.closed::after {
   content: none;
 }
 
-.input-zone .agent-log.closed .log-title {
+.agent-log.closed .log-title {
   width: auto;
   padding: var(--s1) var(--s3);
   border: 1px solid var(--line);
@@ -1677,13 +1659,23 @@ img[src*="/mascot/"] {
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
-.input-zone .agent-log.closed .log-title:hover {
+.agent-log.closed .log-title:hover {
   border-color: var(--ink);
+}
+
+/* The themed glass rules target .agent-log with higher specificity, so the
+   folded chip needs its own reset or a faint shadow/blur shows around the
+   empty wrapper. */
+:root[data-theme] .agent-log.closed {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 /* till-receipt agent log */
 .agent-log {
   position: relative;
+  flex-shrink: 0;
   border: 1px solid var(--line);
   border-left: none;
   border-right: none;
