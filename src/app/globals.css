@@ -1508,6 +1508,22 @@ img[src*="/mascot/"] {
   padding-top: 36px;
 }
 
+/* same fish-tank drift as the Activity fun-money card — the wrapper stays in
+   flow and only its transform moves, so the amount text never reflows */
+.gauge-block .gauge-mascot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.gauge-block .gauge-mascot img.art.flip {
+  scale: -1 1;
+}
+
 .gauge-amount {
   font-size: var(--t44);
   font-family: var(--display);
@@ -1515,6 +1531,8 @@ img[src*="/mascot/"] {
   margin-top: var(--s3);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  position: relative;
+  z-index: 1;
 }
 
 .gauge-amount .of {
@@ -2695,6 +2713,13 @@ img[src*="/mascot/"] {
   --ag-studio-layout-widget-border-color: transparent;
   --ag-studio-layout-widget-border-width: 0px;
   --ag-studio-layout-widget-border-radius: 0px;
+}
+
+/* Loading veil over widgets — same glass as the panels it covers. */
+.studio-card .ag-studio-layout-widget-skeleton-overlay-container {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* The collapsed Filters rail is dead chrome on the report's right edge;
