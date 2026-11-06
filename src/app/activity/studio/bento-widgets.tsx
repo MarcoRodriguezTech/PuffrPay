@@ -8,7 +8,7 @@
 // `context` (the DashboardData); the pager writes the grid's widget filter.
 
 import Link from "next/link";
-import { useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useMemo, useRef, useState, useLayoutEffect, useEffect } from "react";
 import type { AgWidgetDefinition } from "ag-studio-react";
 import type { AgWidgetData, AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
@@ -268,6 +268,70 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
   const pct = Math.min(100, Math.round(ratio * 100));
   const state = stateForRatio(ratio);
 
+  const mascotRef = useRef<HTMLSpanElement>(null);
+
+  // The mascot drifts around its card like a fish in a tank, bouncing off the
+  // card's side walls, the head bottom, and the top of the budget bar. Layout
+  // position stays put — we only animate transform — so nothing reflows.
+  useEffect(() => {
+    const mascot = mascotRef.current;
+    const card = mascot?.closest<HTMLElement>(".funmoney");
+    const head = card?.querySelector<HTMLElement>(".fm-head");
+    const bar = card?.querySelector<HTMLElement>(".fm-bar");
+    const img = mascot?.querySelector<HTMLElement>("img.art");
+    if (!mascot || !card || !head || !bar) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let pos = { x: 0, y: 0 };
+    let vel = { x: 60, y: 45 };
+    let flipped = false;
+    let raf = 0;
+    let last = performance.now();
+
+    const step = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      // Displacement bounds derived from the mascot's transform-free home
+      // position. The gauge box pads the art ~1.5x for fx, so the bounds use
+      // the art's edge — the fish visibly touches the walls and the bar.
+      const cardR = card.getBoundingClientRect();
+      const cs = getComputedStyle(card);
+      const padL = parseFloat(cs.paddingLeft) || 0;
+      const padR = parseFloat(cs.paddingRight) || 0;
+      const headB = head.getBoundingClientRect().bottom - cardR.top + 4;
+      const barT = bar.getBoundingClientRect().top - cardR.top - 4;
+      const w = mascot.offsetWidth;
+      const h = mascot.offsetHeight;
+      const inset = img ? (h - img.offsetHeight) / 2 : 0;
+      const minX = padL - mascot.offsetLeft - inset;
+      const maxX = cardR.width - padR - w - mascot.offsetLeft + inset;
+      const minY = headB - mascot.offsetTop - inset;
+      const maxY = barT - h - mascot.offsetTop + inset;
+
+      pos.x += vel.x * dt;
+      pos.y += vel.y * dt;
+      if (pos.x <= minX) { pos.x = minX; vel.x = Math.abs(vel.x); }
+      else if (pos.x >= maxX) { pos.x = maxX; vel.x = -Math.abs(vel.x); }
+      if (minY <= maxY) {
+        if (pos.y <= minY) { pos.y = minY; vel.y = Math.abs(vel.y); }
+        else if (pos.y >= maxY) { pos.y = maxY; vel.y = -Math.abs(vel.y); }
+      } else {
+        pos.y = 0;
+      }
+
+      const wantFlip = vel.x < 0;
+      if (wantFlip !== flipped && img) {
+        flipped = wantFlip;
+        img.classList.toggle("flip", flipped);
+      }
+      mascot.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
     <>
       <div className="bento-head fm-head">
@@ -276,7 +340,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
           <LeashBar ratio={ratio} width={56} />
         </span>
       </div>
-      <span className="fm-mascot">
+      <span className="fm-mascot" ref={mascotRef}>
         <PufferGauge ratio={ratio} size={110} showLabel={false} />
       </span>
       <div className="fm-amount">

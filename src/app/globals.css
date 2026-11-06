@@ -3131,9 +3131,20 @@ img[src*="/mascot/"] {
   /* the gauge reserves ~1.5x its art size for spikes/bubbles */
   max-height: 174px;
   overflow: visible;
+  /* JS bounces the mascot around the card — keep it under the readout text
+     and out of the pointer's way */
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.funmoney .fm-mascot img.art.flip {
+  scale: -1 1;
 }
 .funmoney .fm-amount {
   flex: none;
+  position: relative;
+  z-index: 1;
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
