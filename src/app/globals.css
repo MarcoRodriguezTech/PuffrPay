@@ -763,16 +763,6 @@ label {
   pointer-events: none;
 }
 
-.puffer .fx .spike {
-  position: absolute;
-  width: 2px;
-  height: 10px;
-  background: var(--ink);
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease);
-}
-
 .puffer .fx .drop {
   position: absolute;
   width: 7px;
@@ -780,19 +770,6 @@ label {
   fill: var(--tide);
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
-}
-
-.puffer .fx .eyes {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease);
-}
-
-.puffer .fx .eyes circle {
-  fill: var(--card);
-  stroke: var(--ink);
-  stroke-width: 1.5;
 }
 
 .puffer .bubble {
@@ -817,13 +794,13 @@ label {
   --pscale: 1.25;
 }
 .puffer.puffed .tint {
-  opacity: 0.25;
+  opacity: 0.12;
 }
 .puffer.maxed {
   --pscale: 1.35;
 }
 .puffer.maxed .tint {
-  opacity: 0.45;
+  opacity: 0.3;
 }
 
 /* idle bob */
@@ -889,15 +866,7 @@ label {
   opacity: 1;
 }
 
-/* spikes out when puffed/maxed */
-.puffer.puffed .spike,
-.puffer.maxed .spike {
-  opacity: 1;
-}
-
-.puffer.maxed .eyes {
-  opacity: 1;
-}
+/* spikes/eyes are baked into the state art now — no overlay needed */
 
 /* blocked puff: 12% over current scale and back + bubble burst */
 .puffer.puffing .art {
@@ -1178,19 +1147,6 @@ label {
 
 .chat-empty h1 {
   font-size: var(--t28);
-}
-
-.chat-empty .ocean {
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 12px;
-  letter-spacing: 2px;
-  color: var(--line);
-  white-space: pre;
-  overflow: hidden;
-  max-width: 100%;
-  margin: var(--s4) auto 0;
-  user-select: none;
 }
 
 .chat-empty .examples {

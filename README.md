@@ -166,12 +166,12 @@ month.
 
 ## Mascot
 
-`PufferGauge` (`src/components/PufferGauge.tsx`) renders
-`public/mascot/puffr-placeholder.svg` (original placeholder art — swap the file
-or `MASCOT_SRC`). CSS-only states: <50% calm, 50–80% swelling, 80–99% puffed
-(red tint + spikes + sweat drops), 100% maxed out + "Max" tag. Numbers and a
-state label are always shown; a block triggers a short puff animation and a
-bubble burst. All motion respects `prefers-reduced-motion`.
+`PufferGauge` (`src/components/PufferGauge.tsx`) renders one transparent PNG
+per budget state from `public/mascot/`: `puffr-calm.png` (<50%),
+`puffr-swelling.png` (50–80%), `puffr-puffed.png` (80–99% and ≥100% maxed,
+plus a red tint + "Max" tag). `puffr.png` is the default art for static
+uses (favicon, error/404, empty states). The gauge still bobs, pops on a
+block, and blows bubbles; motion respects `prefers-reduced-motion`.
 
 ## Deploy on Render
 
@@ -219,6 +219,6 @@ src/lib            db, repo, policy engine, executor, agent, llm/*, channel3, pa
 src/components     SideRail, TopBar, ThemeToggle, PufferGauge, LeashBar, StatusBadge, Toaster
 db/migrations      SQL migrations
 scripts            migrate.ts, seed.ts
-public/mascot      placeholder pufferfish
+public/mascot      pufferfish art (calm / swelling / puffed + default)
 render.yaml        Render blueprint
 ```

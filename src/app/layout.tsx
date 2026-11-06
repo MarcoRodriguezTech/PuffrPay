@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   description: "Your fun money, on a leash.",
   icons: {
     icon: [
-      { url: ASSETS.mascotSvg, type: "image/svg+xml" },
+      { url: ASSETS.mascot, type: "image/png" },
       { url: ASSETS.icon192, sizes: "192x192", type: "image/png" },
       { url: ASSETS.icon512, sizes: "512x512", type: "image/png" },
     ],
