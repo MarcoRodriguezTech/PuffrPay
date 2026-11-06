@@ -12,6 +12,14 @@ export interface PickResult {
   reasoning: string;
 }
 
+/** One suggestion from the multi-pick call: product + a short vibe tag. */
+export interface OptionPick {
+  productId: string;
+  /** 1-3 word vibe, e.g. "playful pick", "practical pick". */
+  tag: string;
+  reasoning: string;
+}
+
 /** One filter clause produced by the audit-query call. */
 export interface AuditFilter {
   field: string;
@@ -39,6 +47,15 @@ export interface LLM {
     message: string,
     products: ProductResult[]
   ): Promise<PickResult | null>;
+  /**
+   * Curate up to maxPicks varied products for the owner to choose between.
+   * Returns [] when nothing fits (JSON only).
+   */
+  pickProducts(
+    message: string,
+    products: ProductResult[],
+    maxPicks: number
+  ): Promise<OptionPick[]>;
   /** Turn a natural-language audit question into validated filter JSON. */
   auditQuery(question: string): Promise<AuditQuerySpec>;
 }

@@ -23,6 +23,44 @@ interface ChatMsg {
   content: string;
 }
 
+interface OptionItem {
+  id: string;
+  title: string;
+  priceCents: number;
+  currency: string;
+  merchantUrl: string | null;
+  imageUrl: string | null;
+  category: string | null;
+  tag: string;
+  reasoning: string;
+  decision: "ALLOW" | "ASK" | "BLOCK";
+  decisionReason: string;
+}
+
+interface OptionsPayload {
+  kind: "options";
+  text: string;
+  items: OptionItem[];
+  picked?: string;
+}
+
+function parseOptions(content: string): OptionsPayload | null {
+  try {
+    const p = JSON.parse(content);
+    return p?.kind === "options" && Array.isArray(p.items) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+function markPicked(content: string, productId: string): string {
+  try {
+    return JSON.stringify({ ...JSON.parse(content), picked: productId });
+  } catch {
+    return content;
+  }
+}
+
 interface Step {
   step: string;
   detail: string;
@@ -116,6 +154,7 @@ export default function AgentPage() {
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [pendingErr, setPendingErr] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"approved" | "rejected" | null>(null);
+  const [choosing, setChoosing] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const appendStep = useCallback((s: Step) => {
@@ -209,6 +248,54 @@ export default function AgentPage() {
       }
     } finally {
       setBusy(false);
+      refresh();
+    }
+  }
+
+  async function choose(messageId: number, productId: string) {
+    if (choosing != null || busy) return;
+    setChoosing(messageId);
+    setBusyError(false);
+    setPendingErr(null);
+    setApproveUrl(null);
+    setPurchase(null);
+    setOutcome(null);
+    setSteps([]);
+    setShown(0);
+    try {
+      const res = await fetch("/api/agent/choose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, productId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "pick failed");
+      setSteps(data.steps ?? []);
+      setShown(0);
+      setRevealKey((k) => k + 1);
+      setPurchase(data.purchase ?? null);
+      setApproveUrl(data.approveUrl ?? null);
+      if (data.reply) {
+        setMessages((m) => [
+          ...m.map((x) =>
+            x.id === messageId
+              ? { ...x, content: markPicked(x.content, productId) }
+              : x
+          ),
+          { id: Date.now() + 1, role: "agent", content: data.reply },
+        ]);
+      }
+      if (data.purchase?.status === "BLOCKED") {
+        setBlockedAt(Date.now());
+        toast(blockedCopy(data.purchase.policyReason, policy));
+      } else if (data.purchase?.status === "PURCHASED") {
+        toast("Bought. Under your auto-approve limit.");
+      }
+    } catch (err) {
+      console.error("[agent] choose failed:", err);
+      toast(friendlyClientError(err));
+    } finally {
+      setChoosing(null);
       refresh();
     }
   }
@@ -318,11 +405,25 @@ export default function AgentPage() {
             </div>
           ) : (
             <>
-              {messages.map((m) => (
-                <div key={m.id} className={`msg ${m.role}`}>
-                  {m.content}
-                </div>
-              ))}
+              {messages.map((m) => {
+                const opts = m.role === "agent" ? parseOptions(m.content) : null;
+                if (opts) {
+                  return (
+                    <OptionCarousel
+                      key={m.id}
+                      msgId={m.id}
+                      payload={opts}
+                      busy={choosing === m.id}
+                      onPick={choose}
+                    />
+                  );
+                }
+                return (
+                  <div key={m.id} className={`msg ${m.role}`}>
+                    {m.content}
+                  </div>
+                );
+              })}
 
               {(visibleSteps.length > 0 || busy) && (
                 <div className="agent-log" aria-live="polite">
@@ -561,5 +662,78 @@ export default function AgentPage() {
         )}
       </aside>
     </main>
+  );
+}
+
+/** Horizontal suggestion row the agent leaves in chat; the owner picks a card. */
+function OptionCarousel({
+  msgId,
+  payload,
+  busy,
+  onPick,
+}: {
+  msgId: number;
+  payload: OptionsPayload;
+  busy: boolean;
+  onPick: (messageId: number, productId: string) => void;
+}) {
+  const picked = payload.picked;
+  return (
+    <div className="msg agent opt-wrap">
+      <div>{payload.text}</div>
+      <div className="option-carousel" role="list">
+        {payload.items.map((it) => {
+          const blocked = it.decision === "BLOCK";
+          const isPicked = picked === it.id;
+          return (
+            <div
+              key={it.id}
+              role="listitem"
+              className={`opt-card${blocked ? " blocked" : ""}${isPicked ? " picked" : ""}`}
+            >
+              {it.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="product-thumb opt-thumb"
+                  src={it.imageUrl}
+                  alt=""
+                  loading="lazy"
+                />
+              ) : (
+                <span className="product-thumb opt-thumb" aria-hidden="true">
+                  {it.title?.[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="opt-tag">{it.tag}</span>
+              <span className="opt-title">{it.title}</span>
+              <span className="opt-price">
+                {fmtDollars(it.priceCents)}
+                <span className="s">{storeOf(it.merchantUrl)}</span>
+              </span>
+              <span className={`opt-chip ${it.decision.toLowerCase()}`}>
+                {it.decision === "ALLOW"
+                  ? "Auto-buys"
+                  : it.decision === "ASK"
+                    ? "Needs your OK"
+                    : "Blocked"}
+              </span>
+              {blocked ? (
+                <span className="opt-blocked">{it.decisionReason}</span>
+              ) : (
+                <button
+                  type="button"
+                  className="opt-pick"
+                  onClick={() => onPick(msgId, it.id)}
+                  disabled={busy || picked != null}
+                >
+                  {busy && <span className="spinner" aria-hidden="true" />}
+                  {isPicked ? "Picked" : "Pick this"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

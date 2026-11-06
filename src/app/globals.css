@@ -1197,6 +1197,139 @@ img[src*="/mascot/"] {
   font-size: 0.85rem;
 }
 
+/* options carousel — the agent's picks the owner chooses between */
+.msg.opt-wrap {
+  max-width: min(700px, 100%);
+}
+
+.option-carousel {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  margin-inline: calc(var(--s4) * -1);
+  padding: 0 var(--s4) var(--s2);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.opt-card {
+  flex: 0 0 186px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-ctl);
+  background: var(--card-grad);
+  padding: var(--s3);
+  color: var(--ink);
+}
+
+.opt-card .opt-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.opt-tag {
+  align-self: flex-start;
+  border: 1px solid var(--tide);
+  border-radius: 999px;
+  color: var(--tide);
+  font-size: var(--t12);
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 10px;
+}
+
+.opt-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: var(--t14);
+  min-height: 2.6em;
+}
+
+.opt-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.opt-price .s {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 400;
+  font-size: var(--t12);
+}
+
+.opt-chip {
+  align-self: flex-start;
+  font-size: var(--t12);
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.opt-chip.allow {
+  color: var(--st-bought);
+  background: var(--ocean-soft);
+}
+
+.opt-chip.ask {
+  color: var(--st-paypal);
+  background: var(--ocean-soft);
+}
+
+.opt-chip.block {
+  color: var(--st-rejected);
+  background: var(--danger-soft);
+}
+
+.opt-pick {
+  margin-top: auto;
+  min-height: 38px;
+  border: none;
+  border-radius: var(--radius-ctl);
+  background: var(--btn-grad);
+  color: #fff;
+  font-weight: 600;
+  font-size: var(--t14);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+}
+
+.opt-pick:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.opt-blocked {
+  margin-top: auto;
+  color: var(--st-rejected);
+  font-size: var(--t12);
+}
+
+.opt-card.blocked {
+  opacity: 0.62;
+}
+
+.opt-card.picked {
+  border-color: var(--tide);
+  box-shadow: 0 0 0 2px var(--ocean-soft);
+}
+
 .chat-bottom {
   padding: 0 var(--s8) var(--s6);
   display: flex;

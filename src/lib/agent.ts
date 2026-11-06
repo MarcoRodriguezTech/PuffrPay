@@ -1,6 +1,7 @@
 import { getLLM } from "./llm";
 import { searchProducts } from "./channel3";
 import { evaluatePolicy } from "./policy";
+import type { PolicyDecision } from "./types";
 import {
   createPurchaseRequest,
   findPendingByProduct,
@@ -27,12 +28,34 @@ export interface AgentRunResult {
   stub: boolean;
 }
 
+/** One card in the options carousel, with its stamped policy verdict. */
+export interface OptionsItem extends ProductResult {
+  tag: string;
+  reasoning: string;
+  decision: PolicyDecision;
+  decisionReason: string;
+}
+
+/** Payload stored in a chat_messages.content JSON blob (kind "options"). */
+export interface AgentOptionsPayload {
+  v: 1;
+  kind: "options";
+  text: string;
+  items: OptionsItem[];
+  picked?: string;
+}
+
+const MAX_OPTIONS = 5;
+
 /**
  * Mode B agent (see README "LLM mode"): two LLM calls, no function calling.
  *   Call 1 — planSearch: owner message -> {query, maxPriceCents}
  *   Server — Channel3 search + price filter
- *   Call 2 — pickProduct: pick one product + one-line reasoning
- *   Server — create purchase request, run deterministic policy engine
+ *   Call 2 — pickProducts: curate up to MAX_OPTIONS varied picks + vibe tags
+ *   Server — 1 option: straight through policy -> purchase.
+ *            2+ options: stamped with their policy verdict and offered as a
+ *            carousel; the owner's pick lands on /api/agent/choose, which runs
+ *            the same deterministic policy pipeline (never the LLM).
  * At most 2 LLM calls per shopping request.
  */
 export async function runAgent(message: string): Promise<AgentRunResult> {
@@ -68,26 +91,143 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     detail: `Channel3 '${plan.query}' ... ${products.length} results`,
   });
 
-  // --- call 2: pick ---
-  const pick = await llm.pickProduct(message, affordable);
-  if (!pick) {
-    const reply = `I couldn't find anything under $${(plan.maxPriceCents / 100).toFixed(2)} matching "${plan.query}". Nothing was requested.`;
-    steps.push({ step: "pick", detail: "no product fit the budget" });
+  // --- call 2: curate options ---
+  const picks = await llm.pickProducts(message, affordable, MAX_OPTIONS);
+  const items = picks
+    .map((pk) => {
+      const p = affordable.find((x) => x.id === pk.productId);
+      return p ? { ...p, tag: pk.tag, reasoning: pk.reasoning } : null;
+    })
+    .filter((x): x is ProductResult & { tag: string; reasoning: string } => x != null);
+  if (items.length === 0) {
+    const reply =
+      picks.length === 0
+        ? `I couldn't find anything under $${(plan.maxPriceCents / 100).toFixed(2)} matching "${plan.query}". Nothing was requested.`
+        : `The model picked products that aren't in the results. Nothing was requested.`;
+    steps.push({
+      step: "pick",
+      detail: picks.length === 0 ? "no product fit the budget" : "invalid product ids from model",
+    });
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
-  const product = affordable.find((p) => p.id === pick.productId);
-  if (!product) {
-    const reply = `The model picked a product that isn't in the results. Nothing was requested.`;
-    steps.push({ step: "pick", detail: "invalid product id from model" });
+
+  const spent = await getMonthSpentCents();
+
+  // A single viable option skips the carousel — straight through the pipeline.
+  if (items.length === 1) {
+    const product = items[0];
+    steps.push({
+      step: "pick",
+      detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
+    });
+    return finalizePick(product, product.reasoning, steps, policy, spent);
+  }
+
+  // Multiple options: stamp each with its policy verdict and offer the carousel.
+  const optionsItems: OptionsItem[] = items.map((p) => {
+    const d = evaluatePolicy(
+      policy,
+      { amountCents: p.priceCents, category: p.category },
+      spent
+    );
+    return {
+      id: p.id,
+      title: p.title,
+      priceCents: p.priceCents,
+      currency: p.currency,
+      merchantUrl: p.merchantUrl,
+      imageUrl: p.imageUrl,
+      category: p.category,
+      tag: p.tag,
+      reasoning: p.reasoning,
+      decision: d.decision,
+      decisionReason: d.reason,
+    };
+  });
+  steps.push({
+    step: "options",
+    detail: `${optionsItems.length} options — pick one`,
+  });
+  steps.push({ step: "result", detail: "WAITING FOR PICK" });
+  const reply = JSON.stringify({
+    v: 1,
+    kind: "options",
+    text: `Found ${optionsItems.length} picks under $${(plan.maxPriceCents / 100).toFixed(0)} — choose one:`,
+    items: optionsItems,
+  } satisfies AgentOptionsPayload);
+  await logChat("agent", reply);
+  return { steps, reply, purchase: null, approveUrl: null, stub: false };
+}
+
+/**
+ * The owner picked a card from an options message. The product comes from the
+ * stored server-side payload — never trusted from the client — then runs the
+ * same dedupe -> policy -> purchase -> payment tail as a direct pick.
+ */
+export async function chooseOption(
+  messageId: number,
+  productId: string
+): Promise<AgentRunResult> {
+  const steps: AgentStep[] = [];
+  const rows = await query<{ content: string }>(
+    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent'",
+    [messageId]
+  );
+  let payload: AgentOptionsPayload | null = null;
+  try {
+    const parsed = JSON.parse(rows[0]?.content ?? "");
+    if (parsed?.kind === "options" && Array.isArray(parsed.items)) {
+      payload = parsed as AgentOptionsPayload;
+    }
+  } catch {
+    /* not an options message */
+  }
+  const item = payload?.items.find((i) => i.id === productId);
+  if (!payload || !item) {
+    const reply = "Those options expired — ask me again.";
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
+
+  const policy = await getPolicy();
+  const spent = await getMonthSpentCents();
+  const product: ProductResult = {
+    id: item.id,
+    title: item.title,
+    priceCents: item.priceCents,
+    currency: item.currency,
+    merchantUrl: item.merchantUrl,
+    imageUrl: item.imageUrl,
+    category: item.category,
+  };
   steps.push({
     step: "pick",
     detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
   });
+  const result = await finalizePick(product, item.reasoning, steps, policy, spent);
+  try {
+    await query("UPDATE chat_messages SET content = $1 WHERE id = $2", [
+      JSON.stringify({ ...payload, picked: productId }),
+      messageId,
+    ]);
+  } catch {
+    // the picked marker is cosmetic — never fail the purchase on it
+  }
+  return result;
+}
 
+/**
+ * Post-pick tail shared by runAgent (single option) and chooseOption (carousel
+ * pick): dedupe -> deterministic policy -> purchase row -> ALLOW/ASK/BLOCK.
+ */
+async function finalizePick(
+  product: ProductResult,
+  reasoning: string | undefined,
+  steps: AgentStep[],
+  policy: Policy,
+  spent: number
+): Promise<AgentRunResult> {
   // Don't queue the same product twice: a WAITING request for it from the
   // last 10 minutes is still live (either owner approval or PayPal checkout).
   const pending = await findPendingByProduct(product.id);
@@ -99,7 +239,6 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
 
   // --- deterministic policy engine (never the LLM) ---
-  const spent = await getMonthSpentCents();
   const decision = evaluatePolicy(
     policy,
     { amountCents: product.priceCents, category: product.category },
@@ -124,7 +263,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     category: product.category,
     amountCents: product.priceCents,
     currency: product.currency,
-    agentReasoning: pick.reasoning,
+    agentReasoning: reasoning ?? null,
     policyDecision: decision.decision,
     policyReason: decision.reason,
     status,

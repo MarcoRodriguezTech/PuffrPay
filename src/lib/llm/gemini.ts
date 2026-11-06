@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { ProductResult } from "../types";
-import type { AuditQuerySpec, LLM, PickResult, SearchPlan } from "./types";
+import type { AuditQuerySpec, LLM, OptionPick, PickResult, SearchPlan } from "./types";
 
 const MAX_ATTEMPTS = 4;
 
@@ -114,6 +114,40 @@ ${list}`
       productId: String(parsed.productId),
       reasoning: String(parsed.reasoning ?? "").slice(0, 1000),
     };
+  }
+
+  async pickProducts(
+    message: string,
+    products: ProductResult[],
+    maxPicks: number
+  ): Promise<OptionPick[]> {
+    if (products.length === 0 || maxPicks < 1) return [];
+    const list = products
+      .map(
+        (p) =>
+          `id=${p.id} | title=${p.title} | price_cents=${p.priceCents} | category=${p.category ?? "unknown"}`
+      )
+      .join("\n");
+    const raw = await this.generateJson(
+      `You are a shopping agent curating options for the owner. Pick up to ${maxPicks} DIFFERENT products from the list that fit the owner's request — vary the angle (e.g. a playful pick, a practical pick, a wildcard) so they feel like genuinely different suggestions, best first.
+Give each a "tag" (1-3 words naming its angle) and a one-sentence "reasoning" why it fits.
+If nothing fits, return [].
+Return ONLY JSON: [{"productId": string, "tag": string, "reasoning": string}]
+Owner request: ${JSON.stringify(message)}
+Products:
+${list}`
+    );
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const known = new Set(products.map((p) => p.id));
+    return parsed
+      .filter((x) => x && typeof x === "object" && known.has(String(x.productId)))
+      .slice(0, maxPicks)
+      .map((x) => ({
+        productId: String(x.productId),
+        tag: String(x.tag ?? "pick").slice(0, 40),
+        reasoning: String(x.reasoning ?? "").slice(0, 300),
+      }));
   }
 
   async auditQuery(question: string): Promise<AuditQuerySpec> {

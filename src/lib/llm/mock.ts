@@ -1,5 +1,5 @@
 import type { ProductResult } from "../types";
-import type { AuditQuerySpec, LLM, PickResult, SearchPlan } from "./types";
+import type { AuditQuerySpec, LLM, OptionPick, PickResult, SearchPlan } from "./types";
 
 function dollarsToCents(s: string): number | null {
   const m = s.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
@@ -36,6 +36,22 @@ export class MockLLM implements LLM {
       productId: cheapest.id,
       reasoning: `[mock] "${cheapest.title}" fits the request and is the cheapest match within budget.`,
     };
+  }
+
+  async pickProducts(
+    _message: string,
+    products: ProductResult[],
+    maxPicks: number
+  ): Promise<OptionPick[]> {
+    const tags = ["Cheapest", "Solid pick", "Wildcard", "Splurge", "Dark horse"];
+    return [...products]
+      .sort((a, b) => a.priceCents - b.priceCents)
+      .slice(0, maxPicks)
+      .map((p, i) => ({
+        productId: p.id,
+        tag: tags[i % tags.length],
+        reasoning: `[mock] "${p.title}" fits the request within budget.`,
+      }));
   }
 
   async auditQuery(question: string): Promise<AuditQuerySpec> {
