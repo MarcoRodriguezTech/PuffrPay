@@ -57,21 +57,6 @@ const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 const COMPACT_QUERY = "(max-width: 1099px)";
 const MOBILE_QUERY = "(max-width: 719px)";
 
-// Toolbar selects write page filters on these Studio fields.
-const PERIOD_FILTERS: Record<string, AuditFilter[]> = {
-  all: [],
-  week: [{ field: "created_at", operator: "gte", value: "week" }],
-  month: [{ field: "created_at", operator: "gte", value: "month" }],
-};
-
-const STATUS_FILTERS: Record<string, AuditFilter[]> = {
-  all: [],
-  PURCHASED: [{ field: "status", operator: "eq", value: "PURCHASED" }],
-  WAITING: [{ field: "status", operator: "eq", value: "WAITING" }],
-  BLOCKED: [{ field: "status", operator: "eq", value: "BLOCKED" }],
-  REJECTED: [{ field: "status", operator: "eq", value: "REJECTED" }],
-};
-
 const ASK_CHIPS = [
   "blocked this week",
   "total spent this month",
@@ -312,14 +297,7 @@ function StudioDashboard({
     });
   }, [turns, askBusy]);
 
-  const [period, setPeriod] = useState("month");
-  const [statusSel, setStatusSel] = useState("all");
-  const toolFilters = useMemo(
-    () => [...(PERIOD_FILTERS[period] ?? []), ...(STATUS_FILTERS[statusSel] ?? [])],
-    [period, statusSel]
-  );
-
-  const applyPageFilters = (ask: AuditFilter[], tool: AuditFilter[]) => {
+  const applyPageFilters = (ask: AuditFilter[]) => {
     const api = apiRef.current;
     const st = api?.getState();
     if (!api || !st) return;
@@ -329,18 +307,12 @@ function StudioDashboard({
         p.id === st.selectedPageId
           ? {
               ...p,
-              filter: { ...p.filter, page: specToStudioFilters([...ask, ...tool]) },
+              filter: { ...p.filter, page: specToStudioFilters(ask) },
             }
           : p
       ),
     });
   };
-
-  // Re-apply whenever the toolbar selects change.
-  useEffect(() => {
-    applyPageFilters(askFilters, toolFilters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolFilters]);
 
   const applySpec = (spec: AuditQuerySpec) => {
     const api = apiRef.current;
@@ -352,7 +324,7 @@ function StudioDashboard({
         ...p,
         filter: {
           ...p.filter,
-          page: specToStudioFilters([...spec.filters, ...toolFilters]),
+          page: specToStudioFilters(spec.filters),
         },
       };
       const gridSort = specToGridSort(spec.sort);
@@ -428,14 +400,14 @@ function StudioDashboard({
   const removeFilter = (idx: number) => {
     const next = askFilters.filter((_, i) => i !== idx);
     setAskFilters(next);
-    applyPageFilters(next, toolFilters);
+    applyPageFilters(next);
   };
 
   const clearAsk = () => {
     setQuestion("");
     setAskFilters([]);
     setTurns([]);
-    applyPageFilters([], toolFilters);
+    applyPageFilters([]);
   };
 
   // The "Customize" dropdown replaces the old one-button-per-action toolbar.
@@ -455,7 +427,7 @@ function StudioDashboard({
     };
   }, [menuOpen]);
 
-  // Period/Status/Customize mount into the TopBar's actions slot on wide
+  // Filters/Customize mount into the TopBar's actions slot on wide
   // viewports (the .studio-filters-bar fallback below is hidden there).
   const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -491,36 +463,6 @@ function StudioDashboard({
     );
   }
 
-  const periodSelect = (
-    <label className="sel">
-      <span>Period</span>
-      <select
-        value={period}
-        onChange={(e) => setPeriod(e.target.value)}
-        aria-label="Filter by period"
-      >
-        <option value="all">All time</option>
-        <option value="week">This week</option>
-        <option value="month">This month</option>
-      </select>
-    </label>
-  );
-  const statusSelect = (
-    <label className="sel">
-      <span>Status</span>
-      <select
-        value={statusSel}
-        onChange={(e) => setStatusSel(e.target.value)}
-        aria-label="Filter by status"
-      >
-        <option value="all">All statuses</option>
-        <option value="PURCHASED">Bought</option>
-        <option value="WAITING">Waiting</option>
-        <option value="BLOCKED">Blocked</option>
-        <option value="REJECTED">Rejected</option>
-      </select>
-    </label>
-  );
   const filtersButton = (
     <button
       className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
@@ -587,8 +529,6 @@ function StudioDashboard({
       {topbarSlot &&
         createPortal(
           <div className="topbar-activity-controls">
-            {periodSelect}
-            {statusSelect}
             {filtersButton}
             {customizeMenu}
           </div>,
@@ -596,8 +536,6 @@ function StudioDashboard({
         )}
 
       <div className="studio-filters-bar">
-        {periodSelect}
-        {statusSelect}
         {filtersButton}
         {customizeMenu}
       </div>

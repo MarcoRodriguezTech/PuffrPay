@@ -2532,7 +2532,7 @@ img[src*="/mascot/"] {
 .studio-filters-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--s3);
   margin-top: var(--s2);
   margin-bottom: var(--s3);
@@ -2558,35 +2558,6 @@ img[src*="/mascot/"] {
   display: flex;
   align-items: center;
   gap: var(--s2);
-}
-.topbar-activity-controls .sel > span {
-  display: none;
-}
-.topbar-activity-controls select {
-  min-height: 36px;
-  font-size: var(--t14);
-}
-
-.sel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-}
-
-.sel > span {
-  font-family: var(--mono);
-  font-size: var(--t12);
-  color: var(--ink-soft);
-}
-
-.sel select {
-  min-height: 44px;
-  padding: 0 var(--s6) 0 var(--s3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-ctl);
-  background: var(--card-grad);
-  color: var(--ink);
-  font: inherit;
 }
 
 /* Customize dropdown — the whole report chrome in one button. */
