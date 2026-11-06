@@ -2,10 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Single source for the mascot art — swap this file to restyle everywhere. */
-export const MASCOT_SRC = "/mascot/puffr.svg";
+/** Single source for the mascot art — swap files in /public/mascot to restyle. */
+export const MASCOT_SRC = "/mascot/puffr.png";
 
 export type PufferState = "calm" | "swelling" | "puffed" | "maxed";
+
+// One render per gauge state; maxed reuses the puffed art plus the Max tag.
+const MASCOT_ART: Record<PufferState, string> = {
+  calm: "/mascot/puffr-calm.png",
+  swelling: "/mascot/puffr-swelling.png",
+  puffed: "/mascot/puffr-puffed.png",
+  maxed: "/mascot/puffr-puffed.png",
+};
 
 export function stateForRatio(ratio: number): PufferState {
   if (ratio >= 1) return "maxed";
@@ -21,18 +29,7 @@ export const STATE_LABELS: Record<PufferState, string> = {
   maxed: "Maxed out",
 };
 
-const SPIKES = 8;
 const BUBBLES = 5;
-
-// Positions inside the .fx overlay box (percent of the overlay).
-const spikeAt = (i: number) => {
-  const a = (i / SPIKES) * Math.PI * 2 - Math.PI / 2;
-  return {
-    left: `${50 + 46 * Math.cos(a)}%`,
-    top: `${50 + 46 * Math.sin(a)}%`,
-    transform: `translate(-50%, -50%) rotate(${(a * 180) / Math.PI + 90}deg)`,
-  };
-};
 
 export function PufferGauge({
   ratio,
@@ -76,33 +73,23 @@ export function PufferGauge({
       <span className="art-wrap" style={{ width: box, height: box }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={MASCOT_SRC}
+          src={MASCOT_ART[state]}
           width={size}
           height={size}
           alt=""
           className="art"
-          style={{ position: "absolute", left: off, top: off }}
+          style={{ position: "absolute", left: off, top: off, objectFit: "contain" }}
         />
-        <span className="tint" style={{ left: off, top: off, width: size, height: size }} />
         {decorated && (
           <span
             className="fx"
             style={{ left: off, top: off, width: size, height: size }}
           >
-            {Array.from({ length: SPIKES }, (_, i) => (
-              <i key={i} className="spike" style={spikeAt(i)} />
-            ))}
             <svg className="drop d1" style={{ left: "70%", top: "18%" }} viewBox="0 0 7 10" aria-hidden="true">
               <path d="M3.5 0C3.5 0 7 5 7 7a3.5 3.5 0 0 1-7 0C0 5 3.5 0 3.5 0Z" />
             </svg>
             <svg className="drop d2" style={{ left: "77%", top: "30%" }} viewBox="0 0 7 10" aria-hidden="true">
               <path d="M3.5 0C3.5 0 7 5 7 7a3.5 3.5 0 0 1-7 0C0 5 3.5 0 3.5 0Z" />
-            </svg>
-            <svg className="eyes" viewBox="0 0 100 100" aria-hidden="true">
-              <circle cx="36" cy="40" r="7" />
-              <circle cx="62" cy="40" r="7" />
-              <circle cx="37" cy="41" r="2.6" fill="var(--ink)" stroke="none" />
-              <circle cx="63" cy="41" r="2.6" fill="var(--ink)" stroke="none" />
             </svg>
             {Array.from({ length: BUBBLES }, (_, i) => (
               <i key={i} className={`bubble b${i + 1}`} />

@@ -8,21 +8,26 @@
   color-scheme: dark;
 
   /* --- color ------------------------------------------------------- */
-  --paper: #04080f;
-  --card: #0a1626;
-  /* surfaces: the one place a background gradient is allowed */
-  --card-grad: linear-gradient(150deg, #0e2238 0%, #0a1626 55%, #070e18 100%);
-  --ink: #eaf4ff;
+  --paper: #04070d;
+  --card: rgba(15, 23, 42, 0.55);
+  /* surfaces: translucent navy panels over the ambient light field —
+     the backdrop blur below lets the glow bleed through every card */
+  --card-grad: linear-gradient(160deg, rgba(30, 41, 82, 0.55) 0%, rgba(15, 23, 42, 0.45) 60%, rgba(8, 12, 22, 0.5) 100%);
+  --glass: rgba(15, 23, 42, 0.5);
+  --glass-line: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px);
+  --glass-hi: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --ink: #ffffff;
   --ink-hover: #ffffff;
-  --ink-soft: #9bb4cc;
+  --ink-soft: #8ea3c4;
   --paper-warm: #070e18;
-  --line: rgba(124, 203, 243, 0.14);
+  --line: rgba(255, 255, 255, 0.08);
   --gold: #f2c34e; /* the mascot's gold — stays on the fish */
   --gold-soft: rgba(242, 195, 78, 0.14);
-  --tide: #38b6f2;
-  --deep: #0b5c99;
-  --ocean-soft: rgba(56, 182, 242, 0.12);
-  --btn-grad: linear-gradient(135deg, #1479c4, #0b5c99);
+  --tide: #38bdf8;
+  --deep: #2563eb;
+  --ocean-soft: rgba(56, 189, 248, 0.12);
+  --btn-grad: linear-gradient(135deg, #2563eb, #06b6d4);
   --ok: #2bc48a;
   --ok-soft: rgba(43, 196, 138, 0.13);
   --warn: #f2b84b;
@@ -31,7 +36,15 @@
   --danger-soft: rgba(255, 107, 94, 0.15);
   --danger-line: rgba(255, 107, 94, 0.35);
   --reject: #8fa3b8;
-  --glow: radial-gradient(900px 520px at 0% 0%, rgba(31, 143, 214, 0.18), transparent 65%);
+  /* request statuses stay inside the blue family: vivid = alive/moving,
+     muted slate = stopped or rejected. --ok/--warn/--danger remain for
+     genuine warnings (cap line, errors, delta chips). */
+  --st-bought: #38bdf8;
+  --st-paypal: #60a5fa;
+  --st-waiting: #818cf8;
+  --st-blocked: #94a3b8;
+  --st-rejected: #64748b;
+  --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
 
@@ -75,6 +88,10 @@
   --s6: 24px;
   --s8: 32px;
   --s12: 48px;
+  /* app-wide rhythm: every card, tile and widget sits --gap apart, and every
+     card pads --card-pad inside (mirrored to Studio's widget inset). */
+  --gap: 24px;
+  --card-pad: 24px;
   --radius: 22px;
   --radius-mascot: 26px;
   --radius-ctl: 14px;
@@ -93,35 +110,52 @@
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+@media (min-width: 1440px) {
+  :root {
+    --gap: 32px;
+  }
+}
+
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --paper: #f3f9fd;
-  --card: #ffffff;
-  --card-grad: linear-gradient(150deg, #ffffff 0%, #eef7fd 100%);
-  --ink: #0a1b2b;
-  --ink-hover: #04080f;
-  --ink-soft: #4a6178;
-  --paper-warm: #eef7fd;
-  --line: rgba(11, 92, 153, 0.12);
+  /* Frosted-glass light theme: soft slate canvas, translucent white panels,
+     ocean blue for primary data, emerald only for positive, slate gray for
+     neutral/stopped. --gold/--warn stay as the "needs attention" accent. */
+  --paper: #f1f5f9;
+  --card: rgba(255, 255, 255, 0.65);
+  --card-grad: linear-gradient(160deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.6) 55%, rgba(241, 245, 249, 0.62) 100%);
+  --ink: #0f172a;
+  --ink-hover: #020617;
+  --ink-soft: #64748b;
+  --paper-warm: #e2e8f0;
+  --line: rgba(100, 116, 139, 0.18);
+  --glass-line: rgba(255, 255, 255, 0.85);
+  --glass-blur: blur(20px);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --gold: #c98a12;
   --gold-soft: rgba(201, 138, 18, 0.1);
-  --tide: #0b6fb8;
-  --deep: #0b5c99;
-  --ocean-soft: #ddf0fc;
-  --btn-grad: linear-gradient(135deg, #1479c4, #0b5c99);
-  --ok: #12794f;
-  --ok-soft: rgba(18, 121, 79, 0.1);
+  --tide: #2563eb;
+  --deep: #1d4ed8;
+  --ocean-soft: #dbeafe;
+  --btn-grad: linear-gradient(135deg, #2563eb, #0284c7);
+  --ok: #059669;
+  --ok-soft: rgba(5, 150, 105, 0.1);
   --warn: #8a5a00;
   --warn-soft: rgba(138, 90, 0, 0.1);
-  --danger: #b3382c;
-  --danger-soft: rgba(179, 56, 44, 0.08);
-  --danger-line: rgba(179, 56, 44, 0.3);
-  --reject: #4a6178;
-  --glow: radial-gradient(900px 520px at 0% 0%, rgba(11, 111, 184, 0.07), transparent 65%);
-  --shadow-raise: 0 12px 32px rgba(11, 92, 153, 0.14);
-  --shadow-raise-sm: 0 6px 18px rgba(11, 92, 153, 0.1);
-  --chart-7: #38b6f2;
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --danger-line: rgba(220, 38, 38, 0.3);
+  --reject: #64748b;
+  --st-bought: #0284c7;
+  --st-paypal: #2563eb;
+  --st-waiting: #6366f1;
+  --st-blocked: #64748b;
+  --st-rejected: #94a3b8;
+  --glow: none;
+  --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
+  --shadow-raise-sm: 0 8px 32px rgba(15, 23, 42, 0.05);
+  --chart-7: #94a3b8;
 }
 
 * {
@@ -145,6 +179,32 @@ body {
   font-family: var(--sans);
   font-size: var(--t16);
   line-height: 1.45;
+}
+
+/* Dark glassmorphism: the UI is backlit by soft colored lights — blurred
+   radial blobs of electric blue, cyan and indigo fixed behind every panel.
+   The translucent cards + backdrop-filter blur let this glow bleed through. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 36% at 12% 4%, rgba(37, 99, 235, 0.32), transparent 70%),
+    radial-gradient(36% 32% at 88% 12%, rgba(34, 211, 238, 0.22), transparent 70%),
+    radial-gradient(52% 44% at 55% 102%, rgba(79, 70, 229, 0.22), transparent 70%);
+  filter: blur(100px);
+}
+/* Light theme gets its own pastel lights: pale ocean blue + mint orbs,
+   blurred even harder, so the frosted panels float on soft color. */
+:root[data-theme="light"] body::before {
+  background:
+    radial-gradient(44% 38% at 10% 6%, rgba(147, 197, 253, 0.55), transparent 70%),
+    radial-gradient(38% 34% at 90% 12%, rgba(110, 231, 183, 0.42), transparent 70%),
+    radial-gradient(54% 46% at 52% 104%, rgba(167, 243, 208, 0.4), transparent 70%),
+    radial-gradient(40% 34% at 68% 42%, rgba(191, 219, 254, 0.35), transparent 70%);
+  filter: blur(120px);
 }
 
 a {
@@ -174,7 +234,6 @@ h2 {
 }
 
 /* All money/counts render tabular so digits don't jitter. */
-.budget-pill,
 .gauge-amount,
 .status-badge,
 .ac-amount,
@@ -511,30 +570,6 @@ label {
   display: none;
 }
 
-.budget-pill {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--line);
-  border-radius: var(--pill);
-  background: var(--card-grad);
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 0.85rem;
-  white-space: nowrap;
-}
-
-.budget-pill .leash {
-  color: var(--ink-soft);
-  letter-spacing: -1px;
-}
-
-.budget-pill .leash b {
-  color: var(--ink);
-  font-weight: 400;
-}
-
 .avatar-chip {
   display: inline-flex;
   width: 36px;
@@ -614,18 +649,6 @@ label {
 }
 
 @media (max-width: 719px) {
-  /* The ASCII leash inside the pill makes it ~290px wide — over half the
-     phone viewport. Mascot + numbers + % stay. */
-  .budget-pill .leash,
-  .budget-pill .leash-bar {
-    display: none;
-  }
-
-  /* The pill keeps mascot + $x/$y on phones; the trailing % is redundant. */
-  .budget-pill > span:last-child {
-    display: none;
-  }
-
   .topbar-right {
     gap: var(--s2);
   }
@@ -660,7 +683,7 @@ label {
 .page {
   width: 100%;
   margin: 0 auto;
-  padding: var(--s6) var(--gutter-wide) var(--s12);
+  padding: var(--s6) var(--gutter-wide) var(--s8);
   animation: page-in var(--dur) var(--ease);
 }
 
@@ -677,8 +700,14 @@ label {
 
 @media (max-width: 900px) {
   .page {
-    padding: var(--s4) var(--gutter) var(--s12);
+    padding: var(--s4) var(--gutter) var(--s8);
   }
+}
+
+/* The Activity report hugs the toolbar — tighter top padding than the
+   generic page rhythm. */
+.studio-page {
+  padding-top: var(--s2);
 }
 
 /* ---------- progress bars ---------- */
@@ -696,29 +725,30 @@ label {
   background: var(--gold);
 }
 
-/* ASCII leash progress: real progressbar with text drawn on top */
+/* Leash progress: a mini pill bar with the ocean gradient fill */
 .leash-bar {
-  position: relative;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 16px;
-  letter-spacing: -1px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  user-select: none;
+  display: inline-block;
+  height: 8px;
+  border-radius: var(--pill);
+  background: var(--ocean-soft);
+  overflow: hidden;
+  vertical-align: middle;
+  flex: none;
 }
 
 .leash-bar .leash-fill {
-  color: var(--ink);
-}
-
-.leash-bar .leash-fish {
-  color: var(--gold);
-  font-weight: 700;
-  text-shadow: 0 0 1px var(--ink);
+  display: block;
+  height: 100%;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
 }
 
 /* ---------- puffer gauge ---------- */
+
+/* Mascot art isn't square — letterbox inside fixed-size <img> boxes. */
+img[src*="/mascot/"] {
+  object-fit: contain;
+}
 
 .puffer {
   --pscale: 1;
@@ -740,32 +770,12 @@ label {
   transition: transform var(--dur-slow) ease-out;
 }
 
-.puffer .tint {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--danger);
-  opacity: 0;
-  transition: opacity var(--dur-slow) ease-out;
-  pointer-events: none;
-}
-
 .puffer .fx {
   position: absolute;
   transform: scale(var(--pscale));
   transform-origin: 50% 60%;
   transition: transform var(--dur-slow) ease-out;
   pointer-events: none;
-}
-
-.puffer .fx .spike {
-  position: absolute;
-  width: 2px;
-  height: 10px;
-  background: var(--ink);
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease);
 }
 
 .puffer .fx .drop {
@@ -775,19 +785,6 @@ label {
   fill: var(--tide);
   opacity: 0;
   transition: opacity var(--dur) var(--ease);
-}
-
-.puffer .fx .eyes {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease);
-}
-
-.puffer .fx .eyes circle {
-  fill: var(--card);
-  stroke: var(--ink);
-  stroke-width: 1.5;
 }
 
 .puffer .bubble {
@@ -811,14 +808,8 @@ label {
 .puffer.puffed {
   --pscale: 1.25;
 }
-.puffer.puffed .tint {
-  opacity: 0.25;
-}
 .puffer.maxed {
   --pscale: 1.35;
-}
-.puffer.maxed .tint {
-  opacity: 0.45;
 }
 
 /* idle bob */
@@ -884,15 +875,7 @@ label {
   opacity: 1;
 }
 
-/* spikes out when puffed/maxed */
-.puffer.puffed .spike,
-.puffer.maxed .spike {
-  opacity: 1;
-}
-
-.puffer.maxed .eyes {
-  opacity: 1;
-}
+/* spikes/eyes are baked into the state art now — no overlay needed */
 
 /* blocked puff: 12% over current scale and back + bubble burst */
 .puffer.puffing .art {
@@ -985,20 +968,28 @@ label {
 }
 
 .status-badge.PURCHASED {
-  color: var(--ok);
-  border-color: var(--ok);
+  color: var(--st-bought);
+  border-color: var(--st-bought);
+}
+.status-badge.PAYPAL {
+  color: var(--st-paypal);
+  border-color: var(--st-paypal);
 }
 .status-badge.WAITING {
-  color: var(--warn);
-  border-color: var(--warn);
+  color: var(--st-waiting);
+  border-color: var(--st-waiting);
 }
-.status-badge.BLOCKED,
+.status-badge.BLOCKED {
+  color: var(--st-blocked);
+  border-color: var(--st-blocked);
+}
 .status-badge.FAILED {
-  color: var(--danger);
-  border-color: var(--danger);
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
 }
 .status-badge.REJECTED {
-  color: var(--reject);
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
 }
 
 /* ---------- chips ---------- */
@@ -1135,7 +1126,9 @@ label {
 .agent-page {
   width: 100%;
   margin: 0 auto;
-  padding-inline: var(--gutter-wide);
+  padding-left: var(--gutter-wide);
+  /* the aside pins itself to the viewport's right edge */
+  padding-right: 0;
   display: flex;
   animation: page-in var(--dur) var(--ease);
 }
@@ -1165,19 +1158,6 @@ label {
 
 .chat-empty h1 {
   font-size: var(--t28);
-}
-
-.chat-empty .ocean {
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 12px;
-  letter-spacing: 2px;
-  color: var(--line);
-  white-space: pre;
-  overflow: hidden;
-  max-width: 100%;
-  margin: var(--s4) auto 0;
-  user-select: none;
 }
 
 .chat-empty .examples {
@@ -1627,8 +1607,7 @@ label {
     height: 136px !important;
   }
   .agent-side .puffer img.art,
-  .agent-side .puffer .fx,
-  .agent-side .puffer .tint {
+  .agent-side .puffer .fx {
     width: 96px !important;
     height: 96px !important;
     left: 20px !important;
@@ -1647,7 +1626,8 @@ label {
 
 .policy-layout {
   display: grid;
-  grid-template-columns: 440px 1fr;
+  /* Rules and the queue share the row evenly */
+  grid-template-columns: 1fr 1fr;
   gap: var(--s8);
 }
 
@@ -1699,11 +1679,11 @@ label {
 }
 
 .rules-ruler .seg.auto {
-  background: var(--gold-soft);
+  background: var(--ocean-soft);
 }
 
 .rules-ruler .seg.ask {
-  background: var(--gold);
+  background: var(--tide);
 }
 
 .rules-ruler .seg.block {
@@ -1781,11 +1761,11 @@ label {
 }
 
 .rules-ruler .zone-labels .swatch.auto {
-  background: var(--gold-soft);
+  background: var(--ocean-soft);
 }
 
 .rules-ruler .zone-labels .swatch.ask {
-  background: var(--gold);
+  background: var(--tide);
 }
 
 .rules-ruler .zone-labels .swatch.block {
@@ -1809,6 +1789,43 @@ label {
   border-radius: var(--radius);
   background: var(--card-grad);
   padding: var(--s4);
+}
+
+.gate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.gate-head + .money,
+.gate-head + .helper {
+  margin-top: var(--s2);
+}
+
+.seg-toggle {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.seg-toggle button {
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--t12);
+  font-weight: 600;
+  line-height: 1;
+  min-height: 0;
+  padding: 6px 14px;
+}
+
+.seg-toggle button.on {
+  background: var(--btn-grad);
+  color: #fff;
 }
 
 .field .helper {
@@ -2097,8 +2114,325 @@ label {
   justify-content: space-between;
 }
 
-.ask-box {
-  margin-top: var(--s4);
+/* ---------- Ask the log: floating bubble + slide-in panel ---------- */
+
+:root {
+  --ask-w: clamp(320px, 26vw, 400px);
+}
+
+/* The page squeezes left while the panel is docked (desktop only). */
+.shell {
+  transition: margin-right var(--dur) var(--ease);
+}
+
+@media (min-width: 1100px) {
+  body.ask-open .shell {
+    margin-right: calc(var(--ask-w) + 32px);
+  }
+}
+
+.ask-fab {
+  position: fixed;
+  right: var(--s6);
+  bottom: var(--s6);
+  z-index: 85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  color: #fff;
+  box-shadow: var(--shadow-raise);
+}
+
+.ask-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ask-fab:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: none;
+}
+
+/* Floating card docked to the right edge — mirrors the left rail. */
+.ask-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90;
+  width: var(--ask-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--card-grad);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow-raise);
+  overflow: hidden;
+  animation: ask-panel-in var(--dur) var(--ease);
+}
+
+@keyframes ask-panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.ask-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5, var(--s4));
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-head h2 {
+  margin: 0;
+  font-size: var(--t16);
+  font-weight: 700;
+}
+
+.ask-clear {
+  font-size: 0.8rem;
+  padding: var(--s1) var(--s3);
+}
+
+.ask-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+.ask-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ask-close:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--ocean-soft);
+  filter: none;
+}
+
+.ask-panel .applied {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* Empty state — Notion-style greeting + suggestion list. */
+.ask-hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s8);
+  text-align: center;
+}
+
+.ask-hello img {
+  width: 44px;
+  height: 44px;
+}
+
+.ask-hello-q {
+  margin: 0 0 var(--s2);
+  font-size: var(--t16);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ask-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.ask-suggest button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-ctl);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--t14);
+  font-weight: 500;
+  text-align: left;
+  box-shadow: none;
+}
+
+.ask-suggest button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0;
+}
+
+.ask-suggest button:hover:not(:disabled) {
+  background: var(--ocean-soft);
+  color: var(--ink);
+  filter: none;
+}
+
+.ask-suggest button:hover:not(:disabled) svg {
+  opacity: 1;
+}
+
+/* Chat turns: user bubble right, assistant reply left. */
+.ask-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.ask-q {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: var(--s2) var(--s3);
+  border-radius: 16px 16px 4px 16px;
+  background: var(--btn-grad);
+  color: #fff;
+  font-size: var(--t14);
+  overflow-wrap: anywhere;
+}
+
+.ask-a {
+  align-self: flex-start;
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  font-size: var(--t14);
+  color: var(--ink);
+}
+
+.ask-a.err {
+  color: var(--danger);
+}
+
+.ask-a.thinking {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-soft);
+}
+
+.ask-a-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.ask-a-note {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+/* Bottom input bar. */
+.ask-input {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: var(--s3);
+  padding: var(--s1) var(--s1) var(--s1) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--paper-warm);
+}
+
+.ask-input:focus-within {
+  border-color: var(--tide);
+}
+
+.ask-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: var(--s2) 0;
+}
+
+.ask-input input:focus-visible {
+  outline: none;
+}
+
+.ask-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  color: #fff;
+  flex: none;
+}
+
+.ask-send svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ask-send:disabled {
+  opacity: 0.4;
+}
+
+/* Under 1100px the content can't meaningfully squeeze — the panel overlays
+   like a sheet, floating above the tab bar. */
+@media (max-width: 1099px) {
+  .ask-fab {
+    bottom: calc(64px + var(--s4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ask-panel {
+    top: var(--s3);
+    right: var(--s3);
+    bottom: calc(64px + var(--s3) + env(safe-area-inset-bottom, 0px));
+    left: var(--s3);
+    width: auto;
+  }
 }
 
 .ask-row {
@@ -2236,46 +2570,99 @@ label {
 
 /* ---------- activity (AG Studio) ---------- */
 
-.studio-toolbar {
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: var(--s3);
-}
-
-/* filter toolbar above the dashboard: Filters drawer button + period/status
-   selects that write Studio page filters */
+/* Filters + Customize live on the topbar title row at >=1100px (via the
+   .topbar-actions portal); below that they fall back to this inline row. */
 .studio-filters-bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--s3);
-  margin-top: var(--s4);
+  margin-top: var(--s2);
+  margin-bottom: var(--s3);
+}
+@media (min-width: 1100px) {
+  .studio-filters-bar {
+    display: none;
+  }
 }
 
-.studio-filters-bar .sel {
+.topbar-actions {
+  display: none;
+  margin-left: auto;
+  margin-right: var(--s3);
+}
+@media (min-width: 1100px) {
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+  }
+}
+.topbar-activity-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/* Customize dropdown — the whole report chrome in one button. */
+.customize {
+  position: relative;
+}
+.customize-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.customize-btn svg {
+  transition: transform var(--dur-fast) var(--ease);
+}
+.customize-btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.customize-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  min-width: 176px;
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
-}
-
-.studio-filters-bar .sel > span {
-  font-family: var(--mono);
-  font-size: var(--t12);
-  color: var(--ink-soft);
-}
-
-.studio-filters-bar select {
-  min-height: 44px;
-  padding: 0 var(--s6) 0 var(--s3);
+  padding: 6px;
+  background: var(--card-grad);
   border: 1px solid var(--line);
   border-radius: var(--radius-ctl);
-  background: var(--card-grad);
-  color: var(--ink);
-  font: inherit;
+  box-shadow: var(--shadow-raise);
 }
-
-.studio-filters-bar .filters-btn {
+.customize-menu > * {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border-radius: 10px;
+  font-size: var(--t14);
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-align: left;
+}
+.customize-menu > *:hover:not(:disabled) {
+  background: var(--ocean-soft);
+  transform: none;
+  filter: none;
+}
+.customize-menu > *:disabled {
+  color: var(--ink-soft);
+  opacity: 0.6;
+}
+.studio-filters-bar .customize {
   margin-left: auto;
+}
+@media (max-width: 719px) {
+  .studio-filters-bar .customize {
+    margin-left: 0;
+  }
 }
 
 .studio-sub {
@@ -2293,18 +2680,92 @@ label {
 }
 
 /* The Studio report is not a boxed panel: it flows with the page, so the
-   canvas grows to its content and the page does the scrolling. */
+   canvas grows to its content and the page does the scrolling. No solid
+   block behind the widgets — the page background shows through. */
 .studio-card {
-  margin-top: var(--s4);
+  margin-top: 0;
   position: relative;
-  background: var(--paper);
+  background: transparent;
   height: auto;
+}
+
+.studio-card .ag-studio-layout-canvas {
+  background: transparent;
+  /* Report starts right under the toolbar — side/bottom insets stay. */
+  padding-top: 0;
+}
+
+.studio-card .ag-studio-layout-content-container {
+  top: 0;
+}
+
+.studio-card .ag-studio-root {
+  height: auto !important;
+}
+
+/* In-flow (not absolute) so the canvas height drives page height — but still
+   positioned, since side panels/popups anchor to it. */
+.studio-card .ag-studio-root-inner {
+  position: relative;
 }
 
 .studio-card .ag-studio-root-inner,
 .studio-card .ag-studio-layout {
   overflow: visible;
   height: auto !important;
+}
+
+/* Card-to-card spacing = 2x the widget inset: 12px gives the app-wide 24px
+   gap, 16px gives 32px on wide screens. */
+.studio-card .ag-studio-layout-widget {
+  --ag-studio-layout-widget-inset: 12px;
+  /* Studio paints an opaque swatch on the positioning box — transparent so
+     the ambient glow bleeds through the glass widget inside. */
+  --ag-studio-layout-widget-background-color: transparent;
+}
+
+/* The KPI row is four separate tiles, not one framed card — the widget
+   itself is invisible so the tiles carry the only chrome. */
+.studio-card .ag-studio-layout-widget:has(.kpi-row) {
+  --ag-studio-layout-widget-background-color: transparent;
+  --ag-studio-layout-widget-border-color: transparent;
+  --ag-studio-layout-widget-border-width: 0px;
+  --ag-studio-layout-widget-border-radius: 0px;
+}
+
+/* The collapsed Filters rail is dead chrome on the report's right edge;
+   the toolbar Filters button still expands it into a drawer. */
+.studio-card .ag-studio-root-panel-container:has(.ag-studio-panel-collapsed) {
+  display: none;
+}
+
+/* Widget-loading veil — the same glass recipe as the bento panels it covers:
+   translucent card gradient, glass edge, radius, blur + raise shadow. The
+   --glass-* tokens resolve per theme (navy glass dark / frosted white light). */
+.studio-card .ag-studio-layout-widget-skeleton-overlay-container {
+  background: var(--card-grad);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+@media (min-width: 1440px) {
+  .studio-card .ag-studio-layout-widget {
+    --ag-studio-layout-widget-inset: 16px;
+  }
+}
+
+/* View mode must look finished: no cyan selection or resize outlines — those
+   only exist while editing the layout. */
+.studio-card .ag-studio-layout:not(.ag-studio-layout-editing) .ag-studio-layout-widget {
+  --ag-studio-layout-widget-resize-border-color: transparent;
+  --ag-studio-layout-widget-resize-handle-color: transparent;
+}
+
+/* The pager caps the grid at 8 rows — never a scrollbar inside the card. */
+.studio-card .ag-body-viewport {
+  overflow-y: hidden !important;
 }
 
 .studio-skeleton {
@@ -2371,10 +2832,10 @@ label {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--danger);
+  background: var(--st-blocked);
 }
 
-/* activity footer: tiny ASCII fish + the house rule */
+/* activity footer: the house rule */
 .activity-footer {
   margin-top: var(--s6);
   display: flex;
@@ -2383,18 +2844,79 @@ label {
   color: var(--ink-soft);
 }
 
-.activity-footer .ascii {
-  font-family: var(--mono);
-  font-size: var(--t12);
-  line-height: var(--t12);
-  color: var(--line);
-  margin: 0;
-  user-select: none;
-}
-
 .activity-footer p {
   margin: 0;
   font-size: var(--t14);
+}
+
+/* ---------- dark glassmorphism ---------- */
+
+/* Every panel: translucent navy (via --card-grad), backdrop blur so the
+   ambient lights bleed through, hairline edge, and an inner top highlight —
+   the "lit glass" edge. */
+:root[data-theme="dark"] .ag-studio-widget,
+:root[data-theme="dark"] .kpi-tile,
+:root[data-theme="dark"] .rail,
+:root[data-theme="dark"] .ask-panel,
+:root[data-theme="dark"] .drawer,
+:root[data-theme="dark"] .customize-menu,
+:root[data-theme="dark"] .ag-studio-panel-container,
+:root[data-theme="dark"] .toast,
+:root[data-theme="dark"] .notice,
+:root[data-theme="dark"] .error,
+:root[data-theme="dark"] .msg,
+:root[data-theme="dark"] .agent-log,
+:root[data-theme="dark"] .product-card,
+:root[data-theme="dark"] .approval-card,
+:root[data-theme="dark"] .wait-card,
+:root[data-theme="dark"] .studio-skeleton {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+/* Uniform glass: every panel shares the same translucent navy — the fun
+   money card only gets a whisper of a dark-navy gradient on top of it.
+   Vibrant cyan/blue is reserved for progress bars, chart lines, accents. */
+:root[data-theme="dark"] .funmoney {
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.4) 55%, rgba(8, 12, 22, 0.45) 100%);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+/* Frosted light glass: same panel list as dark — translucent white bg comes
+   from --card-grad; blur 20px, crisp white edge, soft diffuse shadow. */
+:root[data-theme="light"] .ag-studio-widget,
+:root[data-theme="light"] .kpi-tile,
+:root[data-theme="light"] .rail,
+:root[data-theme="light"] .ask-panel,
+:root[data-theme="light"] .drawer,
+:root[data-theme="light"] .customize-menu,
+:root[data-theme="light"] .ag-studio-panel-container,
+:root[data-theme="light"] .toast,
+:root[data-theme="light"] .notice,
+:root[data-theme="light"] .error,
+:root[data-theme="light"] .msg,
+:root[data-theme="light"] .agent-log,
+:root[data-theme="light"] .product-card,
+:root[data-theme="light"] .approval-card,
+:root[data-theme="light"] .wait-card,
+:root[data-theme="light"] .studio-skeleton {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+/* The one exception to white edges: error panels keep their red border. */
+:root[data-theme="light"] .error {
+  border-color: var(--danger);
+}
+
+/* Backlit line on the spend chart. */
+:root[data-theme="dark"] .spend-trend .series-line {
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
 }
 
 /* ---------- misc ---------- */
@@ -2445,7 +2967,7 @@ label {
 
 .ag-studio-widget {
   background: var(--card-grad) !important;
-  border: 1px solid var(--line) !important;
+  border: 1px solid var(--glass-line) !important;
   border-radius: var(--radius) !important;
   animation: fade-up 500ms var(--ease) both;
 }
@@ -2485,8 +3007,14 @@ label {
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding: var(--s4) var(--s5, 20px);
+  padding: var(--card-pad);
   gap: var(--s3);
+}
+
+.bento-sub {
+  margin: 2px 0 0;
+  font-size: var(--t12);
+  color: var(--ink-soft);
 }
 
 .bento-head {
@@ -2609,8 +3137,25 @@ label {
   animation: bar-in 600ms var(--ease) both;
   transform-origin: bottom;
 }
-.bento-chart .bar-max {
-  filter: none;
+/* requested-but-not-bought sits on top of the bought gradient, in a lighter
+   tint so the two money types stay distinguishable stacked */
+.bento-chart .bar-requested {
+  fill: var(--tide);
+  fill-opacity: 0.3;
+  rx: 6;
+}
+.bento-chart .bar-today {
+  fill: none;
+  stroke: var(--tide);
+  stroke-width: 1.5;
+  rx: 8;
+}
+.legend-pills .lp i.dot-bought {
+  background: linear-gradient(180deg, var(--tide), var(--deep));
+}
+.legend-pills .lp i.dot-requested {
+  background: var(--tide);
+  opacity: 0.3;
 }
 @keyframes bar-in {
   from { opacity: 0; transform: scaleY(0.2); }
@@ -2677,29 +3222,50 @@ label {
   flex: none;
 }
 
-/* Fun money card — styled like the reference's card stack */
+/* Fun money card — centered mascot over the budget readout */
 .funmoney {
   position: relative;
   height: 100%;
   border-radius: var(--radius-mascot);
-  padding: var(--s4) var(--s5, 20px);
+  padding: var(--card-pad);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--s2);
   overflow: hidden;
   background: linear-gradient(160deg, #0e2238 0%, #0a1626 60%, #071120 100%);
   border: 1px solid var(--line);
+  text-align: center;
 }
 :root[data-theme="light"] .funmoney {
   background: linear-gradient(160deg, #e8f4fd 0%, #ffffff 70%);
 }
+.funmoney .fm-head {
+  width: 100%;
+}
 .funmoney .fm-mascot {
-  width: 88px;
-  height: 88px;
-  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  /* the gauge reserves ~1.5x its art size for spikes/bubbles */
+  max-height: 174px;
+  overflow: visible;
+  /* JS bounces the mascot around the card — keep it under the readout text
+     and out of the pointer's way */
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+.funmoney .fm-mascot img.art.flip {
+  scale: -1 1;
 }
 .funmoney .fm-amount {
-  font-size: 26px;
+  flex: none;
+  position: relative;
+  z-index: 1;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -2709,7 +3275,23 @@ label {
   font-weight: 500;
   font-size: var(--t16);
 }
+.funmoney .fm-bar {
+  width: 100%;
+  flex: none;
+  height: 10px;
+  border-radius: var(--pill);
+  background: var(--ocean-soft);
+  overflow: hidden;
+}
+.funmoney .fm-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  transition: width var(--dur) var(--ease);
+}
 .funmoney .fm-state {
+  flex: none;
   font-size: var(--t12);
   font-weight: 600;
   color: var(--ink-soft);
@@ -2718,13 +3300,14 @@ label {
   display: flex;
   gap: var(--s2);
   margin-top: auto;
+  width: 100%;
 }
 .funmoney .fm-actions a {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 34px;
   border-radius: var(--pill);
   font-size: var(--t14);
   font-weight: 600;
@@ -2743,11 +3326,36 @@ label {
   color: var(--ink);
 }
 
-/* KPI tiles inside the kpi-row widget */
+/* Combined Fun money + Recent activity card — the right column stacks both
+   sections in one card, split by a hairline. */
+.funrecent .bento-head {
+  width: 100%;
+}
+.funrecent .fm-actions {
+  margin-top: 0;
+}
+.funrecent .fr-sep {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--s1) 0;
+}
+.funrecent .recent-list {
+  align-self: stretch;
+}
+.funrecent .recent-list .recent-row {
+  align-items: flex-start;
+}
+.funrecent .recent-meta .s {
+  margin-top: 2px;
+}
+
+/* KPI tiles inside the kpi-row widget — compact tiles: 13px muted label,
+   8px gap, tabular number, 12px helper. */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--s4);
+  gap: 12px;
   height: 100%;
 }
 @media (max-width: 719px) {
@@ -2756,64 +3364,73 @@ label {
 .kpi-tile {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 2px;
+  justify-content: flex-start;
+  min-height: 80px;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--card-grad);
-  padding: var(--s3) var(--s4);
+  padding: 12px 20px 16px;
 }
 .kpi-tile .kpi-label {
-  font-size: var(--t12);
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-soft);
 }
 .kpi-tile .kpi-value {
-  font-size: 26px;
+  margin-top: 4px;
+  font-size: 24px;
+  line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
-.kpi-tile.lead {
-  border-color: rgba(56, 182, 242, 0.35);
+.kpi-tile .kpi-helper {
+  margin-top: 4px;
+  font-size: var(--t12);
+  color: var(--ink-soft);
 }
 
-/* Recent activity rows */
+/* Recent activity rows — 5 visible rows, no inner scroll: the card is sized
+   to fit (52px rows, compact padding, 1px dividers). */
 .recent-list {
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
   min-height: 0;
-  overflow-y: auto;
   flex: 1;
+  justify-content: space-evenly;
 }
 .recent-row {
   display: flex;
   align-items: center;
-  gap: var(--s3);
-  padding: var(--s2) var(--s3);
-  border-radius: var(--radius-ctl);
+  gap: var(--s2);
+  min-height: 52px;
+  padding: 6px 4px;
   transition: background var(--dur-fast) var(--ease);
 }
-.recent-row:hover {
-  background: var(--ocean-soft);
+.recent-row + .recent-row {
+  border-top: 1px solid var(--line);
 }
 .recent-thumb {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 12px;
   flex: none;
-  object-fit: cover;
-  background: var(--paper);
+  object-fit: contain;
+  padding: 5px;
+  /* dark product photos sit on a white tile in dark mode */
+  background: #ffffff;
   border: 1px solid var(--line);
+}
+:root[data-theme="light"] .recent-thumb {
+  background: var(--ocean-soft);
 }
 .recent-thumb.letter {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
   font-weight: 700;
-  color: var(--tide);
-  background: var(--ocean-soft);
+  color: var(--deep);
 }
 .recent-meta {
   min-width: 0;
@@ -2828,14 +3445,14 @@ label {
   text-overflow: ellipsis;
 }
 .recent-meta .s {
-  font-size: var(--t12);
+  font-size: 12px;
   color: var(--ink-soft);
 }
 .recent-right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 3px;
+  gap: 4px;
   flex: none;
 }
 .recent-right .a {
@@ -2861,19 +3478,19 @@ label {
   text-decoration: underline;
 }
 
-/* status pill bars */
+/* status pill bars — evenly spaced, vertically centered */
 .statusbars {
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
-  justify-content: center;
+  justify-content: space-evenly;
   flex: 1;
 }
 .statusbar-row {
   display: grid;
-  grid-template-columns: 88px 1fr auto;
+  grid-template-columns: 108px 1fr auto;
   align-items: center;
   gap: var(--s3);
+  min-height: 28px;
 }
 .statusbar-name {
   font-size: var(--t12);
@@ -2900,6 +3517,61 @@ label {
 .statusbar-num {
   font-size: var(--t12);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* grid pager strip under the purchases grid */
+.grid-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  height: 100%;
+  padding: 0 var(--s4);
+}
+.grid-pager-info {
+  font-size: var(--t12);
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.grid-pager-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.grid-pager-page {
+  font-size: var(--t12);
+  font-weight: 600;
+  color: var(--ink-soft);
+  min-width: 72px;
+  text-align: center;
+}
+.pager-btn {
+  min-height: 32px;
+  padding: 0 var(--s3);
+  border-radius: var(--pill);
+  border: 1px solid var(--line);
+  background: var(--card-grad);
+  color: var(--ink);
+  font-size: var(--t12);
+  font-weight: 600;
+  box-shadow: none;
+}
+.pager-btn:hover:not(:disabled) {
+  transform: none;
+  border-color: var(--tide);
+  color: var(--tide);
+}
+.pager-btn:disabled {
+  opacity: 0.45;
+  color: var(--ink-soft);
+}
+
+/* footer totals — the second label sits quieter next to Total bought */
+.grand-total-label.muted {
+  color: var(--ink-soft);
+}
+.grand-total-label b {
   font-variant-numeric: tabular-nums;
 }
 

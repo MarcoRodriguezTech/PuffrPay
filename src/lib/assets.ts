@@ -4,8 +4,7 @@
 // fallback instead of failing (see AssetImg and the initials avatar in TopBar).
 
 export const ASSETS = {
-  mascotPng: "/mascot/puffr.png", // 1024x1024, transparent
-  mascotSvg: "/mascot/puffr.svg",
+  mascot: "/mascot/puffr.png", // transparent PNG, the default puffed art
   logoMark: "/brand/logo-mark.svg",
   wordmarkLight: "/brand/wordmark-light.svg",
   wordmarkDark: "/brand/wordmark-dark.svg",

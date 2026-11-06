@@ -10,6 +10,7 @@
 // /audit/classic.
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import {
   createAiHarness,
   enableStudioDevValidations,
@@ -30,6 +31,7 @@ import {
 import { buildStudioData, hasData } from "./studio/data";
 import { studioThemeFor } from "./studio/theme";
 import { useTheme } from "@/lib/theme";
+import { ASSETS } from "@/lib/assets";
 import {
   DEFAULT_PAGE_TITLES,
   initialCompactReport,
@@ -37,7 +39,7 @@ import {
   initialReport,
 } from "./studio/initial-report";
 import { bentoWidgetDefs } from "./studio/bento-widgets";
-import { createCellRenderer } from "./studio/cell-renderers";
+import { createCellRenderer, DashRowsContext } from "./studio/cell-renderers";
 import { specToGridSort, specToStudioFilters, specSummary } from "./studio/ask";
 import { studioChatAdapter } from "./studio/ai-adapter";
 import * as reportState from "./report-state";
@@ -46,7 +48,7 @@ if (process.env.NODE_ENV !== "production") {
   enableStudioDevValidations();
 }
 
-const STORAGE_KEY = "puffrpay:studio-report:v3";
+const STORAGE_KEY = "puffrpay:studio-report:v4";
 const STORAGE_KEY_COMPACT = `${STORAGE_KEY}:compact`;
 const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 
@@ -55,26 +57,20 @@ const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 const COMPACT_QUERY = "(max-width: 1099px)";
 const MOBILE_QUERY = "(max-width: 719px)";
 
-// Toolbar selects write page filters on these Studio fields.
-const PERIOD_FILTERS: Record<string, AuditFilter[]> = {
-  all: [],
-  week: [{ field: "created_at", operator: "gte", value: "week" }],
-  month: [{ field: "created_at", operator: "gte", value: "month" }],
-};
-
-const STATUS_FILTERS: Record<string, AuditFilter[]> = {
-  all: [],
-  PURCHASED: [{ field: "status", operator: "eq", value: "PURCHASED" }],
-  WAITING: [{ field: "status", operator: "eq", value: "WAITING" }],
-  BLOCKED: [{ field: "status", operator: "eq", value: "BLOCKED" }],
-  REJECTED: [{ field: "status", operator: "eq", value: "REJECTED" }],
-};
-
 const ASK_CHIPS = [
   "blocked this week",
   "total spent this month",
   "waiting for approval",
 ];
+
+// One entry per question asked through the Ask panel — the assistant reply is
+// the filter set it applied plus the one-line summary the spec produces.
+type AskTurn = {
+  q: string;
+  filters: AuditFilter[];
+  note: string | null;
+  error: string | null;
+};
 
 const PROMPT_STARTERS = [
   { label: "What got blocked this week?", prompt: "Which purchase requests were blocked this week, and why?" },
@@ -273,18 +269,35 @@ function StudioDashboard({
 
   const [question, setQuestion] = useState("");
   const [askFilters, setAskFilters] = useState<AuditFilter[]>([]);
-  const [askError, setAskError] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
+  const [turns, setTurns] = useState<AskTurn[]>([]);
   const [askBusy, setAskBusy] = useState(false);
   const askCache = useRef(new Map<string, AuditQuerySpec>());
+  const askScrollRef = useRef<HTMLDivElement>(null);
 
-  const [period, setPeriod] = useState("all");
-  const [statusSel, setStatusSel] = useState("all");
-  const toolFilters = useMemo(
-    () => [...(PERIOD_FILTERS[period] ?? []), ...(STATUS_FILTERS[statusSel] ?? [])],
-    [period, statusSel]
-  );
+  // The panel squeezes the page on desktop via a body class the CSS keys off.
+  useEffect(() => {
+    document.body.classList.toggle("ask-open", askOpen);
+    return () => document.body.classList.remove("ask-open");
+  }, [askOpen]);
 
-  const applyPageFilters = (ask: AuditFilter[], tool: AuditFilter[]) => {
+  // Escape closes the panel.
+  useEffect(() => {
+    if (!askOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAskOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [askOpen]);
+
+  // Keep the newest turn in view.
+  useEffect(() => {
+    askScrollRef.current?.scrollTo({
+      top: askScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [turns, askBusy]);
+
+  const applyPageFilters = (ask: AuditFilter[]) => {
     const api = apiRef.current;
     const st = api?.getState();
     if (!api || !st) return;
@@ -294,18 +307,12 @@ function StudioDashboard({
         p.id === st.selectedPageId
           ? {
               ...p,
-              filter: { ...p.filter, page: specToStudioFilters([...ask, ...tool]) },
+              filter: { ...p.filter, page: specToStudioFilters(ask) },
             }
           : p
       ),
     });
   };
-
-  // Re-apply whenever the toolbar selects change.
-  useEffect(() => {
-    applyPageFilters(askFilters, toolFilters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toolFilters]);
 
   const applySpec = (spec: AuditQuerySpec) => {
     const api = apiRef.current;
@@ -317,7 +324,7 @@ function StudioDashboard({
         ...p,
         filter: {
           ...p.filter,
-          page: specToStudioFilters([...spec.filters, ...toolFilters]),
+          page: specToStudioFilters(spec.filters),
         },
       };
       const gridSort = specToGridSort(spec.sort);
@@ -332,27 +339,25 @@ function StudioDashboard({
     api.setState({ ...st, pages });
   };
 
-  const summary = useMemo(() => {
-    if (askFilters.length === 0) return null;
-    const spec: AuditQuerySpec = {
-      filters: askFilters,
-      sort: null,
-      summary: { type: "sum" },
-      understood: "",
-    };
-    return specSummary(spec, data.requests);
-  }, [askFilters, data.requests]);
+  const noteFor = (filters: AuditFilter[]) =>
+    specSummary(
+      { filters, sort: null, summary: { type: "sum" }, understood: "" },
+      data.requests
+    )?.text ?? null;
 
   async function ask(q?: string) {
     const text = (q ?? question).trim();
     if (!text || askBusy) return;
     setAskBusy(true);
-    setAskError(null);
     const key = text.toLowerCase();
     const cached = askCache.current.get(key);
     if (cached) {
       setAskFilters(cached.filters);
       applySpec(cached);
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: cached.filters, note: noteFor(cached.filters), error: null },
+      ]);
       setAskBusy(false);
       return;
     }
@@ -364,22 +369,29 @@ function StudioDashboard({
       });
       const spec = (await res.json()) as AuditQuerySpec & { error?: string };
       if (!res.ok) {
-        setAskError(
+        const error =
           res.status === 422
             ? "I could not turn that into a filter. Try: show blocked purchases this week."
             : isRateLimitMsg(String(spec.error ?? ""))
               ? "Puffr is catching its breath. Try again in a minute."
-              : "Something went wrong on our side. Try again."
-        );
+              : "Something went wrong on our side. Try again.";
         if (res.status !== 422) console.error("[ask] query failed:", spec.error);
+        setTurns((t) => [...t, { q: text, filters: [], note: null, error }]);
         return;
       }
       askCache.current.set(key, spec);
       setAskFilters(spec.filters);
       applySpec(spec);
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: spec.filters, note: noteFor(spec.filters), error: null },
+      ]);
     } catch (err) {
       console.error("[ask] query failed:", err);
-      setAskError("Something went wrong on our side. Try again.");
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: [], note: null, error: "Something went wrong on our side. Try again." },
+      ]);
     } finally {
       setAskBusy(false);
     }
@@ -388,15 +400,39 @@ function StudioDashboard({
   const removeFilter = (idx: number) => {
     const next = askFilters.filter((_, i) => i !== idx);
     setAskFilters(next);
-    applyPageFilters(next, toolFilters);
+    applyPageFilters(next);
   };
 
   const clearAsk = () => {
     setQuestion("");
     setAskFilters([]);
-    setAskError(null);
-    applyPageFilters([], toolFilters);
+    setTurns([]);
+    applyPageFilters([]);
   };
+
+  // The "Customize" dropdown replaces the old one-button-per-action toolbar.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // Filters/Customize mount into the TopBar's actions slot on wide
+  // viewports (the .studio-filters-bar fallback below is hidden there).
+  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTopbarSlot(document.getElementById("topbar-actions"));
+  }, []);
 
   // The Studio filters panel opens as an overlay drawer from the toolbar.
   const filtersPanelOpen = !(state.panels?.filters?.collapsed ?? true);
@@ -427,136 +463,87 @@ function StudioDashboard({
     );
   }
 
-  return (
-    <>
-      <div className="row spread studio-toolbar">
-        <div className="row" style={{ marginLeft: "auto" }}>
-          <a className="chip" href="/audit/classic">
-            Classic log
-          </a>
+  const filtersButton = (
+    <button
+      className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
+      onClick={toggleFiltersPanel}
+      aria-pressed={filtersPanelOpen}
+    >
+      Filters
+    </button>
+  );
+  const customizeMenu = (
+    <div className="customize" ref={menuRef}>
+      <button
+        className="secondary customize-btn"
+        onClick={() => setMenuOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+      >
+        Customize
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M2.5 3.5 5 6l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+      {menuOpen && (
+        <div className="customize-menu" role="menu">
           <button
-            className="secondary"
-            onClick={() => setMode(editing ? "view" : "edit")}
-          >
-            {editing ? "Done" : "Edit report"}
-          </button>
-          <button className="secondary" onClick={save} disabled={!dirty}>
-            {dirty ? "Save" : "Saved"}
-          </button>
-          <button
-            className="secondary danger"
-            onClick={reset}
-            disabled={!saved && !dirty}
-          >
-            Reset
-          </button>
-        </div>
-      </div>
-
-      {chatMode === "ask" && (
-        <div className="ask-box">
-          <label htmlFor="ask-q">Ask the log</label>
-          <form
-            className="ask-row"
-            onSubmit={(e) => {
-              e.preventDefault();
-              ask();
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              setMode(editing ? "view" : "edit");
             }}
           >
-            <input
-              id="ask-q"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. show everything the agent blocked this week"
-              disabled={askBusy}
-            />
-            <button type="submit" disabled={askBusy || !question.trim()}>
-              {askBusy ? "Thinking..." : "Ask"}
-            </button>
-            {(askFilters.length > 0 || question) && (
-              <button type="button" className="secondary" onClick={clearAsk}>
-                Clear
-              </button>
-            )}
-          </form>
-          <div className="ask-chips">
-            {ASK_CHIPS.map((c) => (
-              <button
-                key={c}
-                className="chip"
-                onClick={() => {
-                  setQuestion(c);
-                  ask(c);
-                }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          {askFilters.length > 0 && (
-            <div className="applied">
-              <span className="lbl">Applied:</span>
-              {askFilters.map((f, i) => (
-                <span className="filter-chip" key={i}>
-                  {filterLabel(f)}
-                  <button
-                    aria-label={`Remove filter ${filterLabel(f)}`}
-                    onClick={() => removeFilter(i)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          {summary && <div className="audit-summary">{summary.text}</div>}
-          {askError && (
-            <div className="error" style={{ marginTop: 12 }}>
-              {askError}
-            </div>
-          )}
+            {editing ? "Done editing" : "Edit layout"}
+          </button>
+          <button
+            role="menuitem"
+            disabled={!dirty}
+            onClick={() => {
+              setMenuOpen(false);
+              save();
+            }}
+          >
+            {dirty ? "Save layout" : "Layout saved"}
+          </button>
+          <button
+            role="menuitem"
+            disabled={!saved && !dirty}
+            onClick={() => {
+              setMenuOpen(false);
+              if (window.confirm("Reset the dashboard to the built-in layout?")) reset();
+            }}
+          >
+            Reset layout
+          </button>
+          <a role="menuitem" href="/audit/classic" onClick={() => setMenuOpen(false)}>
+            Classic log
+          </a>
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <>
+      {topbarSlot &&
+        createPortal(
+          <div className="topbar-activity-controls">
+            {filtersButton}
+            {customizeMenu}
+          </div>,
+          topbarSlot
+        )}
 
       <div className="studio-filters-bar">
-        <label className="sel">
-          <span>Period</span>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            aria-label="Filter by period"
-          >
-            <option value="all">All time</option>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-          </select>
-        </label>
-        <label className="sel">
-          <span>Status</span>
-          <select
-            value={statusSel}
-            onChange={(e) => setStatusSel(e.target.value)}
-            aria-label="Filter by status"
-          >
-            <option value="all">All statuses</option>
-            <option value="PURCHASED">Bought</option>
-            <option value="WAITING">Waiting for you</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-        </label>
-        <button
-          className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
-          onClick={toggleFiltersPanel}
-          aria-pressed={filtersPanelOpen}
-        >
-          Filters
-        </button>
+        {filtersButton}
+        {customizeMenu}
       </div>
 
       <div className="studio-card">
         {hasData(data) ? (
           <AgStudioProvider licenseKey={licenseKey}>
+            <DashRowsContext.Provider value={data.requests}>
             <AgStudio
               key={theme}
               style={{ height: "auto", width: "100%" }}
@@ -590,6 +577,7 @@ function StudioDashboard({
                 setFailed(true);
               }}
             />
+            </DashRowsContext.Provider>
           </AgStudioProvider>
         ) : (
           <p className="empty-note">
@@ -599,9 +587,143 @@ function StudioDashboard({
       </div>
 
       <footer className="activity-footer">
-        <pre className="ascii" aria-hidden="true">{`  ><(((°>  ~ ~`}</pre>
         <p className="muted">Puffr never spends without the rules.</p>
       </footer>
+
+      {chatMode === "ask" && !askOpen && (
+        <button
+          className="ask-fab"
+          onClick={() => setAskOpen(true)}
+          aria-label="Ask the log"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </button>
+      )}
+
+      {chatMode === "ask" && askOpen && (
+        <aside className="ask-panel" role="dialog" aria-label="Ask the log">
+          <header className="ask-head">
+            <h2>Ask the log</h2>
+            <div className="row">
+              {turns.length > 0 && (
+                <button className="secondary ask-clear" onClick={clearAsk}>
+                  New chat
+                </button>
+              )}
+              <button
+                className="ask-close"
+                onClick={() => setAskOpen(false)}
+                aria-label="Close panel"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          {askFilters.length > 0 && (
+            <div className="applied">
+              <span className="lbl">Applied:</span>
+              {askFilters.map((f, i) => (
+                <span className="filter-chip" key={i}>
+                  {filterLabel(f)}
+                  <button
+                    aria-label={`Remove filter ${filterLabel(f)}`}
+                    onClick={() => removeFilter(i)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="ask-scroll" ref={askScrollRef}>
+            {turns.length === 0 && !askBusy ? (
+              <div className="ask-hello">
+                <img src={ASSETS.mascot} alt="" width={44} height={44} />
+                <p className="ask-hello-q">How can I help you today?</p>
+                <ul className="ask-suggest">
+                  {ASK_CHIPS.map((c) => (
+                    <li key={c}>
+                      <button
+                        onClick={() => {
+                          setQuestion("");
+                          ask(c);
+                        }}
+                      >
+                        <span>{c}</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              turns.map((t, i) => (
+                <div className="ask-turn" key={i}>
+                  <div className="ask-q">{t.q}</div>
+                  <div className={`ask-a${t.error ? " err" : ""}`}>
+                    {t.error ?? (
+                      <>
+                        {t.filters.length > 0 && (
+                          <span className="ask-a-chips">
+                            {t.filters.map((f, j) => (
+                              <span className="filter-chip" key={j}>
+                                {filterLabel(f)}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {t.note && <span className="ask-a-note">{t.note}</span>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            {askBusy && (
+              <div className="ask-turn">
+                <div className="ask-a thinking">
+                  <span className="spinner" aria-hidden="true" /> Thinking…
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form
+            className="ask-input"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQuestion("");
+              ask();
+            }}
+          >
+            <input
+              aria-label="Ask a question about the activity log"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask about the log…"
+              disabled={askBusy}
+            />
+            <button
+              type="submit"
+              className="ask-send"
+              disabled={askBusy || !question.trim()}
+              aria-label="Send question"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5m-7 7 7-7 7 7" />
+              </svg>
+            </button>
+          </form>
+        </aside>
+      )}
     </>
   );
 }

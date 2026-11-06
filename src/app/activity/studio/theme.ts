@@ -16,7 +16,7 @@ const SANS = "'Plus Jakarta Sans', system-ui, 'Segoe UI', Arial, sans-serif";
 // Palette order matches the statuses the charts list alphabetically:
 // BLOCKED, PURCHASED, REJECTED, WAITING, then extras.
 const palette = Object.fromEntries(
-  ["danger", "ok", "reject", "warn", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
+  ["st-blocked", "st-bought", "st-rejected", "st-waiting", "tide", "deep", "chart-7", "ink", "line", "ink-soft"].flatMap(
     (name, i) => [
       [`chartPaletteFills${i + 1}Color`, token(name)],
       [`chartPaletteStrokes${i + 1}Color`, token(name)],
@@ -47,13 +47,17 @@ export function studioThemeFor(mode: AppTheme) {
     studioWrapperBorder: false,
     studioWrapperBorderRadius: 0,
     studioWrapperSpacing: 0,
-    studioWrapperBackgroundColor: token("paper"),
+    studioWrapperBackgroundColor: "transparent",
     studioCanvasBorder: false,
     studioCanvasBorderRadius: 0,
     studioCanvasShadow: false,
-    studioCanvasBackgroundColor: token("paper"),
-    studioCanvasPadding: 20,
-    studioCanvasRowHeight: 18,
+    // Transparent — the report floats on the page background, no dark slab
+    // behind the widgets.
+    studioCanvasBackgroundColor: "transparent",
+    // Snug outer inset — the report starts close under the toolbar and widget
+    // edges sit near the page's own padding.
+    studioCanvasPadding: 8,
+    studioCanvasRowHeight: 16,
     studioCanvasFontFamily: SANS,
 
     // Widgets are the app's cards. The rounded 22px shape + gradient come from
@@ -90,8 +94,8 @@ export function studioThemeFor(mode: AppTheme) {
     studioToggleButtonActiveBorderColor: token("tide"),
     studioToggleButtonActiveColor: token("ink"),
 
-    // Grid widgets: small-caps muted headers, 56px rows so the pill status
-    // chips sit comfortably; the blocked-row coral bar is a cell renderer.
+    // Grid widgets: small-caps muted headers, compact 42px rows; the
+    // blocked-row coral bar is a cell renderer.
     gridFontFamily: SANS,
     gridFontSize: 14,
     gridCellTextColor: token("ink"),
@@ -100,7 +104,7 @@ export function studioThemeFor(mode: AppTheme) {
     gridHeaderFontFamily: SANS,
     gridHeaderFontWeight: 700,
     gridHeaderFontSize: 11,
-    gridRowHeight: 56,
+    gridRowHeight: 42,
     gridRowBorder: line("line"),
     gridHeaderRowBorder: line("line"),
     gridPinnedRowBorder: line("line"),

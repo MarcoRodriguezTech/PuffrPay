@@ -62,7 +62,6 @@ const EXAMPLES = [
 ];
 
 const MONTH = new Date().toLocaleString("en-US", { month: "long" });
-const OCEAN = "      ~~      .-~~~-.       ~\n~  ~   ><(((°>   ~    ~  ><(((°>\n  ~~      ~      ~~~        ~";
 
 /** 'Puffr says no. <reason>' with the house voice per reason. */
 function blockedCopy(reason: string, policy?: Policy | null): string {
@@ -307,7 +306,6 @@ export default function AgentPage() {
             <div className="chat-empty">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={MASCOT_SRC} alt="" width={140} height={140} />
-              <pre className="ocean" aria-hidden="true">{OCEAN}</pre>
               <h1>What should I buy?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">
@@ -532,7 +530,7 @@ export default function AgentPage() {
                 <span className="of"> of {fmtWhole(budget.capCents)}</span>
               </div>
               <div style={{ width: "100%", marginTop: "var(--s3)" }}>
-                <LeashBar ratio={budget.ratio} width={26} />
+                <LeashBar ratio={budget.ratio} width={180} />
               </div>
               <div className="gauge-state">
                 {Math.round(budget.ratio * 100)}% — {STATE_LABELS[state]}
