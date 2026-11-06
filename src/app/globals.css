@@ -3178,11 +3178,12 @@ label {
   justify-content: center;
   flex: none;
   /* the gauge reserves ~1.5x its art size for spikes/bubbles */
-  max-height: 232px;
+  max-height: 174px;
   overflow: visible;
 }
 .funmoney .fm-amount {
-  font-size: 26px;
+  flex: none;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -3194,6 +3195,7 @@ label {
 }
 .funmoney .fm-bar {
   width: 100%;
+  flex: none;
   height: 10px;
   border-radius: var(--pill);
   background: var(--ocean-soft);
@@ -3207,6 +3209,7 @@ label {
   transition: width var(--dur) var(--ease);
 }
 .funmoney .fm-state {
+  flex: none;
   font-size: var(--t12);
   font-weight: 600;
   color: var(--ink-soft);
@@ -3222,7 +3225,7 @@ label {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 34px;
   border-radius: var(--pill);
   font-size: var(--t14);
   font-weight: 600;
@@ -3241,8 +3244,8 @@ label {
   color: var(--ink);
 }
 
-/* KPI tiles inside the kpi-row widget — spec: min-height 112px, 20x24
-   padding, 13px muted label, 8px gap, 32px tabular number, 12px helper. */
+/* KPI tiles inside the kpi-row widget — compact tiles: 13px muted label,
+   8px gap, tabular number, 12px helper. */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -3256,20 +3259,20 @@ label {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  min-height: 112px;
+  min-height: 92px;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--card-grad);
-  padding: 20px 24px;
+  padding: 14px 18px;
 }
 .kpi-tile .kpi-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-soft);
 }
 .kpi-tile .kpi-value {
-  margin-top: 8px;
-  font-size: 32px;
+  margin-top: 4px;
+  font-size: 26px;
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -3282,7 +3285,7 @@ label {
 }
 
 /* Recent activity rows — 5 visible rows, no inner scroll: the card is sized
-   to fit (min-height 76px rows, 16px vertical padding, 1px dividers). */
+   to fit (64px rows, 12px vertical padding, 1px dividers). */
 .recent-list {
   display: flex;
   flex-direction: column;
@@ -3293,21 +3296,21 @@ label {
 .recent-row {
   display: flex;
   align-items: center;
-  gap: var(--s3);
-  min-height: 76px;
-  padding: 16px 4px;
+  gap: var(--s2);
+  min-height: 62px;
+  padding: 11px 4px;
   transition: background var(--dur-fast) var(--ease);
 }
 .recent-row + .recent-row {
   border-top: 1px solid var(--line);
 }
 .recent-thumb {
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   flex: none;
   object-fit: contain;
-  padding: 6px;
+  padding: 5px;
   /* dark product photos sit on a white tile in dark mode */
   background: #ffffff;
   border: 1px solid var(--line);
@@ -3319,7 +3322,7 @@ label {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--deep);
 }
@@ -3329,14 +3332,14 @@ label {
 }
 .recent-meta .t {
   display: block;
-  font-size: var(--t16);
+  font-size: var(--t14);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .recent-meta .s {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-soft);
 }
 .recent-right {
@@ -3347,7 +3350,7 @@ label {
   flex: none;
 }
 .recent-right .a {
-  font-size: var(--t16);
+  font-size: var(--t14);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

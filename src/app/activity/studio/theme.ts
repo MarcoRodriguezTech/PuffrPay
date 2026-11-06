@@ -90,8 +90,8 @@ export function studioThemeFor(mode: AppTheme) {
     studioToggleButtonActiveBorderColor: token("tide"),
     studioToggleButtonActiveColor: token("ink"),
 
-    // Grid widgets: small-caps muted headers, 56px rows so the pill status
-    // chips sit comfortably; the blocked-row coral bar is a cell renderer.
+    // Grid widgets: small-caps muted headers, compact 42px rows; the
+    // blocked-row coral bar is a cell renderer.
     gridFontFamily: SANS,
     gridFontSize: 14,
     gridCellTextColor: token("ink"),
@@ -100,7 +100,7 @@ export function studioThemeFor(mode: AppTheme) {
     gridHeaderFontFamily: SANS,
     gridHeaderFontWeight: 700,
     gridHeaderFontSize: 11,
-    gridRowHeight: 56,
+    gridRowHeight: 42,
     gridRowBorder: line("line"),
     gridHeaderRowBorder: line("line"),
     gridPinnedRowBorder: line("line"),

@@ -278,7 +278,7 @@ function FunMoney(params: Ctx) {
         </span>
       </div>
       <span className="fm-mascot">
-        <PufferGauge ratio={ratio} size={150} showLabel={false} />
+        <PufferGauge ratio={ratio} size={110} showLabel={false} />
       </span>
       <div className="fm-amount">
         {money(spent)} <span className="of">of {money(cap)}</span>

@@ -109,14 +109,14 @@ const activity: AgPageState = {
   widgets: activityWidgets,
   filter: gridFilter,
   widgetLayout: {
-    [W_KPI_ROW]: at(0, 0, 12, 9),
-    [W_SPEND_TREND]: at(0, 9, 8, 26),
-    [W_FUN_MONEY]: at(8, 9, 4, 26),
-    [W_RECENT]: at(0, 35, 4, 34),
-    [W_SPEND_DAY]: at(4, 35, 4, 34),
-    [W_STATUS_BARS]: at(8, 35, 4, 34),
-    "requests-grid": at(0, 69, 12, 33),
-    [W_GRID_PAGER]: at(0, 102, 12, 4),
+    [W_KPI_ROW]: at(0, 0, 12, 7),
+    [W_SPEND_TREND]: at(0, 7, 8, 22),
+    [W_FUN_MONEY]: at(8, 7, 4, 22),
+    [W_RECENT]: at(0, 29, 4, 24),
+    [W_SPEND_DAY]: at(4, 29, 4, 24),
+    [W_STATUS_BARS]: at(8, 29, 4, 24),
+    "requests-grid": at(0, 53, 12, 26),
+    [W_GRID_PAGER]: at(0, 79, 12, 4),
   },
 };
 
@@ -125,14 +125,14 @@ const activityCompact: AgPageState = {
   ...activity,
   layout: { columns: 6, minWidth: 280, rowHeight: 16 },
   widgetLayout: {
-    [W_KPI_ROW]: at(0, 0, 6, 10),
-    [W_SPEND_TREND]: at(0, 10, 6, 18),
-    [W_FUN_MONEY]: at(0, 28, 6, 27),
-    [W_RECENT]: at(0, 55, 3, 38),
-    [W_SPEND_DAY]: at(3, 55, 3, 38),
-    [W_STATUS_BARS]: at(0, 93, 6, 15),
-    "requests-grid": at(0, 108, 6, 38),
-    [W_GRID_PAGER]: at(0, 146, 6, 4),
+    [W_KPI_ROW]: at(0, 0, 6, 8),
+    [W_SPEND_TREND]: at(0, 8, 6, 16),
+    [W_FUN_MONEY]: at(0, 24, 6, 24),
+    [W_RECENT]: at(0, 48, 3, 27),
+    [W_SPEND_DAY]: at(3, 48, 3, 27),
+    [W_STATUS_BARS]: at(0, 75, 6, 11),
+    "requests-grid": at(0, 86, 6, 29),
+    [W_GRID_PAGER]: at(0, 115, 6, 4),
   },
 };
 
@@ -140,14 +140,14 @@ const activityCompact: AgPageState = {
 const activityMobile: AgPageState = {
   ...activityCompact,
   widgetLayout: {
-    [W_KPI_ROW]: at(0, 0, 6, 19),
-    [W_SPEND_TREND]: at(0, 19, 6, 20),
-    [W_FUN_MONEY]: at(0, 39, 6, 28),
-    [W_RECENT]: at(0, 67, 6, 38),
-    [W_SPEND_DAY]: at(0, 105, 6, 16),
-    [W_STATUS_BARS]: at(0, 121, 6, 15),
-    "requests-grid": at(0, 136, 6, 38),
-    [W_GRID_PAGER]: at(0, 174, 6, 4),
+    [W_KPI_ROW]: at(0, 0, 6, 15),
+    [W_SPEND_TREND]: at(0, 15, 6, 16),
+    [W_FUN_MONEY]: at(0, 31, 6, 24),
+    [W_RECENT]: at(0, 55, 6, 27),
+    [W_SPEND_DAY]: at(0, 82, 6, 13),
+    [W_STATUS_BARS]: at(0, 95, 6, 11),
+    "requests-grid": at(0, 106, 6, 29),
+    [W_GRID_PAGER]: at(0, 135, 6, 4),
   },
 };
 
