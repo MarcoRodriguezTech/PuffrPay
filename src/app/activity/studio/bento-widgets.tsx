@@ -13,7 +13,7 @@ import type { AgWidgetDefinition } from "ag-studio-react";
 import type { AgWidgetData, AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { StatusBadge, STATUS_COLORS, statusKey, type StatusKey } from "@/components/StatusBadge";
+import { StatusBadge, statusKey, type StatusKey } from "@/components/StatusBadge";
 import { fmtDollars, useCountUp } from "@/lib/ui";
 
 type Row = DashboardData["requests"][number];
@@ -47,8 +47,6 @@ const todayKey = () => fmtKey(new Date());
 const money = (v: number) => `$${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}`;
 // Axis ticks always round to whole dollars: '$200', never '$200.00'.
 const axisMoney = (v: number) => `$${Math.round(v)}`;
-
-const STATUS_ORDER: StatusKey[] = ["PURCHASED", "PAYPAL", "WAITING", "BLOCKED", "REJECTED", "FAILED"];
 
 /* ---------- svg helpers ---------- */
 
@@ -611,107 +609,212 @@ function SpendByDay(params: Ctx) {
   );
 }
 
-/* ---------- Requests by status ---------- */
+/* ---------- Leash report ---------- */
 
-const useOptionSets = (params: Ctx): DashboardData["optionSets"] =>
-  (params.context as { data?: DashboardData })?.data?.optionSets ?? [];
+const useData = (params: Ctx): DashboardData | undefined =>
+  (params.context as { data?: DashboardData })?.data;
 
-function StatusBars(params: Ctx) {
-  const rows = useRows(params);
-  const sets = useOptionSets(params);
-  const counts = STATUS_ORDER.map((key) => ({
-    key,
-    n: rows.filter((r) => statusKey(r.status, r.decision) === key).length,
-    amt: rows
-      .filter((r) => statusKey(r.status, r.decision) === key)
-      .reduce((a, r) => a + r.amount, 0),
-  })).filter((c) => c.n > 0 || c.key === "PURCHASED");
+function LeashReport(params: Ctx) {
+  const data = useData(params);
+  const rows = data?.requests ?? [];
+  const sets = data?.optionSets ?? [];
+  const loading = !data;
 
-  // Carousel layer: what the options were stamped with before any pick —
-  // item-level counts/$ so the leash's pre-pick blocking shows up.
-  const opt = {
-    picked: { n: 0, amt: 0 },
-    auto: { n: 0, amt: 0 },
-    needs: { n: 0, amt: 0 },
-    blocked: { n: 0, amt: 0 },
-    skipped: 0,
-    open: 0,
-  };
-  for (const s of sets) {
-    if (s.picked) {
-      opt.picked.n += 1;
-      opt.picked.amt += s.pickedAmt ?? 0;
-    }
-    opt.auto.n += s.autoOk;
-    opt.auto.amt += s.autoAmt;
-    opt.needs.n += s.needsOk;
-    opt.needs.amt += s.needsAmt;
-    opt.blocked.n += s.blocked;
-    opt.blocked.amt += s.blockedAmt;
-    if (s.dismissed) opt.skipped += 1;
-    else if (!s.picked) opt.open += 1;
-  }
-  const optionBars = [
-    { key: "picked", name: "You picked", color: "var(--st-bought)", ...opt.picked },
-    { key: "auto", name: "Auto-ok", color: "var(--st-paypal)", ...opt.auto },
-    { key: "needs", name: "Needed your OK", color: "var(--st-waiting)", ...opt.needs },
-    { key: "blocked", name: "Blocked by rules", color: "var(--st-blocked)", ...opt.blocked },
-  ].filter((b) => b.n > 0);
-  const max = Math.max(...counts.map((c) => c.n), ...optionBars.map((b) => b.n), 1);
+  // Carousel layer, item level: everything Puffr ever put on the stack.
+  const offered = sets.reduce((a, s) => a + s.options, 0);
+  const auto = sets.reduce((a, s) => a + s.autoOk, 0);
+  const needs = sets.reduce((a, s) => a + s.needsOk, 0);
+  const stopped = sets.reduce((a, s) => a + s.blocked, 0);
+  const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
+  const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
+  const open = sets.reduce((a, s) => a + (s.open ? 1 : 0), 0);
 
-  const NAME: Record<StatusKey, string> = {
-    PURCHASED: "Bought",
-    PAYPAL: "Awaiting PayPal",
-    WAITING: "Waiting for you",
-    BLOCKED: "Blocked",
-    REJECTED: "Rejected",
-    FAILED: "Failed",
-  };
-  const bar = (key: string, name: string, n: number, amt: number, color: string) => (
-    <div className="statusbar-row" key={key}>
-      <span className="statusbar-name">{name}</span>
-      <span className="statusbar-track">
-        <span
-          className="statusbar-fill"
-          style={{ width: `${(n / max) * 100}%`, background: color }}
-        />
-      </span>
-      <span className="statusbar-num">
-        {n} — {money(amt)}
-      </span>
-    </div>
-  );
+  // Pick outcomes: the purchase rows those picks (and direct asks) created.
+  const bucket = (keys: StatusKey[]) =>
+    rows.filter((r) => keys.includes(statusKey(r.status, r.decision)));
+  const bought = bucket(["PURCHASED"]);
+  const progress = bucket(["PAYPAL", "WAITING"]);
+  const stoppedPicks = bucket(["BLOCKED", "REJECTED", "FAILED"]);
+  const segs = [
+    {
+      key: "bought",
+      name: "Bought",
+      color: "var(--ok)",
+      n: bought.length,
+      amt: bought.reduce((a, r) => a + r.amount, 0),
+      tip: `${bought.length} bought`,
+    },
+    {
+      key: "progress",
+      name: "In progress",
+      color: "var(--warn)",
+      n: progress.length,
+      amt: progress.reduce((a, r) => a + r.amount, 0),
+      tip: [
+        bucket(["PAYPAL"]).length &&
+          `${bucket(["PAYPAL"]).length} awaiting PayPal`,
+        bucket(["WAITING"]).length &&
+          `${bucket(["WAITING"]).length} waiting for you`,
+      ]
+        .filter(Boolean)
+        .join(", "),
+    },
+    {
+      key: "stopped",
+      name: "Stopped or rejected",
+      color: "var(--danger)",
+      n: stoppedPicks.length,
+      amt: stoppedPicks.reduce((a, r) => a + r.amount, 0),
+      tip: [
+        bucket(["BLOCKED"]).length && `${bucket(["BLOCKED"]).length} blocked`,
+        bucket(["REJECTED"]).length &&
+          `${bucket(["REJECTED"]).length} rejected`,
+        bucket(["FAILED"]).length && `${bucket(["FAILED"]).length} failed`,
+      ]
+        .filter(Boolean)
+        .join(", "),
+    },
+  ];
+  const totalPicks = segs.reduce((a, s) => a + s.n, 0);
+  const ariaBar = segs
+    .filter((s) => s.n > 0)
+    .map((s) => `${s.name} ${s.n} — ${money(s.amt)}`)
+    .join("; ");
+
+  const offeredC = useCountUp(offered, 400);
+  const stoppedC = useCountUp(stopped, 400);
+  const pickedC = useCountUp(picked, 400);
+
+  const offerTip = [
+    auto && `${auto} would pass`,
+    needs && `${needs} would ask you`,
+    stopped && `${stopped} blocked`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="bento">
+    <div className="bento leash">
       <div className="bento-head">
         <div>
-          <h3 className="bento-title">Requests by status</h3>
-          <p className="bento-sub">Picks + options</p>
+          <h3 className="bento-title">Leash report</h3>
+          <p className="bento-sub">What Puffr offered and what happened</p>
         </div>
       </div>
-      <div className="statusbars">
-        {optionBars.length > 0 && (
-          <span className="statusbars-label">Picks</span>
-        )}
-        {counts.map((c) => bar(c.key, NAME[c.key], c.n, c.amt, STATUS_COLORS[c.key]))}
-        {optionBars.length > 0 && (
-          <>
-            <span className="statusbars-label">Options suggested</span>
-            {optionBars.map((b) => bar(b.key, b.name, b.n, b.amt, b.color))}
-            {(opt.skipped > 0 || opt.open > 0) && (
-              <span className="statusbar-note">
-                {[
-                  opt.skipped > 0 && `${opt.skipped} set${opt.skipped > 1 ? "s" : ""} skipped`,
-                  opt.open > 0 && `${opt.open} still picking`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
+
+      {loading ? (
+        <>
+          <div className="leash-stats">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="leash-stat skeleton" style={{ height: 58 }} />
+            ))}
+          </div>
+          <div className="skeleton" style={{ height: 16, borderRadius: 999 }} />
+        </>
+      ) : sets.length === 0 && rows.length === 0 ? (
+        <div className="leash-empty">
+          <p>No suggestions yet. Ask Puffr to shop.</p>
+        </div>
+      ) : (
+        <>
+          <div className="leash-stats">
+            <div className="leash-stat" tabIndex={0}>
+              <span className="leash-num">{offeredC}</span>
+              <span className="leash-cap">Offered</span>
+              {offered > 0 && (
+                <span className="leash-tip" role="tooltip">
+                  {offerTip}
+                </span>
+              )}
+            </div>
+            <div className="leash-stat hero">
+              <svg
+                className="leash-shield"
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                aria-hidden="true"
+              >
+                <path
+                  d="M7 1.5 11.5 3v3.4c0 3-2 4.9-4.5 6.1C4.5 11.3 2.5 9.4 2.5 6.4V3L7 1.5Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4.8 6.7 6.4 8.3 9.3 5.2"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="leash-num">{stoppedC}</span>
+              <span className="leash-cap">Stopped by the rules</span>
+              <span className="leash-helper">before you could pick them</span>
+            </div>
+            <div className="leash-stat">
+              <span className="leash-num">{pickedC}</span>
+              <span className="leash-cap">You picked</span>
+            </div>
+          </div>
+
+          <div className="leash-outcome">
+            <span className="statusbars-label">What happened to your picks</span>
+            {totalPicks === 0 ? (
+              <div className="leashbar empty" role="img" aria-label="Nothing picked yet">
+                <span className="leashbar-empty-text">Nothing picked yet</span>
+              </div>
+            ) : (
+              <>
+                <div className="leashbar" role="img" aria-label={ariaBar}>
+                  {segs
+                    .filter((s) => s.n > 0)
+                    .map((s) => (
+                      <span
+                        key={s.key}
+                        className="leash-seg"
+                        tabIndex={0}
+                        style={{
+                          flexGrow: s.n,
+                          minWidth: 10,
+                          background: s.color,
+                        }}
+                      >
+                        <span className="leash-tip" role="tooltip">
+                          {s.name}: {s.tip}
+                        </span>
+                      </span>
+                    ))}
+                </div>
+                <div className="leash-legs">
+                  {segs.map((s) => (
+                    <div className="leash-leg" key={s.key}>
+                      <i className="leash-dot" style={{ background: s.color }} />
+                      <span className="leash-leg-name">{s.name}</span>
+                      <span className="leash-leg-n">{s.n}</span>
+                      <span className="leash-leg-amt">{money(s.amt)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+
+          {(skipped > 0 || open > 0) && (
+            <span className="leash-foot">
+              {[
+                skipped > 0 && `${skipped} search${skipped > 1 ? "es" : ""} skipped`,
+                open > 0 && `${open} still picking`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -861,11 +964,11 @@ export const bentoWidgetDefs = [
   }),
   def<D>({
     id: W_STATUS_BARS,
-    label: "Requests by status",
-    comp: StatusBars as never,
+    label: "Leash report",
+    comp: LeashReport as never,
     form: noMap as never,
     defaultSize: { width: 460, height: 260 },
-    minSize: { width: 240, height: 180 },
+    minSize: { width: 240, height: 300 },
   }),
   def<D>({
     id: W_GRID_PAGER,

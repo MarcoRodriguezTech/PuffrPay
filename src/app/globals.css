@@ -3958,6 +3958,217 @@ img[src*="/mascot/"] {
   color: var(--ink-soft);
 }
 
+/* ---------- leash report (funnel card) ---------- */
+
+/* The Studio layout can shrink the card (mobile stack / user-resized), so it
+   scrolls rather than clipping the funnel. */
+.bento.leash {
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 8px;
+}
+
+.leash-stats {
+  display: grid;
+  /* the hero tile is text-heaviest — it gets the widest share so the row
+     doesn't balloon to 5 wrapped lines */
+  grid-template-columns: 0.9fr 1.4fr 0.9fr;
+  gap: 12px;
+}
+.leash-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: var(--ocean-soft);
+}
+.leash-num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.leash-cap {
+  font-size: var(--t12);
+  color: var(--ink-soft);
+}
+.leash-stat.hero {
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.leash-stat.hero .leash-num {
+  color: var(--danger);
+}
+.leash-shield {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--danger);
+}
+.leash-helper {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--ink-soft);
+}
+
+/* hover/focus tooltips — same recipe as the chart tooltip chip */
+.leash-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 20px rgb(4 10 24 / 0.22);
+  font-size: var(--t12);
+  font-weight: 400;
+  color: var(--ink);
+  width: max-content;
+  max-width: 220px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+  z-index: 6;
+}
+.leash-stat:hover .leash-tip,
+.leash-stat:focus-visible .leash-tip,
+.leash-seg:hover .leash-tip,
+.leash-seg:focus-visible .leash-tip {
+  opacity: 1;
+}
+/* Stat tiles sit at the card's top edge — their tooltip drops below instead
+   of clipping against the scroll container. */
+.leash-stat .leash-tip {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+.leash-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.leashbar {
+  display: flex;
+  gap: 2px;
+  height: 16px;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--ocean-soft);
+  overflow: visible;
+}
+.leash-seg {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.leash-seg:focus-visible {
+  outline-offset: 1px;
+}
+.leashbar.empty {
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1.5px dashed var(--line);
+}
+.leashbar-empty-text {
+  font-size: var(--t12);
+  color: var(--ink-soft);
+}
+
+.leash-legs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.leash-leg {
+  display: grid;
+  grid-template-columns: auto 1fr auto minmax(56px, auto);
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t12);
+}
+.leash-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.leash-leg-name {
+  color: var(--ink-soft);
+}
+.leash-leg-n {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.leash-leg-amt {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.leash-foot {
+  margin-top: auto;
+  font-size: var(--t12);
+  color: var(--ink-soft);
+}
+.leash-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  font-size: var(--t12);
+  text-align: center;
+}
+
+/* Narrow cards: stats go 2-up and the hero tile spans the second row. */
+.bento {
+  container-type: inline-size;
+}
+@container (max-width: 300px) {
+  .leash-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .leash-stat {
+    min-height: 0;
+    padding: 8px 10px;
+  }
+  .leash-num {
+    font-size: 20px;
+  }
+  .leash-cap {
+    font-size: 11px;
+  }
+  .leash-stat.hero {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    column-gap: 10px;
+  }
+  .leash-stat.hero .leash-num {
+    font-size: 22px;
+  }
+  .leash-stat.hero .leash-helper {
+    flex-basis: 100%;
+  }
+  .leash-shield {
+    top: 8px;
+    right: 8px;
+  }
+}
+
 /* grid pager strip under the purchases grid */
 .grid-pager {
   display: flex;

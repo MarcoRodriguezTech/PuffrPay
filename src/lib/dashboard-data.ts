@@ -85,13 +85,9 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
     let totalAmt = 0;
     for (const i of s.items) {
       totalAmt += i.priceCents / 100;
-      if (s.picked === i.id) {
-        // The picked item gets its own bar — keep it out of the decision buckets.
-        pickedAmt = i.priceCents / 100;
-        continue;
-      }
       by[i.decision] = (by[i.decision] ?? 0) + 1;
       amt[i.decision] = (amt[i.decision] ?? 0) + i.priceCents / 100;
+      if (s.picked === i.id) pickedAmt = i.priceCents / 100;
     }
     return {
       ref: String(s.id),
