@@ -3763,7 +3763,7 @@ img[src*="/mascot/"] {
   width: 100%;
   border: 0;
   border-top: 1px solid var(--line);
-  margin: var(--s1) 0;
+  margin: 2px 0;
 }
 .funrecent .recent-list {
   align-self: stretch;
@@ -3828,8 +3828,8 @@ img[src*="/mascot/"] {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  min-height: 52px;
-  padding: 6px 4px;
+  min-height: 46px;
+  padding: 4px 4px;
   transition: background var(--dur-fast) var(--ease);
 }
 .recent-row + .recent-row {
@@ -3984,8 +3984,8 @@ img[src*="/mascot/"] {
   justify-content: center;
   gap: 1px;
   min-width: 0;
-  min-height: 58px;
-  padding: 6px 12px;
+  min-height: 44px;
+  padding: 4px 12px;
   border-radius: 16px;
   background: var(--ocean-soft);
 }
@@ -4006,6 +4006,11 @@ img[src*="/mascot/"] {
 }
 .leash-stat.hero .leash-num {
   color: var(--danger);
+}
+/* keep the hero label on one line so the tile doesn't balloon to 3 lines */
+.leash-stat.hero .leash-cap {
+  font-size: 11px;
+  white-space: nowrap;
 }
 .leash-shield {
   position: absolute;
@@ -4101,7 +4106,10 @@ img[src*="/mascot/"] {
 /* Legend: compact ag-grid table — transparent so the card's glass shows
    through; rows are click filters like the bar segments. */
 .leash-legend {
-  margin-top: 2px;
+  margin-top: 0;
+}
+.bento.leash {
+  gap: 6px;
 }
 .leash-legend .ag-root-wrapper {
   background: transparent;
