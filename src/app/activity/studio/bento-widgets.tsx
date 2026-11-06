@@ -453,7 +453,7 @@ function FunMoney(params: Ctx) {
 
 function RecentBody({ rows }: { rows: Row[] }) {
   const latest = useMemo(
-    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5),
+    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6),
     [rows]
   );
 
@@ -807,8 +807,6 @@ function LeashReport(params: Ctx) {
   const needs = sets.reduce((a, s) => a + s.needsOk, 0);
   const stopped = sets.reduce((a, s) => a + s.blocked, 0);
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
-  const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
-  const open = sets.reduce((a, s) => a + (s.open ? 1 : 0), 0);
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
@@ -971,17 +969,6 @@ function LeashReport(params: Ctx) {
               </>
             )}
           </div>
-
-          {(skipped > 0 || open > 0) && (
-            <span className="leash-foot">
-              {[
-                skipped > 0 && `${skipped} search${skipped > 1 ? "es" : ""} skipped`,
-                open > 0 && `${open} still picking`,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-          )}
         </>
       )}
     </div>

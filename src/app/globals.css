@@ -4126,11 +4126,7 @@ img[src*="/mascot/"] {
 .leash-legend .status-badge {
   height: 22px;
 }
-.leash-foot {
-  margin-top: auto;
-  font-size: var(--t12);
-  color: var(--ink-soft);
-}
+
 .leash-empty {
   flex: 1;
   display: flex;

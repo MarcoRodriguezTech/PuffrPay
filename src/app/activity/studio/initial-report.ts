@@ -107,13 +107,13 @@ const activity: AgPageState = {
     [W_KPI_ROW]: at(0, 0, 12, 8),
     [W_SPEND_TREND]: at(0, 8, 8, 20),
     // Tall right column: Fun money on top, Recent activity below — one card.
-    [W_FUN_RECENT]: at(8, 8, 4, 41),
-    // Spend by day takes Recent's old slot; Leash report takes Spend's — both
-    // raised to 30 rows so a full legend + footer fit without inner scrolling.
-    [W_SPEND_DAY]: at(0, 28, 4, 30),
-    [W_STATUS_BARS]: at(4, 28, 4, 30),
-    "requests-grid": at(0, 58, 12, 30),
-    [W_GRID_PAGER]: at(0, 88, 12, 4),
+    [W_FUN_RECENT]: at(8, 8, 4, 48),
+    // Spend by day + Leash report: both end at row 56, flush with the
+    // fun-recent column's bottom edge.
+    [W_SPEND_DAY]: at(0, 28, 4, 28),
+    [W_STATUS_BARS]: at(4, 28, 4, 28),
+    "requests-grid": at(0, 56, 12, 30),
+    [W_GRID_PAGER]: at(0, 86, 12, 4),
   },
 };
 
@@ -124,11 +124,11 @@ const activityCompact: AgPageState = {
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 6, 8),
     [W_SPEND_TREND]: at(0, 8, 6, 16),
-    [W_FUN_RECENT]: at(0, 24, 6, 52),
-    [W_SPEND_DAY]: at(0, 76, 3, 33),
-    [W_STATUS_BARS]: at(3, 76, 3, 33),
-    "requests-grid": at(0, 109, 6, 29),
-    [W_GRID_PAGER]: at(0, 138, 6, 4),
+    [W_FUN_RECENT]: at(0, 24, 6, 55),
+    [W_SPEND_DAY]: at(0, 79, 3, 33),
+    [W_STATUS_BARS]: at(3, 79, 3, 33),
+    "requests-grid": at(0, 112, 6, 29),
+    [W_GRID_PAGER]: at(0, 141, 6, 4),
   },
 };
 
@@ -138,11 +138,11 @@ const activityMobile: AgPageState = {
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 6, 15),
     [W_SPEND_TREND]: at(0, 15, 6, 16),
-    [W_FUN_RECENT]: at(0, 31, 6, 52),
-    [W_SPEND_DAY]: at(0, 83, 6, 13),
-    [W_STATUS_BARS]: at(0, 96, 6, 16),
-    "requests-grid": at(0, 112, 6, 29),
-    [W_GRID_PAGER]: at(0, 141, 6, 4),
+    [W_FUN_RECENT]: at(0, 31, 6, 55),
+    [W_SPEND_DAY]: at(0, 86, 6, 13),
+    [W_STATUS_BARS]: at(0, 99, 6, 16),
+    "requests-grid": at(0, 115, 6, 29),
+    [W_GRID_PAGER]: at(0, 144, 6, 4),
   },
 };
 
