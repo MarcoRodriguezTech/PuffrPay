@@ -75,6 +75,7 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
         data: data.requests,
         fields: fields([
           ["ref", "Request Ref", "textFormat", true],
+          ["rowIdx", "Row Index", "integerFormat", true],
           ["createdAt", "Requested", "dateTimeFormat"],
           ["title", "Item", "textFormat"],
           ["merchantUrl", "Item URL", "textFormat", true],

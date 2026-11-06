@@ -154,6 +154,23 @@ export async function createPurchaseRequest(
   return toPurchase(rows[0]);
 }
 
+/**
+ * The newest still-pending request for a product, if one was created in the
+ * last 10 minutes — used to stop the agent double-requesting the same item.
+ */
+export async function findPendingByProduct(
+  productId: string
+): Promise<PurchaseRequest | null> {
+  const rows = await query<PurchaseRow>(
+    `SELECT * FROM purchase_requests
+     WHERE product_id = $1 AND status = 'WAITING'
+       AND created_at > now() - interval '10 minutes'
+     ORDER BY created_at DESC LIMIT 1`,
+    [productId]
+  );
+  return rows[0] ? toPurchase(rows[0]) : null;
+}
+
 export async function getPurchase(id: number): Promise<PurchaseRequest | null> {
   const rows = await query<PurchaseRow>(
     "SELECT * FROM purchase_requests WHERE id = $1",

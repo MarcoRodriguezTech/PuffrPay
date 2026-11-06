@@ -1,17 +1,19 @@
-// The built-in "Activity" report as a bento layout (see the reference board):
-// hero area chart left, Fun money + Recent activity stacked right, a KPI tile
-// row, Spend by day + Requests by status, then the purchase requests grid
-// full width. Charts and cards are custom widgets (./bento-widgets.tsx) that
-// read rows through Studio `context`; only the grid is a Studio widget.
+// The built-in "Activity" report: KPI tiles on top, then the hero chart next
+// to the Fun money card, three equal cards (Recent activity / Spend by day /
+// Requests by status), the paginated purchase grid full width, and the pager
+// strip under it. Charts and cards are custom widgets (./bento-widgets.tsx)
+// that read rows through Studio `context`; only the grid is a Studio widget.
 
 import type { AgPageState, AgReportState, AgWidgetLayoutState } from "ag-studio";
 import {
   W_FUN_MONEY,
+  W_GRID_PAGER,
   W_KPI_ROW,
   W_RECENT,
   W_SPEND_DAY,
   W_SPEND_TREND,
   W_STATUS_BARS,
+  gridPageFilter,
 } from "./bento-widgets";
 
 // --- Helpers ------------------------------------------------------------------
@@ -31,6 +33,11 @@ const sum = (id: string) => ({ id, aggregation: "sum" as const });
 // --- Widgets -------------------------------------------------------------------
 
 const activityWidgets: AgPageState["widgets"] = {
+  [W_KPI_ROW]: {
+    type: W_KPI_ROW as never,
+    dataMapping: {},
+    format: noChrome,
+  },
   [W_SPEND_TREND]: {
     type: W_SPEND_TREND as never,
     dataMapping: {},
@@ -43,11 +50,6 @@ const activityWidgets: AgPageState["widgets"] = {
   },
   [W_RECENT]: {
     type: W_RECENT as never,
-    dataMapping: {},
-    format: noChrome,
-  },
-  [W_KPI_ROW]: {
-    type: W_KPI_ROW as never,
     dataMapping: {},
     format: noChrome,
   },
@@ -78,45 +80,59 @@ const activityWidgets: AgPageState["widgets"] = {
       ...title("All purchase requests"),
       style: {
         // Columns size to content so every column fits without a sideways
-        // scroll on desktop widths; the grand total row is relabelled in
+        // scroll on desktop widths; the pinned footer row is relabelled in
         // ./cell-renderers.tsx so it can't read as budget spend.
         columnAutoSize: true,
         grandTotalRow: { enabled: true },
       },
     },
   },
+  [W_GRID_PAGER]: {
+    type: W_GRID_PAGER as never,
+    dataMapping: {},
+    format: noChrome,
+  },
 };
 
-// 12-track canvas: hero chart 8 wide, the Fun money / Recent column 4 wide,
-// KPI band full width, two half-width charts, then the grid.
+// The grid pages by a widget filter on the hidden rowIdx field — page 1 is
+// requests 1-8 newest-first, set here so a fresh report starts paged.
+const gridFilter = {
+  page: [],
+  widget: { "requests-grid": gridPageFilter(1) as never },
+};
+
+// 12-track canvas, 18px rows: KPI band -> chart + fun money -> three equal
+// cards -> grid -> pager.
 const activity: AgPageState = {
   id: "activity",
   layout: { columns: 12 },
   widgets: activityWidgets,
+  filter: gridFilter,
   widgetLayout: {
-    [W_SPEND_TREND]: at(0, 0, 8, 24),
-    [W_FUN_MONEY]: at(8, 0, 4, 15),
-    [W_RECENT]: at(8, 15, 4, 9),
-    [W_KPI_ROW]: at(0, 24, 12, 6),
-    [W_SPEND_DAY]: at(0, 30, 6, 15),
-    [W_STATUS_BARS]: at(6, 30, 6, 15),
-    "requests-grid": at(0, 45, 12, 20),
+    [W_KPI_ROW]: at(0, 0, 12, 9),
+    [W_SPEND_TREND]: at(0, 9, 8, 26),
+    [W_FUN_MONEY]: at(8, 9, 4, 26),
+    [W_RECENT]: at(0, 35, 4, 34),
+    [W_SPEND_DAY]: at(4, 35, 4, 34),
+    [W_STATUS_BARS]: at(8, 35, 4, 34),
+    "requests-grid": at(0, 69, 12, 33),
+    [W_GRID_PAGER]: at(0, 102, 12, 4),
   },
 };
 
-// Under 1100px the same widgets reflow onto a 6-track canvas: the hero chart
-// full width, Fun money and Recent side by side, then stacked charts.
+// Under 1100px: a 6-track canvas (~two columns), 16px rows.
 const activityCompact: AgPageState = {
   ...activity,
   layout: { columns: 6, minWidth: 280, rowHeight: 16 },
   widgetLayout: {
-    [W_SPEND_TREND]: at(0, 0, 6, 18),
-    [W_FUN_MONEY]: at(0, 18, 3, 17),
-    [W_RECENT]: at(3, 18, 3, 17),
-    [W_KPI_ROW]: at(0, 35, 6, 8),
-    [W_SPEND_DAY]: at(0, 43, 6, 14),
-    [W_STATUS_BARS]: at(0, 57, 6, 13),
-    "requests-grid": at(0, 70, 6, 26),
+    [W_KPI_ROW]: at(0, 0, 6, 10),
+    [W_SPEND_TREND]: at(0, 10, 6, 18),
+    [W_FUN_MONEY]: at(0, 28, 6, 27),
+    [W_RECENT]: at(0, 55, 3, 38),
+    [W_SPEND_DAY]: at(3, 55, 3, 38),
+    [W_STATUS_BARS]: at(0, 93, 6, 15),
+    "requests-grid": at(0, 108, 6, 38),
+    [W_GRID_PAGER]: at(0, 146, 6, 4),
   },
 };
 
@@ -124,13 +140,14 @@ const activityCompact: AgPageState = {
 const activityMobile: AgPageState = {
   ...activityCompact,
   widgetLayout: {
-    [W_SPEND_TREND]: at(0, 0, 6, 26),
-    [W_FUN_MONEY]: at(0, 26, 6, 16),
-    [W_RECENT]: at(0, 42, 6, 15),
-    [W_KPI_ROW]: at(0, 57, 6, 9),
-    [W_SPEND_DAY]: at(0, 66, 6, 14),
-    [W_STATUS_BARS]: at(0, 80, 6, 13),
-    "requests-grid": at(0, 93, 6, 26),
+    [W_KPI_ROW]: at(0, 0, 6, 19),
+    [W_SPEND_TREND]: at(0, 19, 6, 20),
+    [W_FUN_MONEY]: at(0, 39, 6, 28),
+    [W_RECENT]: at(0, 67, 6, 38),
+    [W_SPEND_DAY]: at(0, 105, 6, 16),
+    [W_STATUS_BARS]: at(0, 121, 6, 15),
+    "requests-grid": at(0, 136, 6, 38),
+    [W_GRID_PAGER]: at(0, 174, 6, 4),
   },
 };
 

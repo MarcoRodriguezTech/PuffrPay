@@ -17,11 +17,13 @@ function requestRows(purchases: PurchaseRequest[], policy: Policy) {
     if (p.status === "PURCHASED") total += p.amountCents;
     running.set(p.id, total);
   }
-  return purchases.map((p) => {
+  return purchases.map((p, i) => {
     const amount = p.amountCents / 100;
     const purchased = p.status === "PURCHASED";
     return {
       ref: String(p.id),
+      // 1-based rank newest-first — the grid pager widget filters on it.
+      rowIdx: i + 1,
       createdAt: p.createdAt,
       title: p.productTitle,
       merchantUrl: p.merchantUrl,

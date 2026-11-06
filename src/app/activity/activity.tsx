@@ -10,6 +10,7 @@
 // /audit/classic.
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import {
   createAiHarness,
   enableStudioDevValidations,
@@ -38,7 +39,7 @@ import {
   initialReport,
 } from "./studio/initial-report";
 import { bentoWidgetDefs } from "./studio/bento-widgets";
-import { createCellRenderer } from "./studio/cell-renderers";
+import { createCellRenderer, DashRowsContext } from "./studio/cell-renderers";
 import { specToGridSort, specToStudioFilters, specSummary } from "./studio/ask";
 import { studioChatAdapter } from "./studio/ai-adapter";
 import * as reportState from "./report-state";
@@ -47,7 +48,7 @@ if (process.env.NODE_ENV !== "production") {
   enableStudioDevValidations();
 }
 
-const STORAGE_KEY = "puffrpay:studio-report:v3";
+const STORAGE_KEY = "puffrpay:studio-report:v4";
 const STORAGE_KEY_COMPACT = `${STORAGE_KEY}:compact`;
 const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 
@@ -311,7 +312,7 @@ function StudioDashboard({
     });
   }, [turns, askBusy]);
 
-  const [period, setPeriod] = useState("all");
+  const [period, setPeriod] = useState("month");
   const [statusSel, setStatusSel] = useState("all");
   const toolFilters = useMemo(
     () => [...(PERIOD_FILTERS[period] ?? []), ...(STATUS_FILTERS[statusSel] ?? [])],
@@ -437,6 +438,30 @@ function StudioDashboard({
     applyPageFilters([], toolFilters);
   };
 
+  // The "Customize" dropdown replaces the old one-button-per-action toolbar.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  // Period/Status/Customize mount into the TopBar's actions slot on wide
+  // viewports (the .studio-filters-bar fallback below is hidden there).
+  const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTopbarSlot(document.getElementById("topbar-actions"));
+  }, []);
+
   // The Studio filters panel opens as an overlay drawer from the toolbar.
   const filtersPanelOpen = !(state.panels?.filters?.collapsed ?? true);
   const toggleFiltersPanel = () => {
@@ -466,71 +491,121 @@ function StudioDashboard({
     );
   }
 
-  return (
-    <>
-      <div className="row spread studio-toolbar">
-        <div className="row" style={{ marginLeft: "auto" }}>
-          <a className="chip" href="/audit/classic">
+  const periodSelect = (
+    <label className="sel">
+      <span>Period</span>
+      <select
+        value={period}
+        onChange={(e) => setPeriod(e.target.value)}
+        aria-label="Filter by period"
+      >
+        <option value="all">All time</option>
+        <option value="week">This week</option>
+        <option value="month">This month</option>
+      </select>
+    </label>
+  );
+  const statusSelect = (
+    <label className="sel">
+      <span>Status</span>
+      <select
+        value={statusSel}
+        onChange={(e) => setStatusSel(e.target.value)}
+        aria-label="Filter by status"
+      >
+        <option value="all">All statuses</option>
+        <option value="PURCHASED">Bought</option>
+        <option value="WAITING">Waiting</option>
+        <option value="BLOCKED">Blocked</option>
+        <option value="REJECTED">Rejected</option>
+      </select>
+    </label>
+  );
+  const filtersButton = (
+    <button
+      className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
+      onClick={toggleFiltersPanel}
+      aria-pressed={filtersPanelOpen}
+    >
+      Filters
+    </button>
+  );
+  const customizeMenu = (
+    <div className="customize" ref={menuRef}>
+      <button
+        className="secondary customize-btn"
+        onClick={() => setMenuOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+      >
+        Customize
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M2.5 3.5 5 6l2.5-2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+      {menuOpen && (
+        <div className="customize-menu" role="menu">
+          <button
+            role="menuitem"
+            onClick={() => {
+              setMenuOpen(false);
+              setMode(editing ? "view" : "edit");
+            }}
+          >
+            {editing ? "Done editing" : "Edit layout"}
+          </button>
+          <button
+            role="menuitem"
+            disabled={!dirty}
+            onClick={() => {
+              setMenuOpen(false);
+              save();
+            }}
+          >
+            {dirty ? "Save layout" : "Layout saved"}
+          </button>
+          <button
+            role="menuitem"
+            disabled={!saved && !dirty}
+            onClick={() => {
+              setMenuOpen(false);
+              if (window.confirm("Reset the dashboard to the built-in layout?")) reset();
+            }}
+          >
+            Reset layout
+          </button>
+          <a role="menuitem" href="/audit/classic" onClick={() => setMenuOpen(false)}>
             Classic log
           </a>
-          <button
-            className="secondary"
-            onClick={() => setMode(editing ? "view" : "edit")}
-          >
-            {editing ? "Done" : "Edit report"}
-          </button>
-          <button className="secondary" onClick={save} disabled={!dirty}>
-            {dirty ? "Save" : "Saved"}
-          </button>
-          <button
-            className="secondary danger"
-            onClick={reset}
-            disabled={!saved && !dirty}
-          >
-            Reset
-          </button>
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      {topbarSlot &&
+        createPortal(
+          <div className="topbar-activity-controls">
+            {periodSelect}
+            {statusSelect}
+            {filtersButton}
+            {customizeMenu}
+          </div>,
+          topbarSlot
+        )}
 
       <div className="studio-filters-bar">
-        <label className="sel">
-          <span>Period</span>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            aria-label="Filter by period"
-          >
-            <option value="all">All time</option>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-          </select>
-        </label>
-        <label className="sel">
-          <span>Status</span>
-          <select
-            value={statusSel}
-            onChange={(e) => setStatusSel(e.target.value)}
-            aria-label="Filter by status"
-          >
-            <option value="all">All statuses</option>
-            <option value="PURCHASED">Bought</option>
-            <option value="WAITING">Waiting for you</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-        </label>
-        <button
-          className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
-          onClick={toggleFiltersPanel}
-          aria-pressed={filtersPanelOpen}
-        >
-          Filters
-        </button>
+        {periodSelect}
+        {statusSelect}
+        {filtersButton}
+        {customizeMenu}
       </div>
 
       <div className="studio-card">
         {hasData(data) ? (
           <AgStudioProvider licenseKey={licenseKey}>
+            <DashRowsContext.Provider value={data.requests}>
             <AgStudio
               key={theme}
               style={{ height: "auto", width: "100%" }}
@@ -564,6 +639,7 @@ function StudioDashboard({
                 setFailed(true);
               }}
             />
+            </DashRowsContext.Provider>
           </AgStudioProvider>
         ) : (
           <p className="empty-note">

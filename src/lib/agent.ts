@@ -3,6 +3,7 @@ import { searchProducts } from "./channel3";
 import { evaluatePolicy } from "./policy";
 import {
   createPurchaseRequest,
+  findPendingByProduct,
   getBudget,
   getMonthSpentCents,
   getPolicy,
@@ -86,6 +87,16 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     step: "pick",
     detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
   });
+
+  // Don't queue the same product twice: a WAITING request for it from the
+  // last 10 minutes is still live (either owner approval or PayPal checkout).
+  const pending = await findPendingByProduct(product.id);
+  if (pending) {
+    steps.push({ step: "result", detail: "ALREADY WAITING" });
+    const reply = `Already waiting on that one — "${product.title}" is still pending.`;
+    await logChat("agent", reply);
+    return { steps, reply, purchase: pending, approveUrl: null, stub: false };
+  }
 
   // --- deterministic policy engine (never the LLM) ---
   const spent = await getMonthSpentCents();

@@ -81,6 +81,8 @@ export function TopBar() {
         <h1>{title}</h1>
         <p className="muted">{subtitle}</p>
       </div>
+      {/* Page-level actions (e.g. Activity filters) portal in here. */}
+      <div id="topbar-actions" className="topbar-actions" />
       <div className="topbar-right">
         {budget && (
           <Link

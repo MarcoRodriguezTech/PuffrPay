@@ -2,10 +2,10 @@
 
 // Custom Studio widgets that make up the Activity bento layout — the hero
 // pieces of the reference dashboard that Studio's built-in charts can't draw:
-// the "Spending this month" area chart with range pills, the Fun money card,
-// the Recent activity list, the KPI tile row, rounded "Spend by day" bars,
-// and the status pill bars. All read rows from Studio's `context` (the
-// DashboardData), so they filter along with everything else only where noted.
+// the "Spending this month" stepped area chart, the Fun money card, the
+// Recent activity list, the KPI tile row, stacked "Spend by day" bars, the
+// status pill bars, and the grid pager. All read rows from Studio's
+// `context` (the DashboardData); the pager writes the grid's widget filter.
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useLayoutEffect } from "react";
@@ -14,6 +14,7 @@ import type { AgWidgetData, AgWidgetDataFormat, AgWidgetParams } from "ag-studio
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import { LeashBar } from "@/components/LeashBar";
+import { StatusBadge, STATUS_COLORS, statusKey, type StatusKey } from "@/components/StatusBadge";
 import { fmtDollars, useCountUp } from "@/lib/ui";
 
 type Row = DashboardData["requests"][number];
@@ -41,44 +42,16 @@ const timeOf = (iso: string) => {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${h}:${m} ${ap}`;
 };
 const dayKey = (iso: string) => iso.slice(0, 10);
+const fmtKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const todayKey = () => fmtKey(new Date());
 const money = (v: number) => `$${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}`;
 // Axis ticks always round to whole dollars: '$200', never '$200.00'.
 const axisMoney = (v: number) => `$${Math.round(v)}`;
 
-const STATUS_COLORS: Record<string, string> = {
-  PURCHASED: "var(--ok)",
-  WAITING: "var(--warn)",
-  BLOCKED: "var(--danger)",
-  REJECTED: "var(--reject)",
-  FAILED: "var(--danger)",
-};
-const STATUS_LABEL: Record<string, string> = {
-  PURCHASED: "Bought",
-  WAITING: "Waiting",
-  BLOCKED: "Blocked",
-  REJECTED: "Rejected",
-  FAILED: "Failed",
-};
+const STATUS_ORDER: StatusKey[] = ["PURCHASED", "PAYPAL", "WAITING", "BLOCKED", "REJECTED", "FAILED"];
 
 /* ---------- svg helpers ---------- */
-
-/** Catmull-Rom -> cubic bezier smooth path through points. */
-function smoothPath(pts: [number, number][]): string {
-  if (pts.length < 2) return pts.length ? `M${pts[0][0]},${pts[0][1]}` : "";
-  let d = `M${pts[0][0]},${pts[0][1]}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += `C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
-  }
-  return d;
-}
 
 function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -95,10 +68,32 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
-/* ---------- Spending this month: area chart + range pills ---------- */
+/* ---------- Spending this month: stepped cumulative area + range pills ---------- */
 
 type RangeKey = "week" | "month" | "all";
-const RANGE_DAYS: Record<RangeKey, number | null> = { week: 7, month: 30, all: null };
+
+// Each range's x domain: week = trailing 7 days, month = the full calendar
+// month (1st -> last day), all = first spend -> today.
+function rangeDomain(range: RangeKey, firstSpendKey: string): [string, string] {
+  const today = todayKey();
+  if (range === "week") {
+    const start = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10);
+    return [start, today];
+  }
+  if (range === "month") {
+    const now = new Date();
+    const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const end = fmtKey(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    return [start, end];
+  }
+  return [firstSpendKey || today, today];
+}
+
+const eachDay = function* (from: string, to: string) {
+  for (let t = new Date(from + "T00:00:00"); fmtKey(t) <= to; t.setDate(t.getDate() + 1)) {
+    yield fmtKey(t);
+  }
+};
 
 function SpendTrend(params: Ctx) {
   const rows = useRows(params);
@@ -110,42 +105,24 @@ function SpendTrend(params: Ctx) {
   const spentTotal = useMemo(() => rows.reduce((s, r) => s + (r.spent ?? 0), 0), [rows]);
   const shownTotal = useCountUp(Math.round(spentTotal * 100)) / 100;
 
-  const { days, delta } = useMemo(() => {
-    const limit = RANGE_DAYS[range];
-    const cutoff = limit == null ? "" : new Date(Date.now() - limit * 864e5).toISOString().slice(0, 10);
-    const priorCut = limit == null ? "" : new Date(Date.now() - 2 * limit * 864e5).toISOString().slice(0, 10);
-
-    // spend per day inside the range, and the range's total vs the previous
-    // equal-length window for the change chip.
+  const { days } = useMemo(() => {
     const perDay = new Map<string, number>();
-    let inSum = 0;
-    let prevSum = 0;
     for (const r of rows) {
       const k = dayKey(r.createdAt);
-      const v = r.spent ?? 0;
-      if (k >= cutoff) {
-        perDay.set(k, (perDay.get(k) ?? 0) + v);
-        inSum += v;
-      } else if (limit != null && k >= priorCut) {
-        prevSum += v;
-      }
+      perDay.set(k, (perDay.get(k) ?? 0) + (r.spent ?? 0));
     }
     const keys = [...perDay.keys()].sort();
-    // walk every day from the first spend (or the cutoff) to today so the
-    // cumulative line keeps its slope across quiet days.
-    const first = limit == null ? keys[0] ?? "" : cutoff;
+    const [from, to] = rangeDomain(range, keys[0] ?? "");
+    // Carry spend before the domain in so the cumulative line stays a total.
+    let cum = rows.reduce((s, r) => (dayKey(r.createdAt) < from ? s + (r.spent ?? 0) : s), 0);
+    const today = todayKey();
     const out: { key: string; cum: number }[] = [];
-    let cum = limit == null ? 0 : rows.reduce((s, r) => (dayKey(r.createdAt) < cutoff ? s + (r.spent ?? 0) : s), 0);
-    if (first) {
-      const end = dayKey(new Date().toISOString());
-      for (let t = new Date(first + "T00:00:00"); dayKey(t.toISOString()) <= end; t.setDate(t.getDate() + 1)) {
-        const k = dayKey(t.toISOString());
-        cum += perDay.get(k) ?? 0;
-        out.push({ key: k, cum });
-      }
+    for (const k of eachDay(from, to)) {
+      cum += perDay.get(k) ?? 0;
+      // The line ends at today — the axis still runs to the month's end.
+      if (k <= today) out.push({ key: k, cum });
     }
-    const delta = prevSum > 0 ? ((inSum - prevSum) / prevSum) * 100 : inSum > 0 ? 100 : 0;
-    return { days: out, delta };
+    return { days: out, domain: [from, to] as const };
   }, [rows, range]);
 
   // layout
@@ -153,15 +130,34 @@ function SpendTrend(params: Ctx) {
   const iw = Math.max(10, w - PAD.l - PAD.r);
   const ih = Math.max(10, h - PAD.t - PAD.b);
   const maxY = Math.max(cap * 1.1, ...days.map((d) => d.cum), 1);
-  const x = (i: number) => PAD.l + (days.length <= 1 ? iw / 2 : (i / (days.length - 1)) * iw);
+  // X position comes from the date's place in the domain, not the point index,
+  // so days before today sit left of the month-end edge.
+  const [domFrom, domTo] = rangeDomain(range, days[0]?.key ?? "");
+  const domKeys = [...eachDay(domFrom, domTo)];
+  const domIndex = new Map(domKeys.map((k, i) => [k, i]));
+  const x = (key: string) => PAD.l + ((domIndex.get(key) ?? 0) / Math.max(1, domKeys.length - 1)) * iw;
   const y = (v: number) => PAD.t + ih - (v / maxY) * ih;
+  // Axis labels anchor to the domain (1st .. last day), not the data points.
+  const labelIdx = [0, Math.floor(domKeys.length / 2), domKeys.length - 1].filter(
+    (v, i, a) => a.indexOf(v) === i
+  );
 
-  const pts: [number, number][] = days.map((d, i) => [x(i), y(d.cum)]);
-  const line = smoothPath(pts);
-  const area = line ? `${line}L${pts.at(-1)?.[0]},${y(0)}L${pts[0]?.[0]},${y(0)}Z` : "";
+  const pts: [number, number][] = days.map((d) => [x(d.key), y(d.cum)]);
+  // Step-after: hold each cumulative value across the day, jump at the next.
+  const line = pts.length
+    ? pts.reduce((d, [px, py], i) => (i === 0 ? `M${px},${py}` : `${d}H${px}V${py}`), "")
+    : "";
+  const area = line ? `${line}V${y(0)}H${pts[0]?.[0]}Z` : "";
   const capY = y(cap);
   const ticks = [0, 0.5, 1].map((t) => t * maxY);
-  const labelEvery = Math.max(1, Math.ceil(days.length / 6));
+
+  const left = cap - spentTotal;
+  const capChip =
+    cap <= 0
+      ? null
+      : left >= 0
+        ? `${money(left)} left of ${money(cap)}`
+        : `${money(-left)} over ${money(cap)}`;
 
   return (
     <div className="bento spend-trend">
@@ -170,9 +166,7 @@ function SpendTrend(params: Ctx) {
           <h3 className="bento-title">Spending this month</h3>
           <div>
             <span className="bento-total">{money(shownTotal)}</span>
-            <span className={`bento-delta ${delta > 0 ? "up" : delta < 0 ? "down" : "flat"}`}>
-              {delta > 0 ? "↑" : delta < 0 ? "↓" : "—"} {Math.abs(Math.round(delta))}%
-            </span>
+            {capChip && <span className="bento-delta flat">{capChip}</span>}
           </div>
         </div>
         <div className="range-pills" role="group" aria-label="Time range">
@@ -231,19 +225,17 @@ function SpendTrend(params: Ctx) {
             )}
             {area && <path className="area-fade" d={area} fill="url(#trendFill)" />}
             {line && <path className="series-line" d={line} />}
-            {days.map((d, i) =>
-              i % labelEvery === 0 ? (
-                <text
-                  key={d.key}
-                  className="axis-label"
-                  x={x(i)}
-                  y={h - 4}
-                  textAnchor={i === 0 ? "start" : i > days.length - labelEvery ? "end" : "middle"}
-                >
-                  {dayOf(d.key + "T12:00:00")}
-                </text>
-              ) : null
-            )}
+            {labelIdx.map((i, n) => (
+              <text
+                key={domKeys[i]}
+                className="axis-label"
+                x={x(domKeys[i])}
+                y={h - 4}
+                textAnchor={n === 0 ? "start" : n === labelIdx.length - 1 ? "end" : "middle"}
+              >
+                {dayOf(domKeys[i] + "T12:00:00")}
+              </text>
+            ))}
             {hover != null && pts[hover] && (
               <>
                 <circle className="hover-glow" cx={pts[hover][0]} cy={pts[hover][1]} r={10} />
@@ -274,21 +266,28 @@ function FunMoney(params: Ctx) {
   const cap = rows[0]?.monthlyCap ?? 0;
   const spent = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
   const ratio = cap > 0 ? spent / cap : 0;
+  const pct = Math.min(100, Math.round(ratio * 100));
   const state = stateForRatio(ratio);
 
   return (
     <div className="funmoney">
-      <h3 className="bento-title">Fun money</h3>
+      <div className="bento-head fm-head">
+        <h3 className="bento-title">Fun money</h3>
+        <span className="fm-leash-pill" aria-hidden="true">
+          <LeashBar ratio={ratio} width={10} />
+        </span>
+      </div>
       <span className="fm-mascot">
-        <PufferGauge ratio={ratio} size={72} />
+        <PufferGauge ratio={ratio} size={150} showLabel={false} />
       </span>
       <div className="fm-amount">
-        ${spent % 1 === 0 ? spent.toFixed(0) : spent.toFixed(2)}{" "}
-        <span className="of">of ${cap % 1 === 0 ? cap.toFixed(0) : cap.toFixed(2)}</span>
+        {money(spent)} <span className="of">of {money(cap)}</span>
       </div>
-      <LeashBar ratio={ratio} width={26} />
+      <div className="fm-bar" role="presentation">
+        <span className="fm-bar-fill" style={{ width: `${pct}%` }} />
+      </div>
       <div className="fm-state">
-        {Math.min(100, Math.round(ratio * 100))}% — {STATE_LABELS[state]}
+        {pct}% — {STATE_LABELS[state]}
       </div>
       <div className="fm-actions">
         <Link className="primary" href="/">Ask Puffr</Link>
@@ -308,8 +307,10 @@ function Recent(params: Ctx) {
   );
 
   const viewAll = () => {
-    const widgets = document.querySelectorAll(".ag-studio-widget");
-    widgets[widgets.length - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const grid = [...document.querySelectorAll(".ag-studio-layout-widget")].find(
+      (w) => w.querySelector(".ag-grid")
+    );
+    grid?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -335,29 +336,7 @@ function Recent(params: Ctx) {
             </span>
             <span className="recent-right">
               <span className="a">{money(r.amount)}</span>
-              <span
-                className="lp"
-                style={{
-                  fontSize: 11,
-                  color: STATUS_COLORS[r.status] ?? "var(--ink-soft)",
-                  border: "none",
-                  padding: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <i
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: STATUS_COLORS[r.status] ?? "var(--ink-soft)",
-                    display: "inline-block",
-                  }}
-                />
-                {STATUS_LABEL[r.status] ?? r.status}
-              </span>
+              <StatusBadge status={r.status} decision={r.decision} />
             </span>
           </div>
         ))}
@@ -371,7 +350,6 @@ function Recent(params: Ctx) {
 
 function KpiRow(params: Ctx) {
   const rows = useRows(params);
-  const cap = rows[0]?.monthlyCap ?? 0;
   const spent = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
   const kept = rows.reduce((s, r) => s + (r.blocked ? r.amount : 0), 0);
   const waiting = rows.reduce((s, r) => s + (r.waiting ?? 0), 0);
@@ -380,21 +358,25 @@ function KpiRow(params: Ctx) {
   const spentC = useCountUp(Math.round(spent * 100));
   const reqC = useCountUp(rows.length);
   const waitC = useCountUp(waiting);
-  void cap;
 
   const tiles = [
-    { label: "Kept by the leash", value: fmtDollars(keptC), lead: true },
-    { label: "Spent", value: fmtDollars(spentC) },
-    { label: "Requests", value: String(reqC) },
-    { label: "Waiting on you", value: String(waitC) },
+    {
+      label: "Kept by the leash",
+      value: fmtDollars(keptC),
+      helper: "Purchases the rules stopped",
+    },
+    { label: "Spent", value: fmtDollars(spentC), helper: "Paid via PayPal sandbox" },
+    { label: "Requests", value: String(reqC), helper: "Purchase requests made" },
+    { label: "Waiting on you", value: String(waitC), helper: "Need your approval" },
   ];
 
   return (
     <div className="kpi-row">
       {tiles.map((t) => (
-        <div className={`kpi-tile${t.lead ? " lead" : ""}`} key={t.label}>
+        <div className="kpi-tile" key={t.label}>
           <span className="kpi-label">{t.label}</span>
           <span className="kpi-value">{t.value}</span>
+          <span className="kpi-helper">{t.helper}</span>
         </div>
       ))}
     </div>
@@ -407,36 +389,45 @@ function SpendByDay(params: Ctx) {
   const rows = useRows(params);
   const [hover, setHover] = useState<number | null>(null);
   const [ref, { w, h }] = useSize<HTMLDivElement>();
+  const today = todayKey();
 
   const days = useMemo(() => {
-    const perDay = new Map<string, number>();
+    const bought = new Map<string, number>();
+    const requested = new Map<string, number>();
     const cutoff = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
     for (const r of rows) {
       const k = dayKey(r.createdAt);
-      if (k >= cutoff) perDay.set(k, (perDay.get(k) ?? 0) + (r.spent ?? 0));
+      if (k < cutoff) continue;
+      if (r.status === "PURCHASED") {
+        bought.set(k, (bought.get(k) ?? 0) + r.amount);
+      } else {
+        requested.set(k, (requested.get(k) ?? 0) + r.amount);
+      }
     }
-    const out: { key: string; v: number }[] = [];
-    const end = dayKey(new Date().toISOString());
-    for (let t = new Date(cutoff + "T00:00:00"); dayKey(t.toISOString()) <= end; t.setDate(t.getDate() + 1)) {
-      const k = dayKey(t.toISOString());
-      out.push({ key: k, v: perDay.get(k) ?? 0 });
+    const out: { key: string; bought: number; requested: number }[] = [];
+    for (const k of eachDay(cutoff, today)) {
+      out.push({ key: k, bought: bought.get(k) ?? 0, requested: requested.get(k) ?? 0 });
     }
     return out;
-  }, [rows]);
+  }, [rows, today]);
 
   const PAD = { l: 34, r: 8, t: 12, b: 20 };
   const iw = Math.max(10, w - PAD.l - PAD.r);
   const ih = Math.max(10, h - PAD.t - PAD.b);
-  const maxV = Math.max(...days.map((d) => d.v), 1);
-  const maxIdx = days.findIndex((d) => d.v === Math.max(...days.map((x) => x.v)));
+  const maxV = Math.max(...days.map((d) => d.bought + d.requested), 1);
   const slot = iw / days.length;
   const bw = Math.min(34, slot * 0.62);
   const ticks = [0, 0.5, 1].map((t) => t * maxV);
+  const yAt = (v: number) => PAD.t + ih - (v / maxV) * ih;
 
   return (
     <div className="bento">
       <div className="bento-head">
         <h3 className="bento-title">Spend by day</h3>
+        <div className="legend-pills">
+          <span className="lp"><i className="dot-bought" />Bought</span>
+          <span className="lp"><i className="dot-requested" />Requested</span>
+        </div>
       </div>
       <div className="bento-chart" ref={ref}>
         {w > 0 && (
@@ -451,37 +442,59 @@ function SpendByDay(params: Ctx) {
             }}
           >
             <defs>
-              <linearGradient id="barMax" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="barBought" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="var(--tide)" />
                 <stop offset="100%" stopColor="var(--deep)" />
               </linearGradient>
             </defs>
             {ticks.map((t) => (
               <g key={t}>
-                <line className="gridline" x1={PAD.l} x2={w - PAD.r} y1={PAD.t + ih - (t / maxV) * ih} y2={PAD.t + ih - (t / maxV) * ih} />
-                <text className="axis-label" x={0} y={PAD.t + ih - (t / maxV) * ih + 4}>{axisMoney(t)}</text>
+                <line className="gridline" x1={PAD.l} x2={w - PAD.r} y1={yAt(t)} y2={yAt(t)} />
+                <text className="axis-label" x={0} y={yAt(t) + 4}>{axisMoney(t)}</text>
               </g>
             ))}
             {days.map((d, i) => {
-              const bh = Math.max(2, (d.v / maxV) * ih);
+              const total = d.bought + d.requested;
+              const bh = Math.max(0, (d.bought / maxV) * ih);
+              const rh = Math.max(0, (d.requested / maxV) * ih);
               const bx = PAD.l + i * slot + (slot - bw) / 2;
-              const by = PAD.t + ih - bh;
-              const isMax = i === maxIdx && d.v > 0;
+              const isToday = d.key === today;
+              const dim = !isToday && hover !== i && total > 0;
               return (
-                <g key={d.key}>
-                  <rect
-                    className="bar"
-                    x={bx}
-                    y={by}
-                    width={bw}
-                    height={bh}
-                    fill={isMax ? "url(#barMax)" : "var(--ink-soft)"}
-                    opacity={isMax ? 1 : hover === i ? 0.85 : 0.4}
-                    style={{ animationDelay: `${i * 30}ms` }}
-                  />
-                  {(i % 3 === 0 || i === days.length - 1) && (
+                <g key={d.key} opacity={dim ? 0.55 : 1}>
+                  {d.bought > 0 && (
+                    <rect
+                      className="bar"
+                      x={bx}
+                      y={yAt(d.bought)}
+                      width={bw}
+                      height={Math.max(2, bh)}
+                      fill="url(#barBought)"
+                      style={{ animationDelay: `${i * 30}ms` }}
+                    />
+                  )}
+                  {d.requested > 0 && (
+                    <rect
+                      className="bar bar-requested"
+                      x={bx}
+                      y={yAt(total)}
+                      width={bw}
+                      height={Math.max(2, rh)}
+                      style={{ animationDelay: `${i * 30}ms` }}
+                    />
+                  )}
+                  {isToday && (
+                    <rect
+                      className="bar-today"
+                      x={bx}
+                      y={yAt(total) - 4}
+                      width={bw}
+                      height={Math.max(4, (total / maxV) * ih + 8)}
+                    />
+                  )}
+                  {(i === days.length - 1 || (i % 3 === 0 && i < days.length - 2)) && (
                     <text className="axis-label" x={bx + bw / 2} y={h - 4} textAnchor="middle">
-                      {dayOf(d.key + "T12:00:00")}
+                      {isToday ? "Today" : dayOf(d.key + "T12:00:00")}
                     </text>
                   )}
                 </g>
@@ -494,11 +507,14 @@ function SpendByDay(params: Ctx) {
             className="chart-tip"
             style={{
               left: PAD.l + hover * slot + slot / 2,
-              top: PAD.t + ih - (days[hover].v / maxV) * ih - 8,
+              top: yAt(days[hover].bought + days[hover].requested) - 8,
             }}
           >
             <span className="tip-date">{dayOf(days[hover].key + "T12:00:00")}</span>
-            <span className="tip-amt">{money(days[hover].v)}</span>
+            <span className="tip-amt">
+              {money(days[hover].bought)} bought
+              {days[hover].requested > 0 && ` · ${money(days[hover].requested)} requested`}
+            </span>
           </div>
         )}
       </div>
@@ -510,37 +526,126 @@ function SpendByDay(params: Ctx) {
 
 function StatusBars(params: Ctx) {
   const rows = useRows(params);
-  const order = ["PURCHASED", "WAITING", "BLOCKED", "REJECTED"];
-  const counts = order.map((s) => ({
-    status: s,
-    n: rows.filter((r) => r.status === s).length,
-    amt: rows.filter((r) => r.status === s).reduce((a, r) => a + r.amount, 0),
-  }));
+  const counts = STATUS_ORDER.map((key) => ({
+    key,
+    n: rows.filter((r) => statusKey(r.status, r.decision) === key).length,
+    amt: rows
+      .filter((r) => statusKey(r.status, r.decision) === key)
+      .reduce((a, r) => a + r.amount, 0),
+  })).filter((c) => c.n > 0 || c.key === "PURCHASED");
   const max = Math.max(...counts.map((c) => c.n), 1);
+  const NAME: Record<StatusKey, string> = {
+    PURCHASED: "Bought",
+    PAYPAL: "Awaiting PayPal",
+    WAITING: "Waiting for you",
+    BLOCKED: "Blocked",
+    REJECTED: "Rejected",
+    FAILED: "Failed",
+  };
 
   return (
     <div className="bento">
       <div className="bento-head">
-        <h3 className="bento-title">Requests by status</h3>
+        <div>
+          <h3 className="bento-title">Requests by status</h3>
+          <p className="bento-sub">Count and amount</p>
+        </div>
       </div>
       <div className="statusbars">
         {counts.map((c) => (
-          <div className="statusbar-row" key={c.status}>
-            <span className="statusbar-name">{STATUS_LABEL[c.status]}</span>
+          <div className="statusbar-row" key={c.key}>
+            <span className="statusbar-name">{NAME[c.key]}</span>
             <span className="statusbar-track">
               <span
                 className="statusbar-fill"
                 style={{
                   width: `${(c.n / max) * 100}%`,
-                  background: STATUS_COLORS[c.status],
+                  background: STATUS_COLORS[c.key],
                 }}
               />
             </span>
             <span className="statusbar-num">
-              {c.n} · {money(c.amt)}
+              {c.n} — {money(c.amt)}
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Grid pager ---------- */
+
+// The Studio grid is a server-side row model — no client pagination — so the
+// pager slices rows through a widget filter on `rowIdx` (1-based newest-first).
+const GRID_ID = "requests-grid";
+const ROWIDX = "requests.rowIdx";
+const PAGE_SIZE = 8;
+
+const pageFilter = (page: number) => [
+  { field: { id: ROWIDX }, model: { operator: "greaterThanOrEqual", value: (page - 1) * PAGE_SIZE + 1 } },
+  { field: { id: ROWIDX }, model: { operator: "lessThanOrEqual", value: page * PAGE_SIZE } },
+];
+export const gridPageFilter = pageFilter;
+
+function GridPager(params: Ctx) {
+  const rows = useRows(params);
+  const api = params.api;
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const [page, setPage] = useState(1);
+
+  const go = (p: number) => {
+    const clamped = Math.min(Math.max(1, p), pages);
+    setPage(clamped);
+    const st = api.getState();
+    api.setState({
+      ...st,
+      pages: st.pages.map((pg) =>
+        pg.id === st.selectedPageId
+          ? {
+              ...pg,
+              filter: {
+                ...pg.filter,
+                widget: {
+                  ...pg.filter?.widget,
+                  [GRID_ID]: pageFilter(clamped) as never,
+                },
+              },
+            }
+          : pg
+      ),
+    });
+  };
+
+  const lo = (page - 1) * PAGE_SIZE + 1;
+  const hi = Math.min(page * PAGE_SIZE, total);
+
+  return (
+    <div className="grid-pager">
+      <span className="grid-pager-info">
+        {total === 0 ? "No requests" : `${lo}–${hi} of ${total} requests · ${PAGE_SIZE} per page`}
+      </span>
+      <div className="grid-pager-nav">
+        <button
+          className="pager-btn"
+          onClick={() => go(page - 1)}
+          disabled={page <= 1}
+          aria-label="Previous page"
+        >
+          ‹ Prev
+        </button>
+        <span className="grid-pager-page">
+          Page {page} of {pages}
+        </span>
+        <button
+          className="pager-btn"
+          onClick={() => go(page + 1)}
+          disabled={page >= pages}
+          aria-label="Next page"
+        >
+          Next ›
+        </button>
       </div>
     </div>
   );
@@ -558,6 +663,7 @@ export const W_RECENT = "recent-activity";
 export const W_KPI_ROW = "kpi-row";
 export const W_SPEND_DAY = "spend-by-day";
 export const W_STATUS_BARS = "status-bars";
+export const W_GRID_PAGER = "grid-pager";
 
 type D = AgWidgetData<Record<string, never>, AgWidgetDataFormat<unknown>>;
 
@@ -575,24 +681,24 @@ export const bentoWidgetDefs = [
     label: "Fun money",
     comp: FunMoney as never,
     form: noMap as never,
-    defaultSize: { width: 300, height: 300 },
-    minSize: { width: 240, height: 240 },
+    defaultSize: { width: 300, height: 340 },
+    minSize: { width: 240, height: 300 },
   }),
   def<D>({
     id: W_RECENT,
     label: "Recent activity",
     comp: Recent as never,
     form: noMap as never,
-    defaultSize: { width: 300, height: 300 },
-    minSize: { width: 240, height: 200 },
+    defaultSize: { width: 340, height: 560 },
+    minSize: { width: 280, height: 480 },
   }),
   def<D>({
     id: W_KPI_ROW,
     label: "Budget tiles",
     comp: KpiRow as never,
     form: noMap as never,
-    defaultSize: { width: 900, height: 110 },
-    minSize: { width: 300, height: 90 },
+    defaultSize: { width: 900, height: 130 },
+    minSize: { width: 300, height: 110 },
   }),
   def<D>({
     id: W_SPEND_DAY,
@@ -609,5 +715,13 @@ export const bentoWidgetDefs = [
     form: noMap as never,
     defaultSize: { width: 460, height: 260 },
     minSize: { width: 240, height: 180 },
+  }),
+  def<D>({
+    id: W_GRID_PAGER,
+    label: "Grid pages",
+    comp: GridPager as never,
+    form: noMap as never,
+    defaultSize: { width: 900, height: 48 },
+    minSize: { width: 240, height: 40 },
   }),
 ];
