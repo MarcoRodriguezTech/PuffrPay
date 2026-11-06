@@ -1,5 +1,17 @@
 import "dotenv/config";
 import { Pool } from "pg";
+import { searchProducts } from "../src/lib/channel3";
+
+// Channel3 gives each demo row a real catalog photo for the Recent activity
+// thumbnails; a failed lookup just leaves the letter-tile fallback.
+async function imageFor(title: string): Promise<string | null> {
+  try {
+    const hits = await searchProducts(title, null);
+    return hits.find((p) => p.imageUrl)?.imageUrl ?? null;
+  } catch {
+    return null;
+  }
+}
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -165,17 +177,19 @@ async function main() {
     // inside the current month and "this week"/"this month" queries hit them
     for (let i = 0; i < samples.length; i++) {
       const s = samples[i];
+      const imageUrl = await imageFor(s.title);
       await pool.query(
         `INSERT INTO purchase_requests
-          (created_at, product_id, product_title, merchant_url, category, amount_cents,
+          (created_at, product_id, product_title, merchant_url, image_url, category, amount_cents,
            agent_reasoning, policy_decision, policy_reason, status, decided_by,
            paypal_order_id, paypal_capture_id)
-         VALUES (now() - ($1 || ' hours')::interval, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         VALUES (now() - ($1 || ' hours')::interval, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
         [
           String(i * 7),
           `seed-${i + 1}`,
           s.title,
           s.merchant,
+          imageUrl,
           s.category,
           s.cents,
           s.reasoning,
