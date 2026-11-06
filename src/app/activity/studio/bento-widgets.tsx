@@ -13,7 +13,6 @@ import type { AgWidgetDefinition } from "ag-studio-react";
 import type { AgWidgetData, AgWidgetDataFormat, AgWidgetParams } from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { LeashBar } from "@/components/LeashBar";
 import { StatusBadge, STATUS_COLORS, statusKey, type StatusKey } from "@/components/StatusBadge";
 import { fmtDollars, useCountUp } from "@/lib/ui";
 
@@ -336,9 +335,6 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
     <>
       <div className="bento-head fm-head">
         <h3 className="bento-title">Fun money</h3>
-        <span className="fm-leash-pill" aria-hidden="true">
-          <LeashBar ratio={ratio} width={56} />
-        </span>
       </div>
       <span className="fm-mascot" ref={mascotRef}>
         <PufferGauge ratio={ratio} size={80} showLabel={false} />
