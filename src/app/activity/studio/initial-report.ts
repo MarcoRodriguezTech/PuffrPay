@@ -104,13 +104,13 @@ const activity: AgPageState = {
   widgets: activityWidgets,
   filter: gridFilter,
   widgetLayout: {
-    [W_KPI_ROW]: at(0, 0, 12, 7),
-    [W_SPEND_TREND]: at(0, 7, 8, 20),
+    [W_KPI_ROW]: at(0, 0, 12, 8),
+    [W_SPEND_TREND]: at(0, 8, 8, 20),
     // Tall right column: Fun money on top, Recent activity below — one card.
-    [W_FUN_RECENT]: at(8, 7, 4, 42),
+    [W_FUN_RECENT]: at(8, 8, 4, 41),
     // Spend by day takes Recent's old slot; Requests by status takes Spend's.
-    [W_SPEND_DAY]: at(0, 27, 4, 22),
-    [W_STATUS_BARS]: at(4, 27, 4, 22),
+    [W_SPEND_DAY]: at(0, 28, 4, 21),
+    [W_STATUS_BARS]: at(4, 28, 4, 21),
     "requests-grid": at(0, 49, 12, 30),
     [W_GRID_PAGER]: at(0, 79, 12, 4),
   },

@@ -3211,7 +3211,7 @@ img[src*="/mascot/"] {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--card-grad);
-  padding: 12px 20px;
+  padding: 12px 20px 16px;
 }
 .kpi-tile .kpi-label {
   font-size: 12px;
