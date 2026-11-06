@@ -261,8 +261,7 @@ function SpendTrend(params: Ctx) {
 
 /* ---------- Fun money card ---------- */
 
-function FunMoney(params: Ctx) {
-  const rows = useRows(params);
+function FunMoneyBody({ rows }: { rows: Row[] }) {
   const cap = rows[0]?.monthlyCap ?? 0;
   const spent = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
   const ratio = cap > 0 ? spent / cap : 0;
@@ -270,7 +269,7 @@ function FunMoney(params: Ctx) {
   const state = stateForRatio(ratio);
 
   return (
-    <div className="funmoney">
+    <>
       <div className="bento-head fm-head">
         <h3 className="bento-title">Fun money</h3>
         <span className="fm-leash-pill" aria-hidden="true">
@@ -293,14 +292,22 @@ function FunMoney(params: Ctx) {
         <Link className="primary" href="/">Ask Puffr</Link>
         <Link className="ghost" href="/policy">Edit rules</Link>
       </div>
+    </>
+  );
+}
+
+function FunMoney(params: Ctx) {
+  const rows = useRows(params);
+  return (
+    <div className="funmoney">
+      <FunMoneyBody rows={rows} />
     </div>
   );
 }
 
 /* ---------- Recent activity ---------- */
 
-function Recent(params: Ctx) {
-  const rows = useRows(params);
+function RecentBody({ rows }: { rows: Row[] }) {
   const latest = useMemo(
     () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5),
     [rows]
@@ -314,7 +321,7 @@ function Recent(params: Ctx) {
   };
 
   return (
-    <div className="bento">
+    <>
       <div className="bento-head">
         <h3 className="bento-title">Recent activity</h3>
         <button className="recent-viewall" onClick={viewAll}>View all</button>
@@ -342,6 +349,28 @@ function Recent(params: Ctx) {
         ))}
         {latest.length === 0 && <p className="muted">Nothing yet.</p>}
       </div>
+    </>
+  );
+}
+
+function Recent(params: Ctx) {
+  const rows = useRows(params);
+  return (
+    <div className="bento">
+      <RecentBody rows={rows} />
+    </div>
+  );
+}
+
+/* ---------- Fun money + Recent activity in one tall card ---------- */
+
+function FunRecent(params: Ctx) {
+  const rows = useRows(params);
+  return (
+    <div className="funmoney funrecent">
+      <FunMoneyBody rows={rows} />
+      <hr className="fr-sep" />
+      <RecentBody rows={rows} />
     </div>
   );
 }
@@ -659,6 +688,7 @@ const def = <T extends AgWidgetData<Record<string, never>, AgWidgetDataFormat<un
 
 export const W_SPEND_TREND = "spend-trend";
 export const W_FUN_MONEY = "fun-money";
+export const W_FUN_RECENT = "fun-recent";
 export const W_RECENT = "recent-activity";
 export const W_KPI_ROW = "kpi-row";
 export const W_SPEND_DAY = "spend-by-day";
@@ -683,6 +713,14 @@ export const bentoWidgetDefs = [
     form: noMap as never,
     defaultSize: { width: 300, height: 340 },
     minSize: { width: 240, height: 300 },
+  }),
+  def<D>({
+    id: W_FUN_RECENT,
+    label: "Fun money + recent",
+    comp: FunRecent as never,
+    form: noMap as never,
+    defaultSize: { width: 300, height: 780 },
+    minSize: { width: 240, height: 640 },
   }),
   def<D>({
     id: W_RECENT,

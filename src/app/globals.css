@@ -3244,6 +3244,30 @@ label {
   color: var(--ink);
 }
 
+/* Combined Fun money + Recent activity card — the right column stacks both
+   sections in one card, split by a hairline. */
+.funrecent .bento-head {
+  width: 100%;
+}
+.funrecent .fm-actions {
+  margin-top: 0;
+}
+.funrecent .fr-sep {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--s1) 0;
+}
+.funrecent .recent-list {
+  align-self: stretch;
+}
+.funrecent .recent-list .recent-row {
+  align-items: flex-start;
+}
+.funrecent .recent-meta .s {
+  margin-top: 2px;
+}
+
 /* KPI tiles inside the kpi-row widget — compact tiles: 13px muted label,
    8px gap, tabular number, 12px helper. */
 .kpi-row {

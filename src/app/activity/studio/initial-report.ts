@@ -6,10 +6,9 @@
 
 import type { AgPageState, AgReportState, AgWidgetLayoutState } from "ag-studio";
 import {
-  W_FUN_MONEY,
+  W_FUN_RECENT,
   W_GRID_PAGER,
   W_KPI_ROW,
-  W_RECENT,
   W_SPEND_DAY,
   W_SPEND_TREND,
   W_STATUS_BARS,
@@ -43,13 +42,8 @@ const activityWidgets: AgPageState["widgets"] = {
     dataMapping: {},
     format: noChrome,
   },
-  [W_FUN_MONEY]: {
-    type: W_FUN_MONEY as never,
-    dataMapping: {},
-    format: noChrome,
-  },
-  [W_RECENT]: {
-    type: W_RECENT as never,
+  [W_FUN_RECENT]: {
+    type: W_FUN_RECENT as never,
     dataMapping: {},
     format: noChrome,
   },
@@ -111,10 +105,11 @@ const activity: AgPageState = {
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 12, 7),
     [W_SPEND_TREND]: at(0, 7, 8, 22),
-    [W_FUN_MONEY]: at(8, 7, 4, 22),
-    [W_RECENT]: at(0, 29, 4, 24),
-    [W_SPEND_DAY]: at(4, 29, 4, 24),
-    [W_STATUS_BARS]: at(8, 29, 4, 24),
+    // Tall right column: Fun money on top, Recent activity below — one card.
+    [W_FUN_RECENT]: at(8, 7, 4, 46),
+    // Spend by day takes Recent's old slot; Requests by status takes Spend's.
+    [W_SPEND_DAY]: at(0, 29, 4, 24),
+    [W_STATUS_BARS]: at(4, 29, 4, 24),
     "requests-grid": at(0, 53, 12, 26),
     [W_GRID_PAGER]: at(0, 79, 12, 4),
   },
@@ -127,12 +122,11 @@ const activityCompact: AgPageState = {
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 6, 8),
     [W_SPEND_TREND]: at(0, 8, 6, 16),
-    [W_FUN_MONEY]: at(0, 24, 6, 24),
-    [W_RECENT]: at(0, 48, 3, 27),
-    [W_SPEND_DAY]: at(3, 48, 3, 27),
-    [W_STATUS_BARS]: at(0, 75, 6, 11),
-    "requests-grid": at(0, 86, 6, 29),
-    [W_GRID_PAGER]: at(0, 115, 6, 4),
+    [W_FUN_RECENT]: at(0, 24, 6, 52),
+    [W_SPEND_DAY]: at(0, 76, 3, 27),
+    [W_STATUS_BARS]: at(3, 76, 3, 27),
+    "requests-grid": at(0, 103, 6, 29),
+    [W_GRID_PAGER]: at(0, 132, 6, 4),
   },
 };
 
@@ -142,12 +136,11 @@ const activityMobile: AgPageState = {
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 6, 15),
     [W_SPEND_TREND]: at(0, 15, 6, 16),
-    [W_FUN_MONEY]: at(0, 31, 6, 24),
-    [W_RECENT]: at(0, 55, 6, 27),
-    [W_SPEND_DAY]: at(0, 82, 6, 13),
-    [W_STATUS_BARS]: at(0, 95, 6, 11),
-    "requests-grid": at(0, 106, 6, 29),
-    [W_GRID_PAGER]: at(0, 135, 6, 4),
+    [W_FUN_RECENT]: at(0, 31, 6, 52),
+    [W_SPEND_DAY]: at(0, 83, 6, 13),
+    [W_STATUS_BARS]: at(0, 96, 6, 12),
+    "requests-grid": at(0, 108, 6, 29),
+    [W_GRID_PAGER]: at(0, 137, 6, 4),
   },
 };
 
