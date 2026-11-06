@@ -30,6 +30,7 @@ import {
 import { buildStudioData, hasData } from "./studio/data";
 import { studioThemeFor } from "./studio/theme";
 import { useTheme } from "@/lib/theme";
+import { ASSETS } from "@/lib/assets";
 import {
   DEFAULT_PAGE_TITLES,
   initialCompactReport,
@@ -75,6 +76,15 @@ const ASK_CHIPS = [
   "total spent this month",
   "waiting for approval",
 ];
+
+// One entry per question asked through the Ask panel — the assistant reply is
+// the filter set it applied plus the one-line summary the spec produces.
+type AskTurn = {
+  q: string;
+  filters: AuditFilter[];
+  note: string | null;
+  error: string | null;
+};
 
 const PROMPT_STARTERS = [
   { label: "What got blocked this week?", prompt: "Which purchase requests were blocked this week, and why?" },
@@ -273,9 +283,33 @@ function StudioDashboard({
 
   const [question, setQuestion] = useState("");
   const [askFilters, setAskFilters] = useState<AuditFilter[]>([]);
-  const [askError, setAskError] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
+  const [turns, setTurns] = useState<AskTurn[]>([]);
   const [askBusy, setAskBusy] = useState(false);
   const askCache = useRef(new Map<string, AuditQuerySpec>());
+  const askScrollRef = useRef<HTMLDivElement>(null);
+
+  // The panel squeezes the page on desktop via a body class the CSS keys off.
+  useEffect(() => {
+    document.body.classList.toggle("ask-open", askOpen);
+    return () => document.body.classList.remove("ask-open");
+  }, [askOpen]);
+
+  // Escape closes the panel.
+  useEffect(() => {
+    if (!askOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAskOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [askOpen]);
+
+  // Keep the newest turn in view.
+  useEffect(() => {
+    askScrollRef.current?.scrollTo({
+      top: askScrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [turns, askBusy]);
 
   const [period, setPeriod] = useState("all");
   const [statusSel, setStatusSel] = useState("all");
@@ -332,27 +366,25 @@ function StudioDashboard({
     api.setState({ ...st, pages });
   };
 
-  const summary = useMemo(() => {
-    if (askFilters.length === 0) return null;
-    const spec: AuditQuerySpec = {
-      filters: askFilters,
-      sort: null,
-      summary: { type: "sum" },
-      understood: "",
-    };
-    return specSummary(spec, data.requests);
-  }, [askFilters, data.requests]);
+  const noteFor = (filters: AuditFilter[]) =>
+    specSummary(
+      { filters, sort: null, summary: { type: "sum" }, understood: "" },
+      data.requests
+    )?.text ?? null;
 
   async function ask(q?: string) {
     const text = (q ?? question).trim();
     if (!text || askBusy) return;
     setAskBusy(true);
-    setAskError(null);
     const key = text.toLowerCase();
     const cached = askCache.current.get(key);
     if (cached) {
       setAskFilters(cached.filters);
       applySpec(cached);
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: cached.filters, note: noteFor(cached.filters), error: null },
+      ]);
       setAskBusy(false);
       return;
     }
@@ -364,22 +396,29 @@ function StudioDashboard({
       });
       const spec = (await res.json()) as AuditQuerySpec & { error?: string };
       if (!res.ok) {
-        setAskError(
+        const error =
           res.status === 422
             ? "I could not turn that into a filter. Try: show blocked purchases this week."
             : isRateLimitMsg(String(spec.error ?? ""))
               ? "Puffr is catching its breath. Try again in a minute."
-              : "Something went wrong on our side. Try again."
-        );
+              : "Something went wrong on our side. Try again.";
         if (res.status !== 422) console.error("[ask] query failed:", spec.error);
+        setTurns((t) => [...t, { q: text, filters: [], note: null, error }]);
         return;
       }
       askCache.current.set(key, spec);
       setAskFilters(spec.filters);
       applySpec(spec);
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: spec.filters, note: noteFor(spec.filters), error: null },
+      ]);
     } catch (err) {
       console.error("[ask] query failed:", err);
-      setAskError("Something went wrong on our side. Try again.");
+      setTurns((t) => [
+        ...t,
+        { q: text, filters: [], note: null, error: "Something went wrong on our side. Try again." },
+      ]);
     } finally {
       setAskBusy(false);
     }
@@ -394,7 +433,7 @@ function StudioDashboard({
   const clearAsk = () => {
     setQuestion("");
     setAskFilters([]);
-    setAskError(null);
+    setTurns([]);
     applyPageFilters([], toolFilters);
   };
 
@@ -452,71 +491,6 @@ function StudioDashboard({
           </button>
         </div>
       </div>
-
-      {chatMode === "ask" && (
-        <div className="ask-box">
-          <label htmlFor="ask-q">Ask the log</label>
-          <form
-            className="ask-row"
-            onSubmit={(e) => {
-              e.preventDefault();
-              ask();
-            }}
-          >
-            <input
-              id="ask-q"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="e.g. show everything the agent blocked this week"
-              disabled={askBusy}
-            />
-            <button type="submit" disabled={askBusy || !question.trim()}>
-              {askBusy ? "Thinking..." : "Ask"}
-            </button>
-            {(askFilters.length > 0 || question) && (
-              <button type="button" className="secondary" onClick={clearAsk}>
-                Clear
-              </button>
-            )}
-          </form>
-          <div className="ask-chips">
-            {ASK_CHIPS.map((c) => (
-              <button
-                key={c}
-                className="chip"
-                onClick={() => {
-                  setQuestion(c);
-                  ask(c);
-                }}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          {askFilters.length > 0 && (
-            <div className="applied">
-              <span className="lbl">Applied:</span>
-              {askFilters.map((f, i) => (
-                <span className="filter-chip" key={i}>
-                  {filterLabel(f)}
-                  <button
-                    aria-label={`Remove filter ${filterLabel(f)}`}
-                    onClick={() => removeFilter(i)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          {summary && <div className="audit-summary">{summary.text}</div>}
-          {askError && (
-            <div className="error" style={{ marginTop: 12 }}>
-              {askError}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="studio-filters-bar">
         <label className="sel">
@@ -602,6 +576,141 @@ function StudioDashboard({
         <pre className="ascii" aria-hidden="true">{`  ><(((°>  ~ ~`}</pre>
         <p className="muted">Puffr never spends without the rules.</p>
       </footer>
+
+      {chatMode === "ask" && !askOpen && (
+        <button
+          className="ask-fab"
+          onClick={() => setAskOpen(true)}
+          aria-label="Ask the log"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </button>
+      )}
+
+      {chatMode === "ask" && askOpen && (
+        <aside className="ask-panel" role="dialog" aria-label="Ask the log">
+          <header className="ask-head">
+            <h2>Ask the log</h2>
+            <div className="row">
+              {turns.length > 0 && (
+                <button className="secondary ask-clear" onClick={clearAsk}>
+                  New chat
+                </button>
+              )}
+              <button
+                className="ask-close"
+                onClick={() => setAskOpen(false)}
+                aria-label="Close panel"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          {askFilters.length > 0 && (
+            <div className="applied">
+              <span className="lbl">Applied:</span>
+              {askFilters.map((f, i) => (
+                <span className="filter-chip" key={i}>
+                  {filterLabel(f)}
+                  <button
+                    aria-label={`Remove filter ${filterLabel(f)}`}
+                    onClick={() => removeFilter(i)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="ask-scroll" ref={askScrollRef}>
+            {turns.length === 0 && !askBusy ? (
+              <div className="ask-hello">
+                <img src={ASSETS.mascotSvg} alt="" width={44} height={44} />
+                <p className="ask-hello-q">How can I help you today?</p>
+                <ul className="ask-suggest">
+                  {ASK_CHIPS.map((c) => (
+                    <li key={c}>
+                      <button
+                        onClick={() => {
+                          setQuestion("");
+                          ask(c);
+                        }}
+                      >
+                        <span>{c}</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="m9 18 6-6-6-6" />
+                        </svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              turns.map((t, i) => (
+                <div className="ask-turn" key={i}>
+                  <div className="ask-q">{t.q}</div>
+                  <div className={`ask-a${t.error ? " err" : ""}`}>
+                    {t.error ?? (
+                      <>
+                        {t.filters.length > 0 && (
+                          <span className="ask-a-chips">
+                            {t.filters.map((f, j) => (
+                              <span className="filter-chip" key={j}>
+                                {filterLabel(f)}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                        {t.note && <span className="ask-a-note">{t.note}</span>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            {askBusy && (
+              <div className="ask-turn">
+                <div className="ask-a thinking">
+                  <span className="spinner" aria-hidden="true" /> Thinking…
+                </div>
+              </div>
+            )}
+          </div>
+
+          <form
+            className="ask-input"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQuestion("");
+              ask();
+            }}
+          >
+            <input
+              aria-label="Ask a question about the activity log"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask about the log…"
+              disabled={askBusy}
+            />
+            <button
+              type="submit"
+              className="ask-send"
+              disabled={askBusy || !question.trim()}
+              aria-label="Send question"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5m-7 7 7-7 7 7" />
+              </svg>
+            </button>
+          </form>
+        </aside>
+      )}
     </>
   );
 }

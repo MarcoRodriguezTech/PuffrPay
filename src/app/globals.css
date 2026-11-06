@@ -2097,8 +2097,325 @@ label {
   justify-content: space-between;
 }
 
-.ask-box {
-  margin-top: var(--s4);
+/* ---------- Ask the log: floating bubble + slide-in panel ---------- */
+
+:root {
+  --ask-w: clamp(320px, 26vw, 400px);
+}
+
+/* The page squeezes left while the panel is docked (desktop only). */
+.shell {
+  transition: margin-right var(--dur) var(--ease);
+}
+
+@media (min-width: 1100px) {
+  body.ask-open .shell {
+    margin-right: calc(var(--ask-w) + 32px);
+  }
+}
+
+.ask-fab {
+  position: fixed;
+  right: var(--s6);
+  bottom: var(--s6);
+  z-index: 85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  color: #fff;
+  box-shadow: var(--shadow-raise);
+}
+
+.ask-fab svg {
+  width: 24px;
+  height: 24px;
+}
+
+.ask-fab:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: none;
+}
+
+/* Floating card docked to the right edge — mirrors the left rail. */
+.ask-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90;
+  width: var(--ask-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--card-grad);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow-raise);
+  overflow: hidden;
+  animation: ask-panel-in var(--dur) var(--ease);
+}
+
+@keyframes ask-panel-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.ask-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5, var(--s4));
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-head h2 {
+  margin: 0;
+  font-size: var(--t16);
+  font-weight: 700;
+}
+
+.ask-clear {
+  font-size: 0.8rem;
+  padding: var(--s1) var(--s3);
+}
+
+.ask-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+.ask-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ask-close:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--ocean-soft);
+  filter: none;
+}
+
+.ask-panel .applied {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+.ask-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+/* Empty state — Notion-style greeting + suggestion list. */
+.ask-hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s8);
+  text-align: center;
+}
+
+.ask-hello img {
+  width: 44px;
+  height: 44px;
+}
+
+.ask-hello-q {
+  margin: 0 0 var(--s2);
+  font-size: var(--t16);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ask-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.ask-suggest button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-ctl);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--t14);
+  font-weight: 500;
+  text-align: left;
+  box-shadow: none;
+}
+
+.ask-suggest button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0;
+}
+
+.ask-suggest button:hover:not(:disabled) {
+  background: var(--ocean-soft);
+  color: var(--ink);
+  filter: none;
+}
+
+.ask-suggest button:hover:not(:disabled) svg {
+  opacity: 1;
+}
+
+/* Chat turns: user bubble right, assistant reply left. */
+.ask-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.ask-q {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: var(--s2) var(--s3);
+  border-radius: 16px 16px 4px 16px;
+  background: var(--btn-grad);
+  color: #fff;
+  font-size: var(--t14);
+  overflow-wrap: anywhere;
+}
+
+.ask-a {
+  align-self: flex-start;
+  max-width: 92%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  font-size: var(--t14);
+  color: var(--ink);
+}
+
+.ask-a.err {
+  color: var(--danger);
+}
+
+.ask-a.thinking {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-soft);
+}
+
+.ask-a-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.ask-a-note {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+/* Bottom input bar. */
+.ask-input {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: var(--s3);
+  padding: var(--s1) var(--s1) var(--s1) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--paper-warm);
+}
+
+.ask-input:focus-within {
+  border-color: var(--tide);
+}
+
+.ask-input input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: var(--s2) 0;
+}
+
+.ask-input input:focus-visible {
+  outline: none;
+}
+
+.ask-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  color: #fff;
+  flex: none;
+}
+
+.ask-send svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ask-send:disabled {
+  opacity: 0.4;
+}
+
+/* Under 1100px the content can't meaningfully squeeze — the panel overlays
+   like a sheet, floating above the tab bar. */
+@media (max-width: 1099px) {
+  .ask-fab {
+    bottom: calc(64px + var(--s4) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ask-panel {
+    top: var(--s3);
+    right: var(--s3);
+    bottom: calc(64px + var(--s3) + env(safe-area-inset-bottom, 0px));
+    left: var(--s3);
+    width: auto;
+  }
 }
 
 .ask-row {
