@@ -3216,7 +3216,7 @@ img[src*="/mascot/"] {
   /* Widgets sit --studio-inset inside their grid cells; pulling the card out
      by the same amount puts card edges on the page gutter, flush with the
      topbar title instead of indented past it. */
-  --studio-inset: 12px;
+  --studio-inset: 16px;
   margin: 0 calc(-1 * var(--studio-inset));
   position: relative;
   background: transparent;
@@ -3310,6 +3310,11 @@ img[src*="/mascot/"] {
   border-radius: var(--radius);
   backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+  /* The veil stays mounted at opacity:0 after its widget loads — and the
+     backdrop-filter on .ag-studio-layout-widget-container makes it a
+     stacking context, so this later sibling sits above the widget body in
+     hit order and eats every click. Purely visual: never let it hit-test. */
+  pointer-events: none;
 }
 
 /* View mode must look finished: no cyan selection or resize outlines — those
@@ -4324,18 +4329,12 @@ img[src*="/mascot/"] {
 }
 .leashbar {
   display: flex;
-  gap: 3px;
-  height: 10px;
+  gap: 2px;
+  height: 16px;
   width: 100%;
   border-radius: 999px;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.3);
+  background: var(--ocean-soft);
   overflow: visible;
-}
-:root[data-theme="light"] .leashbar {
-  background: rgba(226, 234, 248, 0.7);
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .leash-seg {
   position: relative;
@@ -4346,28 +4345,14 @@ img[src*="/mascot/"] {
   padding: 0;
   border-radius: 999px;
   cursor: pointer;
-  /* lit top edge, like the chart bars */
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transition: filter var(--dur-fast) var(--ease);
 }
-.leash-seg:hover:not(:disabled) {
-  transform: none;
-  filter: brightness(1.15);
+.leash-seg:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
-.leash-seg:focus-visible,
 .leash-seg.active {
-  outline: 2px solid rgba(255, 255, 255, 0.85);
-  outline-offset: 2px;
-}
-:root[data-theme="light"] .leash-seg:focus-visible,
-:root[data-theme="light"] .leash-seg.active {
-  outline-color: var(--tide);
-}
-/* subtitle style, not the mono receipt font */
-.leash .statusbars-label {
-  font-family: var(--sans);
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 .leashbar.empty {
   height: 32px;
@@ -4390,36 +4375,21 @@ img[src*="/mascot/"] {
   font-size: var(--t12);
   color: var(--ink-soft);
 }
-.leash-legend .ag-root-wrapper,
-.leash-legend .ag-root,
-.leash-legend .ag-body,
-.leash-legend .ag-body-viewport,
-.leash-legend .ag-center-cols-viewport,
-.leash-legend .ag-center-cols-container,
-.leash-legend .ag-grid-scrolling-rows {
+.leash-legend .ag-root-wrapper {
   background: transparent;
   border: none;
 }
 .leash-legend .ag-row {
   cursor: pointer;
   border: none;
-  background: transparent;
-  border-radius: 8px;
-}
-.leash-legend .ag-row-hover {
-  background: var(--ocean-soft);
 }
 .leash-legend .ag-row.leash-row-active {
   background: var(--ocean-soft);
-  box-shadow: inset 3px 0 0 var(--tide);
+  box-shadow: inset 2px 0 0 var(--ink);
 }
 .leash-legend .leash-col-num {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-.leash-legend .leash-col-num,
-.leash-legend .leash-col-amt {
-  font-size: 13px;
 }
 .leash-legend .leash-col-amt {
   color: var(--ink-soft);
