@@ -288,8 +288,9 @@ function SpendTrend(params: Ctx) {
           >
             <defs>
               <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--tide)" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="var(--tide)" stopOpacity="0" />
+                <stop offset="0%" stopColor="var(--tide)" stopOpacity="0.6" />
+                <stop offset="55%" stopColor="var(--deep)" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="var(--deep)" stopOpacity="0" />
               </linearGradient>
             </defs>
             {ticks.map((t) => (

@@ -55,17 +55,17 @@ export function studioThemeFor(mode: AppTheme) {
     // Transparent — the report floats on the page background, no dark slab
     // behind the widgets.
     studioCanvasBackgroundColor: "transparent",
-    // Snug outer inset — the report starts close under the toolbar and widget
-    // edges sit near the page's own padding.
-    studioCanvasPadding: 8,
+    // No outer inset — .studio-card pulls the canvas out by the widget inset
+    // so widget edges land exactly on the page gutter.
+    studioCanvasPadding: 0,
     studioCanvasRowHeight: 16,
     studioCanvasFontFamily: SANS,
 
     // Widgets are the app's cards. The rounded 22px shape + gradient come from
     // the .ag-studio-widget override in globals.css (theme params are colors,
     // not gradients) — these are the sensible flat fallbacks.
-    studioWidgetBackgroundColor: mode === "dark" ? "#0a1626" : "#ffffff",
-    studioWidgetBorder: line("line"),
+    studioWidgetBackgroundColor: mode === "dark" ? "#081024" : "#ffffff",
+    studioWidgetBorder: line("glass-line"),
     studioWidgetBorderRadius: 22,
     studioWidgetPadding: 0,
     studioWidgetTitleFontFamily: SANS,
