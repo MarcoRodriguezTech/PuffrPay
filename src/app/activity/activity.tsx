@@ -189,6 +189,9 @@ function StudioDashboard({
       ...st,
       panels: {
         ...st.panels,
+        // The AI assistant starts collapsed — the floating bubble opens it.
+        // A persisted entry means the user left it a certain way; keep it.
+        ai: st.panels?.ai ?? { collapsed: true },
         filters: { ...st.panels?.filters, collapsed: true },
       },
     };
@@ -451,6 +454,19 @@ function StudioDashboard({
     });
   };
 
+  // In studio mode the floating bubble opens Studio's own AI panel instead
+  // of the old Ask box — same entry point, the sponsor's assistant behind it.
+  const aiPanelOpen = !(state.panels?.ai?.collapsed ?? false);
+  const openAiPanel = () => {
+    const api = apiRef.current;
+    const st = api?.getState();
+    if (!api || !st) return;
+    api.setState({
+      ...st,
+      panels: { ...st.panels, ai: { ...st.panels?.ai, collapsed: false } },
+    });
+  };
+
   // --- render ----------------------------------------------------------------
 
   if (failed) {
@@ -600,6 +616,20 @@ function StudioDashboard({
       <footer className="activity-footer">
         <p className="muted">Puffr never spends without the rules.</p>
       </footer>
+
+      {chatMode === "studio" && !aiPanelOpen && (
+        <button
+          className="ask-fab"
+          onClick={openAiPanel}
+          aria-label="Open AI Assistant"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3z" />
+            <path d="M18.5 15l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1z" />
+            <path d="M5.5 16.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8z" />
+          </svg>
+        </button>
+      )}
 
       {chatMode === "ask" && !askOpen && (
         <button
