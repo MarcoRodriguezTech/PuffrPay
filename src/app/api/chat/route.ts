@@ -20,7 +20,10 @@ export const dynamic = "force-dynamic";
 
 type Part =
   | { text: string }
-  | { functionCall: { name: string; args: Record<string, unknown> } }
+  | {
+      functionCall: { name: string; args: Record<string, unknown> };
+      thoughtSignature?: string;
+    }
   | { functionResponse: { name: string; response: { result: string } } };
 
 function textOf(content: unknown): string {
@@ -39,6 +42,11 @@ function toContents(items: AgAiConversationItem[]): {
   const contents: { role: "user" | "model"; parts: Part[] }[] = [];
   const system: string[] = [];
   const callNames = new Map<string, string>();
+  // Gemini 3.x requires the model's own thought_signature echoed back on
+  // replayed functionCall parts. Items that lack one (older history, other
+  // adapters) are described as text instead — a bare functionCall 400s.
+  // callIds can repeat across sub-turns, so track the latest call per id.
+  const callSigned = new Map<string, boolean>();
   for (const item of items) {
     const it = item as unknown as Record<string, unknown> & {
       type?: string;
@@ -60,15 +68,36 @@ function toContents(items: AgAiConversationItem[]): {
       } catch {
         /* partial args — send empty */
       }
-      contents.push({ role: "model", parts: [{ functionCall: { name, args } }] });
+      const sig =
+        typeof it.thoughtSignature === "string" ? it.thoughtSignature : undefined;
+      callSigned.set(callId, !!sig);
+      if (sig) {
+        contents.push({
+          role: "model",
+          parts: [{ functionCall: { name, args }, thoughtSignature: sig }],
+        });
+      } else {
+        contents.push({
+          role: "model",
+          parts: [{ text: `[Called tool ${name} with ${JSON.stringify(args)}]` }],
+        });
+      }
     } else if (it.type === "function_call_output") {
       const name = callNames.get(String(it.callId)) ?? "tool";
-      contents.push({
-        role: "user",
-        parts: [
-          { functionResponse: { name, response: { result: String(it.output ?? "") } } },
-        ],
-      });
+      const output = String(it.output ?? "");
+      if (callSigned.get(String(it.callId))) {
+        contents.push({
+          role: "user",
+          parts: [
+            { functionResponse: { name, response: { result: output } } },
+          ],
+        });
+      } else {
+        contents.push({
+          role: "user",
+          parts: [{ text: `[Tool ${name} returned: ${output}]` }],
+        });
+      }
     }
     // reasoning items: not sent back to the model.
   }
@@ -161,6 +190,7 @@ export async function POST(req: Request) {
             } else if (part.functionCall) {
               flushText();
               const fc = part.functionCall as { name?: string; args?: unknown };
+              const sig = (part as { thoughtSignature?: unknown }).thoughtSignature;
               const id = `call-${++callId}`;
               const argStr = JSON.stringify(fc.args ?? {});
               send({
@@ -173,6 +203,7 @@ export async function POST(req: Request) {
                 name: String(fc.name ?? ""),
                 arguments: argStr,
                 status: "completed",
+                ...(typeof sig === "string" ? { thoughtSignature: sig } : {}),
               } as AgAiOutputItem);
             }
           }
