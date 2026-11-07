@@ -8,15 +8,31 @@
   color-scheme: dark;
 
   /* --- color ------------------------------------------------------- */
-  --paper: #04070d;
-  --card: rgba(15, 23, 42, 0.55);
+  --paper: #02050b;
+  --card: rgba(12, 20, 40, 0.6);
   /* surfaces: translucent navy panels over the ambient light field —
-     the backdrop blur below lets the glow bleed through every card */
-  --card-grad: linear-gradient(160deg, rgba(30, 41, 82, 0.55) 0%, rgba(15, 23, 42, 0.45) 60%, rgba(8, 12, 22, 0.5) 100%);
-  --glass: rgba(15, 23, 42, 0.5);
-  --glass-line: rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(16px);
-  --glass-hi: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+     the backdrop blur below lets the glow bleed through every card. The
+     diagonal is lit: a touch of blue at the top-left edge, near-black at
+     the bottom-right, like glass with a light behind it. */
+  --card-grad: linear-gradient(150deg, rgba(48, 84, 160, 0.3) 0%, rgba(18, 30, 60, 0.45) 40%, rgba(6, 10, 22, 0.62) 100%);
+  /* soft white light falling on each card's top-left corner */
+  --card-sheen: radial-gradient(120% 70% at 0% 0%, rgba(186, 218, 255, 0.09), transparent 55%);
+  --glass: rgba(12, 20, 40, 0.5);
+  --glass-line: rgba(255, 255, 255, 0.09);
+  --glass-blur: blur(20px);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+  /* the one saturated hero card (Fish tank money + Recent): bright blue up
+     top, falling off into the same dark glass as the rest */
+  --hero-grad:
+    radial-gradient(90% 55% at 100% 0%, rgba(125, 211, 252, 0.55), transparent 60%),
+    linear-gradient(180deg, #2f6cf0 0%, #1d4ed8 24%, #1a3fa8 42%, rgba(11, 20, 46, 0.95) 56%, rgba(7, 12, 26, 0.96) 72%, rgba(5, 9, 20, 0.97) 100%);
+  --hero-glow: 0 24px 70px -18px rgba(37, 99, 235, 0.7), 0 0 0 1px rgba(147, 197, 253, 0.22);
+  --glow-white: drop-shadow(0 0 6px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 14px rgba(186, 230, 253, 0.6));
+  --tip-bg: #ffffff;
+  --tip-ink: #0b1220;
+  --tip-soft: #475569;
+  /* docked drawers (Studio filters / AI, Ask panel): denser glass */
+  --panel-grad: linear-gradient(160deg, rgba(40, 72, 150, 0.62) 0%, rgba(14, 24, 50, 0.84) 45%, rgba(6, 10, 22, 0.9) 100%);
   --ink: #ffffff;
   --ink-hover: #ffffff;
   --ink-soft: #8ea3c4;
@@ -86,6 +102,7 @@
   --s2: 8px;
   --s3: 12px;
   --s4: 16px;
+  --s5: 20px;
   --s6: 24px;
   --s8: 32px;
   --s12: 48px;
@@ -125,7 +142,17 @@
      neutral/stopped. --gold/--warn stay as the "needs attention" accent. */
   --paper: #f1f5f9;
   --card: rgba(255, 255, 255, 0.65);
-  --card-grad: linear-gradient(160deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.6) 55%, rgba(241, 245, 249, 0.62) 100%);
+  --card-grad: linear-gradient(150deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.62) 50%, rgba(232, 240, 252, 0.6) 100%);
+  --card-sheen: radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.7), transparent 55%);
+  --hero-grad:
+    radial-gradient(90% 55% at 100% 0%, rgba(165, 230, 255, 0.75), transparent 60%),
+    linear-gradient(180deg, #3b82f6 0%, #2563eb 24%, #1f4fc4 41%, rgba(232, 240, 255, 0.92) 50%, rgba(255, 255, 255, 0.84) 66%, rgba(248, 250, 255, 0.82) 100%);
+  --hero-glow: 0 24px 60px -20px rgba(37, 99, 235, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.9);
+  --glow-white: drop-shadow(0 0 4px rgba(37, 99, 235, 0.55)) drop-shadow(0 0 10px rgba(59, 130, 246, 0.35));
+  --tip-bg: #0b1736;
+  --tip-ink: #ffffff;
+  --tip-soft: #a5b4cf;
+  --panel-grad: linear-gradient(160deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 246, 255, 0.86) 100%);
   --ink: #0f172a;
   --ink-hover: #020617;
   --ink-soft: #64748b;
@@ -192,21 +219,25 @@ body::before {
   inset: -8%;
   z-index: -1;
   pointer-events: none;
+  /* Key light top-right behind the hero card, a fill light low-left behind
+     the lower cards, and a faint cool wash across the top. */
   background:
-    radial-gradient(42% 36% at 12% 4%, rgba(37, 99, 235, 0.32), transparent 70%),
-    radial-gradient(36% 32% at 88% 12%, rgba(34, 211, 238, 0.22), transparent 70%),
-    radial-gradient(52% 44% at 55% 102%, rgba(79, 70, 229, 0.22), transparent 70%);
-  filter: blur(100px);
+    radial-gradient(34% 40% at 86% 16%, rgba(37, 99, 235, 0.55), transparent 70%),
+    radial-gradient(22% 24% at 92% 6%, rgba(125, 211, 252, 0.28), transparent 70%),
+    radial-gradient(38% 36% at 14% 88%, rgba(29, 78, 216, 0.4), transparent 70%),
+    radial-gradient(44% 30% at 30% 0%, rgba(56, 189, 248, 0.16), transparent 70%),
+    radial-gradient(50% 40% at 60% 60%, rgba(30, 58, 138, 0.18), transparent 70%);
+  filter: blur(90px);
 }
-/* Light theme gets its own pastel lights: pale ocean blue + mint orbs,
+/* Light theme gets its own pastel lights: pale ocean and sky blue orbs,
    blurred even harder, so the frosted panels float on soft color. */
 :root[data-theme="light"] body::before {
   background:
-    radial-gradient(44% 38% at 10% 6%, rgba(147, 197, 253, 0.55), transparent 70%),
-    radial-gradient(38% 34% at 90% 12%, rgba(110, 231, 183, 0.42), transparent 70%),
-    radial-gradient(54% 46% at 52% 104%, rgba(167, 243, 208, 0.4), transparent 70%),
-    radial-gradient(40% 34% at 68% 42%, rgba(191, 219, 254, 0.35), transparent 70%);
-  filter: blur(120px);
+    radial-gradient(36% 40% at 86% 14%, rgba(96, 165, 250, 0.6), transparent 70%),
+    radial-gradient(40% 36% at 12% 90%, rgba(147, 197, 253, 0.55), transparent 70%),
+    radial-gradient(44% 34% at 28% 2%, rgba(186, 230, 253, 0.6), transparent 70%),
+    radial-gradient(40% 34% at 64% 52%, rgba(191, 219, 254, 0.4), transparent 70%);
+  filter: blur(110px);
 }
 
 a {
@@ -710,6 +741,7 @@ label {
    generic page rhythm. */
 .studio-page {
   padding-top: var(--s2);
+  padding-bottom: var(--s4);
 }
 
 /* ---------- progress bars ---------- */
@@ -1153,7 +1185,8 @@ img[src*="/mascot/"] {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--s6) var(--s8);
+  /* no left inset: bubbles line up with the page title on the gutter */
+  padding: var(--s6) var(--s8) var(--s6) 0;
   display: flex;
   flex-direction: column;
   gap: var(--s3);
@@ -1624,7 +1657,7 @@ img[src*="/mascot/"] {
 }
 
 .chat-bottom {
-  padding: 0 var(--s8) var(--s6);
+  padding: 0 var(--s8) var(--s6) 0;
   display: flex;
   flex-direction: column;
   gap: var(--s3);
@@ -1639,7 +1672,6 @@ img[src*="/mascot/"] {
   background: none;
   box-shadow: none;
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   overflow: visible;
 }
 
@@ -1655,7 +1687,6 @@ img[src*="/mascot/"] {
   border-radius: 999px;
   background: var(--card-grad);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
@@ -1668,7 +1699,6 @@ img[src*="/mascot/"] {
    empty wrapper. */
 :root[data-theme] .agent-log.closed {
   backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   box-shadow: none;
 }
 
@@ -3183,10 +3213,19 @@ img[src*="/mascot/"] {
    canvas grows to its content and the page does the scrolling. No solid
    block behind the widgets — the page background shows through. */
 .studio-card {
-  margin-top: 0;
+  /* Widgets sit --studio-inset inside their grid cells; pulling the card out
+     by the same amount puts card edges on the page gutter, flush with the
+     topbar title instead of indented past it. */
+  --studio-inset: 12px;
+  margin: 0 calc(-1 * var(--studio-inset));
   position: relative;
   background: transparent;
   height: auto;
+}
+@media (min-width: 1440px) {
+  .studio-card {
+    --studio-inset: 16px;
+  }
 }
 
 .studio-card .ag-studio-layout-canvas {
@@ -3218,10 +3257,19 @@ img[src*="/mascot/"] {
 /* Card-to-card spacing = 2x the widget inset: 12px gives the app-wide 24px
    gap, 16px gives 32px on wide screens. */
 .studio-card .ag-studio-layout-widget {
-  --ag-studio-layout-widget-inset: 12px;
+  --ag-studio-layout-widget-inset: var(--studio-inset);
   /* Studio paints an opaque swatch on the positioning box — transparent so
      the ambient glow bleeds through the glass widget inside. */
   --ag-studio-layout-widget-background-color: transparent;
+}
+
+/* Widget cards: lit glass. The container is the rounded, clipped box that
+   Studio draws the border on, so the gradient + blur live here. */
+.studio-card .ag-studio-layout-widget-container {
+  background: var(--card-sheen), var(--card-grad);
+  border-color: var(--glass-line);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
 /* The KPI row is four separate tiles, not one framed card — the widget
@@ -3231,6 +3279,18 @@ img[src*="/mascot/"] {
   --ag-studio-layout-widget-border-color: transparent;
   --ag-studio-layout-widget-border-width: 0px;
   --ag-studio-layout-widget-border-radius: 0px;
+}
+.studio-card .ag-studio-layout-widget:has(.kpi-row) .ag-studio-layout-widget-container {
+  background: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* The hero card: saturated blue light up top, glowing edge. */
+.studio-card .ag-studio-layout-widget:has(.funrecent) .ag-studio-layout-widget-container {
+  background: var(--hero-grad);
+  border-color: transparent;
+  box-shadow: var(--glass-hi), var(--hero-glow);
 }
 
 /* The collapsed Filters rail is dead chrome on the report's right edge;
@@ -3249,13 +3309,7 @@ img[src*="/mascot/"] {
   border: 1px solid var(--glass-line);
   border-radius: var(--radius);
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
-}
-@media (min-width: 1440px) {
-  .studio-card .ag-studio-layout-widget {
-    --ag-studio-layout-widget-inset: 16px;
-  }
 }
 
 /* View mode must look finished: no cyan selection or resize outlines — those
@@ -3299,14 +3353,14 @@ img[src*="/mascot/"] {
   bottom: 16px;
   z-index: 90;
   width: min(var(--ask-w), 92vw) !important;
-  background: linear-gradient(160deg, rgba(30, 41, 82, 0.72) 0%, rgba(15, 23, 42, 0.78) 60%, rgba(8, 12, 22, 0.82) 100%);
+  background: var(--card-sheen), var(--panel-grad);
   /* Frosted glass: blur the dashboard showing through the translucent card.
      (Standard property only — the compiler emits the -webkit- prefix itself;
      writing both makes it drop the standard one, which Chrome now needs.) */
   backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-line);
   border-radius: 28px;
-  box-shadow: var(--shadow-raise);
+  box-shadow: var(--glass-hi), var(--shadow-raise);
   overflow: hidden;
   animation: ask-panel-in var(--dur) var(--ease);
 }
@@ -3362,8 +3416,9 @@ img[src*="/mascot/"] {
 }
 
 /* activity footer: the house rule */
+/* the last widget's inset already adds 12-16px below the pager */
 .activity-footer {
-  margin-top: var(--s6);
+  margin-top: var(--s3);
   display: flex;
   align-items: center;
   gap: var(--s3);
@@ -3397,19 +3452,20 @@ img[src*="/mascot/"] {
 :root[data-theme="dark"] .wait-card,
 :root[data-theme="dark"] .studio-skeleton {
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
-/* Uniform glass: every panel shares the same translucent navy — the fun
-   money card only gets a whisper of a dark-navy gradient on top of it.
-   Vibrant cyan/blue is reserved for progress bars, chart lines, accents. */
-:root[data-theme="dark"] .funmoney {
-  background: linear-gradient(160deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.4) 55%, rgba(8, 12, 22, 0.45) 100%);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+/* The standalone fun money card is the same lit glass as the widgets; the
+   combined Fun money + Recent card is the hero — its blue light is painted
+   on the Studio widget container, so the inner card stays clear. */
+:root[data-theme] .funmoney {
+  background: var(--card-sheen), var(--card-grad);
   border-color: var(--glass-line);
-  box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+:root[data-theme] .funmoney.funrecent {
+  background: none;
+  border-color: transparent;
+  border-radius: var(--radius);
 }
 
 /* Frosted light glass: same panel list as dark — translucent white bg comes
@@ -3431,7 +3487,6 @@ img[src*="/mascot/"] {
 :root[data-theme="light"] .wait-card,
 :root[data-theme="light"] .studio-skeleton {
   backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
   border-color: var(--glass-line);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
@@ -3442,7 +3497,58 @@ img[src*="/mascot/"] {
 
 /* Backlit line on the spend chart. */
 :root[data-theme="dark"] .spend-trend .series-line {
-  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.45));
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.65)) drop-shadow(0 0 22px rgba(37, 99, 235, 0.45));
+}
+:root[data-theme="light"] .spend-trend .series-line {
+  filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.3));
+}
+
+/* Hero card contents: the Fun money half sits on saturated blue in both
+   themes, so its text, bar and buttons go white; the Recent half below
+   sits on the theme's own glass and keeps normal ink. */
+.funmoney.funrecent .fm-amount {
+  color: #ffffff;
+}
+.funmoney.funrecent .fm-head .bento-title,
+.funmoney.funrecent .fm-state,
+.funmoney.funrecent .fm-amount .of {
+  color: rgba(255, 255, 255, 0.78);
+}
+.funmoney.funrecent .fm-bar {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.25);
+}
+.funmoney.funrecent .fm-bar-fill {
+  background: linear-gradient(90deg, #bae6fd, #ffffff);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.75);
+}
+.funmoney.funrecent .fm-actions .primary {
+  background: #ffffff;
+  color: #0b1736;
+  box-shadow: 0 8px 22px -8px rgba(2, 6, 23, 0.55);
+}
+.funmoney.funrecent .fm-actions .ghost {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.funmoney.funrecent .fr-sep {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+:root[data-theme="light"] .funmoney.funrecent .fr-sep {
+  border-top-color: transparent;
+}
+/* the Recent heading sits where the blue fades out — full ink so it reads */
+:root[data-theme="light"] .funmoney.funrecent .bento-head:not(.fm-head) .bento-title {
+  color: var(--ink);
+}
+:root[data-theme="light"] .funmoney.funrecent .recent-viewall {
+  color: var(--deep);
+}
+/* rows read as a list, not centred captions */
+.funmoney.funrecent .recent-list {
+  text-align: left;
 }
 
 /* ---------- misc ---------- */
@@ -3529,6 +3635,7 @@ img[src*="/mascot/"] {
 /* ---------- bento widgets (custom Studio widgets) ---------- */
 
 .bento {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -3587,8 +3694,14 @@ img[src*="/mascot/"] {
   gap: 2px;
   padding: 3px;
   border-radius: var(--pill);
-  border: 1px solid var(--line);
-  background: var(--paper);
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.25);
+}
+:root[data-theme="light"] .range-pills {
+  background: rgba(226, 234, 248, 0.6);
+  border-color: rgba(100, 116, 139, 0.12);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .range-pills button {
   min-height: 0;
@@ -3606,9 +3719,16 @@ img[src*="/mascot/"] {
   transform: none;
   filter: none;
 }
+/* active segment: a lighter pane of glass, lit on its top edge */
 .range-pills button.active {
-  background: var(--btn-grad);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07));
   color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 12px -4px rgba(2, 6, 23, 0.6);
+}
+:root[data-theme="light"] .range-pills button.active {
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
 }
 
 /* the area/bar svg charts */
@@ -3649,14 +3769,22 @@ img[src*="/mascot/"] {
   stroke-width: 2;
   stroke-linecap: round;
 }
+/* hover point: a glowing white pearl on the line */
 .bento-chart .hover-ring {
-  fill: var(--card);
-  stroke: var(--tide);
+  fill: #ffffff;
+  stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 2;
+  filter: var(--glow-white);
+}
+:root[data-theme="light"] .bento-chart .hover-ring {
+  stroke: var(--tide);
 }
 .bento-chart .hover-glow {
+  fill: #ffffff;
+  opacity: 0.18;
+}
+:root[data-theme="light"] .bento-chart .hover-glow {
   fill: var(--tide);
-  opacity: 0.25;
 }
 .bento-chart .bar {
   rx: 6;
@@ -3671,10 +3799,15 @@ img[src*="/mascot/"] {
   rx: 6;
 }
 .bento-chart .bar-today {
-  fill: none;
-  stroke: var(--tide);
+  fill: rgba(125, 211, 252, 0.08);
+  stroke: #7dd3fc;
   stroke-width: 1.5;
   rx: 8;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8)) drop-shadow(0 0 16px rgba(37, 99, 235, 0.5));
+}
+:root[data-theme="light"] .bento-chart .bar-today {
+  stroke: var(--tide);
+  filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.35));
 }
 .legend-pills .lp i.dot-bought {
   background: linear-gradient(180deg, var(--tide), var(--deep));
@@ -3696,14 +3829,15 @@ img[src*="/mascot/"] {
 }
 
 /* floating tooltip chip for chart hover */
+/* solid pill: white on dark, navy on light — the brightest thing on the card */
 .chart-tip {
   position: absolute;
   transform: translate(-50%, -115%);
-  background: var(--card-grad);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: var(--shadow-raise-sm);
-  padding: 6px 10px;
+  background: var(--tip-bg);
+  color: var(--tip-ink);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px -6px rgba(2, 6, 23, 0.55), 0 0 24px rgba(255, 255, 255, 0.12);
+  padding: 8px 12px;
   font-size: var(--t12);
   pointer-events: none;
   white-space: nowrap;
@@ -3713,17 +3847,14 @@ img[src*="/mascot/"] {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -5px;
+  bottom: -4px;
   width: 8px;
   height: 8px;
   transform: translateX(-50%) rotate(45deg);
-  background: var(--card);
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
+  background: var(--tip-bg);
 }
-.chart-tip .tip-date { color: var(--ink-soft); display: block; }
+.chart-tip .tip-date { color: var(--tip-soft); display: block; }
 .chart-tip .tip-amt { font-weight: 700; font-variant-numeric: tabular-nums; }
-.bento { position: relative; }
 
 /* legend pills with a colored dot */
 .legend-pills {
@@ -3737,9 +3868,10 @@ img[src*="/mascot/"] {
   gap: 6px;
   font-size: var(--t12);
   color: var(--ink-soft);
-  border: 1px solid var(--line);
+  border: 1px solid var(--glass-line);
   border-radius: var(--pill);
   padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.03);
 }
 .legend-pills .lp i {
   width: 8px;
@@ -3881,7 +4013,8 @@ img[src*="/mascot/"] {
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  /* same gutter as between the widget cards below (2x the widget inset) */
+  gap: calc(2 * var(--studio-inset, 12px));
   height: 100%;
 }
 @media (max-width: 719px) {
@@ -3892,10 +4025,10 @@ img[src*="/mascot/"] {
   flex-direction: column;
   justify-content: flex-start;
   min-height: 80px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--card-grad);
-  padding: 12px 20px 16px;
+  border: 1px solid var(--glass-line);
+  border-radius: 18px;
+  background: var(--card-sheen), var(--card-grad);
+  padding: 14px var(--s5);
 }
 .kpi-tile .kpi-label {
   font-size: 12px;
@@ -4068,7 +4201,7 @@ img[src*="/mascot/"] {
 .bento.leash {
   overflow-y: auto;
   overflow-x: hidden;
-  gap: 8px;
+  gap: 6px;
 }
 
 .leash-stats {
@@ -4209,9 +4342,6 @@ img[src*="/mascot/"] {
 .leash-legend {
   margin-top: 0;
 }
-.bento.leash {
-  gap: 5px;
-}
 .leash-foot {
   font-size: var(--t12);
   color: var(--ink-soft);
@@ -4321,12 +4451,12 @@ img[src*="/mascot/"] {
   min-height: 32px;
   padding: 0 var(--s3);
   border-radius: var(--pill);
-  border: 1px solid var(--line);
-  background: var(--card-grad);
+  border: 1px solid var(--glass-line);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--ink);
   font-size: var(--t12);
   font-weight: 600;
-  box-shadow: none;
+  box-shadow: var(--glass-hi);
 }
 .pager-btn:hover:not(:disabled) {
   transform: none;
