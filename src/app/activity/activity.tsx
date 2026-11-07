@@ -280,11 +280,18 @@ function StudioDashboard({
   const askCache = useRef(new Map<string, AuditQuerySpec>());
   const askScrollRef = useRef<HTMLDivElement>(null);
 
-  // The panel squeezes the page on desktop via a body class the CSS keys off.
+  // In studio mode the floating bubble opens Studio's own AI panel instead
+  // of the old Ask box — same entry point, the sponsor's assistant behind it.
+  const aiPanelOpen = !(state.panels?.ai?.collapsed ?? false);
+
+  // Either chat surface squeezes the page on desktop via the same body class
+  // the CSS keys off — the Ask panel and the Studio AI panel are both fixed
+  // cards docked to the right edge.
+  const dockedChatOpen = askOpen || (chatMode === "studio" && aiPanelOpen);
   useEffect(() => {
-    document.body.classList.toggle("ask-open", askOpen);
+    document.body.classList.toggle("ask-open", dockedChatOpen);
     return () => document.body.classList.remove("ask-open");
-  }, [askOpen]);
+  }, [dockedChatOpen]);
 
   // Escape closes the panel.
   useEffect(() => {
@@ -445,25 +452,29 @@ function StudioDashboard({
     const api = apiRef.current;
     const st = api?.getState();
     if (!api || !st) return;
+    // One drawer at a time — opening filters closes the AI assistant too.
     api.setState({
       ...st,
       panels: {
         ...st.panels,
         filters: { ...st.panels?.filters, collapsed: filtersPanelOpen },
+        ...(filtersPanelOpen ? {} : { ai: { ...st.panels?.ai, collapsed: true } }),
       },
     });
   };
 
-  // In studio mode the floating bubble opens Studio's own AI panel instead
-  // of the old Ask box — same entry point, the sponsor's assistant behind it.
-  const aiPanelOpen = !(state.panels?.ai?.collapsed ?? false);
   const openAiPanel = () => {
     const api = apiRef.current;
     const st = api?.getState();
     if (!api || !st) return;
+    // One drawer at a time — opening the assistant closes the filters panel.
     api.setState({
       ...st,
-      panels: { ...st.panels, ai: { ...st.panels?.ai, collapsed: false } },
+      panels: {
+        ...st.panels,
+        ai: { ...st.panels?.ai, collapsed: false },
+        filters: { ...st.panels?.filters, collapsed: true },
+      },
     });
   };
 
@@ -584,8 +595,14 @@ function StudioDashboard({
               // too — and declaring `view` removes the edit defaults, so both
               // modes are spelled out here.
               panels={{
-                view: { left: ["ai" as never], right: ["filters"] },
-                edit: { left: ["ai"], right: ["filters", "edit", "data"] },
+                // Dock every panel on the right — the overlay CSS slides
+                // expanded panels in from the right edge, and a left-docked
+                // panel would render off-screen. `ai` is typed as
+                // edit-mode-only but the runtime honours it in view mode too;
+                // declaring `view` removes the edit defaults, so both modes
+                // are spelled out here.
+                view: { right: ["ai" as never, "filters"] },
+                edit: { right: ["ai", "filters", "edit", "data"] },
               }}
               ai={ai}
               initialState={initialState}

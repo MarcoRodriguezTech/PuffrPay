@@ -3235,7 +3235,9 @@ img[src*="/mascot/"] {
 
 /* The collapsed Filters rail is dead chrome on the report's right edge;
    the toolbar Filters button still expands it into a drawer. */
-.studio-card .ag-studio-root-panel-container:has(.ag-studio-panel-collapsed) {
+/* Hide a dock only while every panel in it is collapsed — the container is
+   shared by filters + the AI assistant, so one being open must keep it. */
+.studio-card .ag-studio-root-panel-container:not(:has(.ag-studio-panel:not(.ag-studio-panel-collapsed))) {
   display: none;
 }
 
@@ -3281,17 +3283,41 @@ img[src*="/mascot/"] {
   display: none;
 }
 
-/* Filters open as an overlay drawer over the canvas, not a docked panel. */
+/* Filters + the AI assistant open as an overlay drawer over the canvas, not
+   a docked panel. The translucent layer is the root panel container, so the
+   card-grad + blur go there — the blur is what turns it into frosted glass
+   instead of a see-through sheet. */
+/* Expanded dock panels render as a floating glass card at the right edge —
+   the same geometry as .ask-panel. `position: fixed` escapes the 1px dock
+   strip entirely (no ancestor uses transform/filter/backdrop-filter, so it
+   anchors to the viewport), and body.ask-open squeezes .shell so the page
+   content is pushed aside instead of overlaid. */
 .studio-card .ag-studio-panel:not(.ag-studio-panel-collapsed) {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
-  width: min(280px, 92vw);
-  background: var(--card-grad);
-  border-left: 1px solid var(--line);
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90;
+  width: min(var(--ask-w), 92vw) !important;
+  background: linear-gradient(160deg, rgba(30, 41, 82, 0.72) 0%, rgba(15, 23, 42, 0.78) 60%, rgba(8, 12, 22, 0.82) 100%);
+  /* Frosted glass: blur the dashboard showing through the translucent card.
+     (Standard property only — the compiler emits the -webkit- prefix itself;
+     writing both makes it drop the standard one, which Chrome now needs.) */
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line);
+  border-radius: 28px;
   box-shadow: var(--shadow-raise);
+  overflow: hidden;
+  animation: ask-panel-in var(--dur) var(--ease);
+}
+
+.studio-card .ag-studio-root-panel-container:has(.ag-studio-panel:not(.ag-studio-panel-collapsed)) {
+  /* The container is a 1px dock strip — un-clip it so the fixed drawer isn't
+     clipped. No background/backdrop-filter here: a backdrop-filter would
+     make this strip the containing block for the panel's fixed position. */
+  position: relative;
+  z-index: 30;
+  overflow: visible;
 }
 
 /* custom grid cells */
