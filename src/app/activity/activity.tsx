@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
+  AgStudioAiModule,
   createAiHarness,
   enableStudioDevValidations,
   type AgReportState,
@@ -561,6 +562,15 @@ function StudioDashboard({
                 aggregationCountdFieldName: "${name}",
               }}
               widgets={widgets}
+              modules={[AgStudioAiModule]}
+              // Dock the AI assistant panel on the left. `ai` is typed as an
+              // edit-mode-only panel, but the runtime honours it in view mode
+              // too — and declaring `view` removes the edit defaults, so both
+              // modes are spelled out here.
+              panels={{
+                view: { left: ["ai" as never], right: ["filters"] },
+                edit: { left: ["ai"], right: ["filters", "edit", "data"] },
+              }}
               ai={ai}
               initialState={initialState}
               mode={mode}
