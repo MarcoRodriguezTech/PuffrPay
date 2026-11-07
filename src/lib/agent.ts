@@ -1,4 +1,5 @@
 import { getLLM } from "./llm";
+import type { OptionPick } from "./llm/types";
 import { searchProducts } from "./channel3";
 import { evaluatePolicy } from "./policy";
 import type { PolicyDecision } from "./types";
@@ -93,7 +94,15 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   });
 
   // --- call 2: curate options ---
-  const picks = await llm.pickProducts(message, affordable, MAX_OPTIONS);
+  let picks: OptionPick[];
+  try {
+    picks = await llm.pickProducts(message, affordable, MAX_OPTIONS);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const reply = `The agent hit a snag talking to the model (${msg.slice(0, 120)}). Try again in a moment.`;
+    await logChat("agent", reply);
+    return { steps, reply, purchase: null, approveUrl: null, stub: false };
+  }
   const items = picks
     .map((pk) => {
       const p = affordable.find((x) => x.id === pk.productId);
