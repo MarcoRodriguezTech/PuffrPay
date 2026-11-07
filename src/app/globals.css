@@ -4202,6 +4202,23 @@ img[src*="/mascot/"] {
   overflow-y: auto;
   overflow-x: hidden;
   gap: 6px;
+  /* Card-local status palette: blue for what went through or is pending,
+     red for what the rules stopped, gray for dead ends. Re-declaring the
+     shared --st-* tokens here recolors the bar, legend badges and tips in
+     this card only — every other widget keeps the app-wide colors. */
+  --st-bought: #3b82f6;
+  --st-paypal: #60a5fa;
+  --st-waiting: #93c5fd;
+  --st-blocked: var(--danger);
+  --st-rejected: #64748b;
+  --st-failed: #94a3b8;
+}
+:root[data-theme="light"] .bento.leash {
+  --st-bought: #1e40af;
+  --st-paypal: #2563eb;
+  --st-waiting: #0369a1;
+  --st-rejected: #64748b;
+  --st-failed: #475569;
 }
 
 .leash-stats {
@@ -4221,7 +4238,14 @@ img[src*="/mascot/"] {
   min-height: 44px;
   padding: 4px 12px;
   border-radius: 16px;
-  background: var(--ocean-soft);
+  /* glass sub-tile: faint tint, glass edge, lit top */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--glass-hi);
+}
+:root[data-theme="light"] .leash-stat {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(241, 246, 255, 0.7));
+  border-color: rgba(100, 116, 139, 0.14);
 }
 .leash-num {
   font-size: 28px;
@@ -4235,8 +4259,9 @@ img[src*="/mascot/"] {
   color: var(--ink-soft);
 }
 .leash-stat.hero {
-  background: var(--danger-soft);
-  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 4%, transparent));
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  box-shadow: var(--glass-hi), 0 0 18px -6px color-mix(in srgb, var(--danger) 45%, transparent);
 }
 .leash-stat.hero .leash-num {
   color: var(--danger);
@@ -4265,13 +4290,12 @@ img[src*="/mascot/"] {
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 20px rgb(4 10 24 / 0.22);
+  border-radius: 12px;
+  background: var(--tip-bg);
+  box-shadow: 0 10px 30px -6px rgba(2, 6, 23, 0.55);
   font-size: var(--t12);
-  font-weight: 400;
-  color: var(--ink);
+  font-weight: 600;
+  color: var(--tip-ink);
   width: max-content;
   max-width: 220px;
   text-align: center;
@@ -4300,12 +4324,18 @@ img[src*="/mascot/"] {
 }
 .leashbar {
   display: flex;
-  gap: 2px;
-  height: 16px;
+  gap: 3px;
+  height: 10px;
   width: 100%;
   border-radius: 999px;
-  background: var(--ocean-soft);
+  padding: 0;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.3);
   overflow: visible;
+}
+:root[data-theme="light"] .leashbar {
+  background: rgba(226, 234, 248, 0.7);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 .leash-seg {
   position: relative;
@@ -4316,14 +4346,28 @@ img[src*="/mascot/"] {
   padding: 0;
   border-radius: 999px;
   cursor: pointer;
+  /* lit top edge, like the chart bars */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: filter var(--dur-fast) var(--ease);
 }
-.leash-seg:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+.leash-seg:hover:not(:disabled) {
+  transform: none;
+  filter: brightness(1.15);
 }
+.leash-seg:focus-visible,
 .leash-seg.active {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
+:root[data-theme="light"] .leash-seg:focus-visible,
+:root[data-theme="light"] .leash-seg.active {
+  outline-color: var(--tide);
+}
+/* subtitle style, not the mono receipt font */
+.leash .statusbars-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
 }
 .leashbar.empty {
   height: 32px;
@@ -4346,21 +4390,36 @@ img[src*="/mascot/"] {
   font-size: var(--t12);
   color: var(--ink-soft);
 }
-.leash-legend .ag-root-wrapper {
+.leash-legend .ag-root-wrapper,
+.leash-legend .ag-root,
+.leash-legend .ag-body,
+.leash-legend .ag-body-viewport,
+.leash-legend .ag-center-cols-viewport,
+.leash-legend .ag-center-cols-container,
+.leash-legend .ag-grid-scrolling-rows {
   background: transparent;
   border: none;
 }
 .leash-legend .ag-row {
   cursor: pointer;
   border: none;
+  background: transparent;
+  border-radius: 8px;
+}
+.leash-legend .ag-row-hover {
+  background: var(--ocean-soft);
 }
 .leash-legend .ag-row.leash-row-active {
   background: var(--ocean-soft);
-  box-shadow: inset 2px 0 0 var(--ink);
+  box-shadow: inset 3px 0 0 var(--tide);
 }
 .leash-legend .leash-col-num {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.leash-legend .leash-col-num,
+.leash-legend .leash-col-amt {
+  font-size: 13px;
 }
 .leash-legend .leash-col-amt {
   color: var(--ink-soft);
