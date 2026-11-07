@@ -36,9 +36,15 @@ function extractJson(text: string): string {
   // tolerate markdown fences or leading/trailing prose
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const body = fenced ? fenced[1] : text;
-  const start = body.indexOf("{");
-  const end = body.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) {
+  // the root may be an object or an array (pickProducts asks for [{...}]);
+  // anchor on whichever bracket opens first and slice to its matching close
+  const start = body.search(/[[{]/);
+  if (start === -1) {
+    throw new Error(`LLM returned non-JSON: ${text.slice(0, 200)}`);
+  }
+  const closer = body[start] === "{" ? "}" : "]";
+  const end = body.lastIndexOf(closer);
+  if (end <= start) {
     throw new Error(`LLM returned non-JSON: ${text.slice(0, 200)}`);
   }
   return body.slice(start, end + 1);
