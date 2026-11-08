@@ -50,7 +50,7 @@ if (process.env.NODE_ENV !== "production") {
   enableStudioDevValidations();
 }
 
-const STORAGE_KEY = "puffrpay:studio-report:v4";
+const STORAGE_KEY = "puffrpay:studio-report:v5";
 const STORAGE_KEY_COMPACT = `${STORAGE_KEY}:compact`;
 const STORAGE_KEY_MOBILE = `${STORAGE_KEY}:mobile`;
 
@@ -702,7 +702,7 @@ function StudioDashboard({
           <div className="ask-scroll" ref={askScrollRef}>
             {turns.length === 0 && !askBusy ? (
               <div className="ask-hello">
-                <Image src={ASSETS.mascot} alt="" width={44} height={44} quality={90} />
+                <Image src={ASSETS.mascot} alt="" width={44} height={27} quality={90} style={{ height: "auto" }} />
                 <p className="ask-hello-q">How can I help you today?</p>
                 <ul className="ask-suggest">
                   {ASK_CHIPS.map((c) => (

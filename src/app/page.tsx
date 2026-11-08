@@ -49,6 +49,8 @@ interface OptionsPayload {
   kind: "options";
   text: string;
   items: OptionItem[];
+  /** Cards the owner X'd out — archived, never rendered here. */
+  removed?: OptionItem[];
   picked?: string;
   dismissed?: boolean;
 }
@@ -530,7 +532,9 @@ export default function AgentPage() {
         <div className="chat-scroll" ref={scrollRef}>
           {messages.length === 0 && steps.length === 0 && !busy ? (
             <div className="chat-empty">
-              <Image src={MASCOT_SRC} alt="" width={140} height={140} quality={90} />
+              {/* Art is 1024x629 — dims match its real ratio; height:auto
+                  keeps it undistorted if the file is ever swapped. */}
+              <Image src={MASCOT_SRC} alt="" width={140} height={86} quality={90} style={{ height: "auto" }} />
               <h1>What should I buy?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">
