@@ -12,7 +12,7 @@ import { ThemeToggle } from "./ThemeToggle";
 
 const TITLES: [match: RegExp, title: string, subtitle: string][] = [
   [/^\/(agent)?$/, "Agent", "Tell Puffr what to find — it shops inside your rules."],
-  [/^\/policy/, "Policy", "The spending rules Puffr can never cross."],
+  [/^\/policy/, "Controls", "Your rules, your calls — nothing moves money without you."],
   [/^\/audit/, "Classic log", "The plain audit trail of every request."],
   [/^\/activity/, "Activity", "Everything Puffr did with your fun money."],
 ];

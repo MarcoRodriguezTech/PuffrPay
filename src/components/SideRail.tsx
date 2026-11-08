@@ -1,7 +1,7 @@
 "use client";
 
 // The floating left rail (desktop) / bottom tab bar (under 1100px).
-// Three destinations only — Agent, Policy, Activity — as icon buttons with
+// Three destinations only — Agent, Controls, Activity — as icon buttons with
 // labels, plus the theme toggle and a Sandbox badge at the bottom.
 
 import Link from "next/link";
@@ -21,7 +21,7 @@ const NAV = [
   },
   {
     href: "/policy",
-    label: "Policy",
+    label: "Controls",
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
         <path d="M4 6.5h16M4 12h16M4 17.5h16" />

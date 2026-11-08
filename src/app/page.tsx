@@ -794,7 +794,7 @@ export default function AgentPage() {
               <span className="v">{fmtWhole(policy.autoApproveUnderCents)}</span>
             </div>
             <hr className="divider" />
-            <Link href="/policy">Edit policy</Link>
+            <Link href="/policy">Edit rules</Link>
           </>
         )}
       </aside>

@@ -151,9 +151,10 @@ month.
 - **Agent** (`/`) — chat + agent receipt log (search, pick, per-check policy
   results) + inline approve/reject + payment step; sidebar with the living
   gauge and current rules. `/agent` redirects here.
-- **Policy** (`/policy`) — rules ruler + monthly cap / per-purchase max /
+- **Controls** (`/policy`) — rules ruler + monthly cap / per-purchase max /
   auto-approve under / blocked categories, a "Would this be allowed?" dry-run
-  panel, and the queue of WAITING requests with approve/reject.
+  panel, the queue of WAITING requests with approve/reject, and the open
+  PayPal checkouts with resume/cancel.
 - **Activity** (`/activity`) — the AG Studio report over `purchase_requests` +
   the current policy: the custom PufferGauge widget, KPI tiles, status charts,
   a date-filter toolbar and the purchase requests grid. Editable in the
@@ -183,7 +184,7 @@ empty DB): cap $200, per-purchase max $50, auto-approve under $20, $172 used.
    A mid-priced item waits → approve it → payment → PURCHASED (visible in the
    PayPal sandbox dashboard).
 3. Ask for something over $50 → BLOCK → the puffer puffs.
-4. **Policy** (`/policy`): move the fields and watch the rules ruler update;
+4. **Controls** (`/policy`): move the fields and watch the rules ruler update;
    try "Would this be allowed?" on $75.
 5. **Activity** (`/activity`): the Studio report — PufferGauge, "Kept by the
    leash" KPI, requests-by-decision chart, spend-by-category chart and the

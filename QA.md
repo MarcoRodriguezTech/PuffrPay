@@ -48,7 +48,7 @@ Policy order (`src/lib/policy.ts`): blocked category → per-purchase max → mo
 | B11 | Reduced-motion OS setting | OptionStack renders plain scrollable fallback row, all actions still work |
 | B12 | Two different open sets, pick one card from each | Two purchases — decide if allowed (see GAP-9) |
 
-## C. Policy page (`/policy`) + engine + simulate
+## C. Controls page (`/policy`) + engine + simulate
 
 | ID | Scenario | Expected |
 |---|---|---|
