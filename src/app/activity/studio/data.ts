@@ -99,6 +99,7 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
           ["reason", "Policy Reason", "textFormat"],
           ["reasoning", "Agent Reasoning", "textFormat", true],
           ["orderId", "PayPal Order", "textFormat", true],
+          ["hasOrder", "Has PayPal Order", "integerFormat", true],
           ["isStub", "Stub Order", "booleanFormat"],
           ["spent", "Spent", "currencyFormat"],
           ["cumulative", "Spent to date", "currencyFormat"],

@@ -1,4 +1,4 @@
-import { createOrder, captureOrder } from "./paypal";
+import { createOrder, captureOrder, getOrderStatus } from "./paypal";
 import { query } from "./db";
 import { getPurchase, updatePurchase, getMonthSpentCents, getPolicy } from "./repo";
 import { evaluatePolicy } from "./policy";
@@ -150,12 +150,53 @@ export async function capturePurchase(id: number): Promise<PurchaseRequest> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // ORDER_NOT_APPROVED is transient (buyer hasn't finished yet) — leave the
-    // row WAITING so the capture can be retried; anything else is a real failure.
-    if (!message.includes("ORDER_NOT_APPROVED")) {
-      await updatePurchase(id, { status: "FAILED", errorMessage: message });
+    // row WAITING so the capture can be retried.
+    if (message.includes("ORDER_NOT_APPROVED")) throw err;
+    // A dead order (sandbox orders expire/get collected) isn't a failure —
+    // it resolves as rejected: "the checkout lapsed", same as a no.
+    if (/INVALID_RESOURCE_ID|RESOURCE_NOT_FOUND/.test(message)) {
+      return updatePurchase(id, {
+        status: "REJECTED",
+        errorMessage: "checkout expired on PayPal",
+      });
     }
+    await updatePurchase(id, { status: "FAILED", errorMessage: message });
     throw err;
   }
+}
+
+/**
+ * Sweep open checkouts against PayPal: capture orders the buyer already
+ * approved (even if the return redirect never reached us) and reject ones
+ * the sandbox has expired. Best-effort — one bad row never breaks the sweep.
+ * This is what lets "approved in the PayPal window" complete on its own.
+ */
+export async function reconcileWaiting(): Promise<PurchaseRequest[]> {
+  const rows = await query<{ id: number; paypal_order_id: string }>(
+    "SELECT id, paypal_order_id FROM purchase_requests WHERE status = 'WAITING' AND paypal_order_id IS NOT NULL"
+  );
+  const resolved: PurchaseRequest[] = [];
+  for (const { id, paypal_order_id: orderId } of rows) {
+    try {
+      if (orderId.startsWith("STUB-ORDER-")) continue;
+      const status = await getOrderStatus(orderId);
+      if (status === null) {
+        resolved.push(
+          await updatePurchase(id, {
+            status: "REJECTED",
+            errorMessage: "checkout expired on PayPal",
+          })
+        );
+      } else if (status === "APPROVED") {
+        resolved.push(await capturePurchase(id));
+      }
+      // CREATED / PAYER_ACTION_REQUIRED / VOIDED: genuinely still waiting
+      // (or already void — owner action, leave the row as it is).
+    } catch (err) {
+      console.error(`[reconcile] purchase ${id}:`, err);
+    }
+  }
+  return resolved;
 }
 
 export async function getPurchaseByOrderId(

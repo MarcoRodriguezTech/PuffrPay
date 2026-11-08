@@ -22,7 +22,7 @@ export interface AgentStep {
 
 export interface AgentRunResult {
   steps: AgentStep[];
-  reply: string;
+  reply: string | null;
   purchase: PurchaseRequest | null;
   /** PayPal sandbox approval URL when payment was started (null for dev stub). */
   approveUrl: string | null;
@@ -54,7 +54,9 @@ const MAX_OPTIONS = 5;
 
 /**
  * Mode B agent (see README "LLM mode"): two LLM calls, no function calling.
- *   Call 1 — planSearch: owner message -> {query, maxPriceCents}
+ *   Call 1 — planSearch: owner message -> {query, maxPriceCents},
+ *            or {query: null} when the message isn't a shopping request
+ *            (chat gets a canned persona reply, no search/purchase).
  *   Server — Channel3 search + price filter
  *   Call 2 — pickProducts: curate up to MAX_OPTIONS varied picks + vibe tags
  *   Server — 1 option: straight through policy -> purchase.
@@ -77,6 +79,15 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const reply = `The agent hit a snag talking to the model (${msg.slice(0, 120)}). Try again in a moment.`;
+    await logChat("agent", reply);
+    return { steps, reply, purchase: null, approveUrl: null, stub: false };
+  }
+  // Not a shopping request — greetings/questions get a canned persona
+  // reply; Channel3, policy and PayPal are never touched.
+  if (!plan.query) {
+    const reply =
+      "I'm Puffr — a shopping agent that spends inside rules the owner sets. " +
+      "Tell me what to find and I'll search for it; the policy engine decides whether the money moves.";
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -106,21 +117,33 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
+  // The model curates first; if it returned fewer than a full hand while
+  // more candidates exist, top up in Channel3 relevance order so the
+  // carousel always offers min(MAX_OPTIONS, catalog size) cards.
+  const seen = new Set<string>();
   const items = picks
     .map((pk) => {
       const p = affordable.find((x) => x.id === pk.productId);
       return p ? { ...p, tag: pk.tag, reasoning: pk.reasoning } : null;
     })
-    .filter((x): x is ProductResult & { tag: string; reasoning: string } => x != null);
-  if (items.length === 0) {
-    const reply =
-      picks.length === 0
-        ? `I couldn't find anything under $${(plan.maxPriceCents / 100).toFixed(2)} matching "${plan.query}". Nothing was requested.`
-        : `The model picked products that aren't in the results. Nothing was requested.`;
-    steps.push({
-      step: "pick",
-      detail: picks.length === 0 ? "no product fit the budget" : "invalid product ids from model",
+    .filter(
+      (x): x is ProductResult & { tag: string; reasoning: string } =>
+        x != null && !seen.has(x.id) && (seen.add(x.id), true)
+    );
+  const want = Math.min(MAX_OPTIONS, affordable.length);
+  for (const p of affordable) {
+    if (items.length >= want) break;
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    items.push({
+      ...p,
+      tag: "Also found",
+      reasoning: "Also matches the request — added to fill the options.",
     });
+  }
+  if (items.length === 0) {
+    const reply = `I couldn't find anything under $${(plan.maxPriceCents / 100).toFixed(2)} matching "${plan.query}". Nothing was requested.`;
+    steps.push({ step: "pick", detail: "no product fit the budget" });
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -209,8 +232,7 @@ export async function chooseOption(
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
 
-  const policy = await getPolicy();
-  const spent = await getMonthSpentCents();
+  const [policy, spent] = await Promise.all([getPolicy(), getMonthSpentCents()]);
   const product: ProductResult = {
     id: item.id,
     title: item.title,
@@ -349,10 +371,10 @@ async function finalizePick(
   }
 
   if (decision.decision === "ASK") {
-    const reply = `"${product.title}" is $${(product.priceCents / 100).toFixed(2)} — ${decision.reason}. Approve or reject it below.`;
+    // No chat line: the approval card IS the surface. A trace is only added
+    // to the feed if the owner dismisses the card with ×.
     steps.push({ step: "result", detail: "WAITING FOR YOU" });
-    await logChat("agent", reply);
-    return { steps, reply, purchase, approveUrl: null, stub: false };
+    return { steps, reply: null, purchase, approveUrl: null, stub: false };
   }
 
   // --- ALLOW: executor creates the PayPal sandbox order ---

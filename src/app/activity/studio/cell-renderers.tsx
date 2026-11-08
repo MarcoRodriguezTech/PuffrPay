@@ -57,20 +57,24 @@ function StatusCell({ value, data }: CustomCellRendererProps) {
       </span>
     );
   }
-  // The grid row only carries mapped columns — `decision` isn't one — so the
-  // row is matched back to the full dashboard rows by title + amount.
+  // The grid row only carries mapped columns — `decision`/`orderId` aren't
+  // among them — so the row is matched back to the full dashboard rows by
+  // title + amount.
   const title = rowValue(data as Record<string, unknown>, "title");
   const amount = Number(rowValue(data as Record<string, unknown>, "amount"));
-  const decision =
-    rows.find(
-      (r) =>
-        r.kind === "request" &&
-        r.title === title &&
-        (isNaN(amount) || r.amount === amount)
-    )?.decision ?? null;
+  const row = rows.find(
+    (r) =>
+      r.kind === "request" &&
+      r.title === title &&
+      (isNaN(amount) || r.amount === amount)
+  );
   return (
     <span className="status-cell">
-      <StatusBadge status={String(value)} decision={decision} />
+      <StatusBadge
+        status={String(value)}
+        decision={row?.decision ?? null}
+        hasOrder={row?.orderId != null}
+      />
     </span>
   );
 }

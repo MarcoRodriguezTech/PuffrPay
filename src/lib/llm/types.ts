@@ -2,7 +2,9 @@ import type { ProductResult } from "../types";
 
 /** What the agent's first call returns: a search plan for Channel3. */
 export interface SearchPlan {
-  query: string;
+  /** null when the message wasn't a shopping request — chat gets a
+      canned persona reply instead of a product search. */
+  query: string | null;
   maxPriceCents: number;
 }
 

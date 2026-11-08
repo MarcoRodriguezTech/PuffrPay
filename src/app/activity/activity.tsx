@@ -23,11 +23,13 @@ import { createPortal } from "react-dom";
 import {
   AgStudioAiModule,
   createAiHarness,
+  directLlmRunner,
   enableStudioDevValidations,
   type AgReportState,
   type AgStudioApi,
   type AgStudioMode,
   type AgWidgetsConfig,
+  type AgAnyAiAgentDefinition,
   type AgAiHarnessSetupParams,
 } from "ag-studio";
 import { AgStudio, AgStudioProvider } from "ag-studio-react";
@@ -87,6 +89,17 @@ const PROMPT_STARTERS = [
   { label: "How much did Puffr spend?", prompt: "How much has the agent spent this month against the cap?" },
   { label: "Summarise the requests", prompt: "Summarise recent purchase requests and their statuses." },
 ];
+
+// Appended to the built-in data agent's instructions. Deriving a field whose
+// alias already exists (e.g. "latest_date") is a fatal validation error that
+// tears down the whole dashboard — a unique alias keeps the run alive.
+const DATA_AGENT_NOTES =
+  "When creating derived fields or transformations, always choose an alias " +
+  "that does not already exist as a field name — never reuse an existing " +
+  "field name or an alias you have already created; invent a unique name " +
+  "instead. If a needed derived field already exists, reuse it rather than " +
+  "recreating it. Range filters (e.g. inRelativeRange) require a two-element " +
+  "range value — always supply both bounds, never a single date or label.";
 
 // Every <AgStudio> prop below keeps one identity for the page's lifetime.
 // Studio re-renders the page on each state update (filter clicks, panel
@@ -250,10 +263,26 @@ function StudioDashboard({
   const onStateUpdated = useCallback<NonNullable<StudioProps["onStateUpdated"]>>((event) => {
     setStudioState(event.state);
   }, []);
+  const recoveredOnce = useRef(false);
   const onErrorRaised = useCallback<NonNullable<StudioProps["onErrorRaised"]>>((event) => {
     console.error("[studio] runtime error:", event);
+    // A tool — usually the AI data agent — can push an invalid state (e.g. a
+    // derived-field alias that collides with an existing field). Restoring
+    // the last good report keeps the session alive instead of bouncing the
+    // reader to the classic grid mid-chat. If it can't be restored, or a
+    // second error hits, fall back.
+    const api = apiRef.current;
+    if (event.errorType === "validation" && api && !recoveredOnce.current) {
+      recoveredOnce.current = true;
+      try {
+        api.setState(reportState.withCollapsedFilters(saved?.state ?? baseReport));
+        return;
+      } catch {
+        /* restore failed — fall through to the redirect */
+      }
+    }
     setFailed(true);
-  }, []);
+  }, [saved, baseReport]);
 
   const state = studioState ?? initialState;
   const studioData = useMemo(() => buildStudioData(data), [data]);
@@ -282,11 +311,22 @@ function StudioDashboard({
     () =>
       chatMode === "studio"
         ? ({ api }: AgAiHarnessSetupParams) =>
-            createAiHarness(api, {
-              adapter: studioChatAdapter,
+            createAiHarness(api, ({ builtIn }) => ({
+              agents: (Object.values(builtIn) as AgAnyAiAgentDefinition[]).map(
+                (def) =>
+                  directLlmRunner({
+                    ...def,
+                    adapter: studioChatAdapter,
+                    instructions:
+                      def.id === "data"
+                        ? (ctx, params) =>
+                            `${def.instructions?.(ctx, params) ?? ""}\n\n${DATA_AGENT_NOTES}`
+                        : def.instructions,
+                  })
+              ),
               primary: "lead",
               promptStarters: PROMPT_STARTERS,
-            })
+            }))
         : undefined,
     [chatMode]
   );

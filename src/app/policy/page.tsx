@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   flagPuffNextLoad,
   fmtDollars,
@@ -71,6 +72,16 @@ export default function PolicyPage() {
 
   const [waiting, setWaiting] = useState<Purchase[] | null>(null);
   const [pending, setPending] = useState<Purchase[] | null>(null);
+  // Cards resolved this session stay in the grid dimmed with their outcome
+  // badge — a cancel/reject shouldn't vanish without a trace. `queue` marks
+  // which section they settled from; clears on page reload.
+  const [settled, setSettled] = useState<
+    {
+      p: Purchase;
+      outcome: "REJECTED" | "PURCHASED" | "BLOCKED";
+      queue: "waiting" | "paypal";
+    }[]
+  >([]);
   const [cardBusy, setCardBusy] = useState<number | null>(null);
   const [cardErr, setCardErr] = useState<Record<number, string>>({});
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -78,6 +89,35 @@ export default function PolicyPage() {
   const lastAutoRef = useRef("20.00");
 
   const load = useCallback(async () => {
+    // Sweep open checkouts first — a buyer approval that never redirected
+    // back still resolves here (captured or expired), no button needed.
+    const rec = await fetch("/api/purchases/reconcile", { method: "POST" })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    const resolved: Purchase[] = rec?.resolved ?? [];
+    if (resolved.length > 0) {
+      setSettled((s) => {
+        const have = new Set(s.map((x) => x.p.id));
+        const fresh = resolved
+          .filter((x) => !have.has(x.id))
+          .map((x) => ({
+            p: x,
+            outcome: (x.status === "PURCHASED"
+              ? "PURCHASED"
+              : "REJECTED") as "PURCHASED" | "REJECTED",
+            queue: "paypal" as const,
+          }));
+        return fresh.length ? [...s, ...fresh] : s;
+      });
+      for (const x of resolved) {
+        toast(
+          x.status === "PURCHASED"
+            ? "Payment captured (sandbox)"
+            : "Checkout expired on PayPal"
+        );
+      }
+      refreshBudget();
+    }
     const [p, w] = await Promise.all([
       fetch("/api/policy").then((r) => r.json()).catch(() => null),
       fetch("/api/purchases?status=WAITING").then((r) => r.json()).catch(() => null),
@@ -216,10 +256,22 @@ export default function PolicyPage() {
       const updated: Purchase = data.purchase;
       setWaiting((w) => (w ?? []).filter((x) => x.id !== p.id));
       if (action === "reject") {
+        setSettled((s) => [
+          ...s,
+          { p: updated, outcome: "REJECTED", queue: "waiting" },
+        ]);
         toast("Rejected");
       } else if (updated.status === "PURCHASED") {
+        setSettled((s) => [
+          ...s,
+          { p: updated, outcome: "PURCHASED", queue: "waiting" },
+        ]);
         toast("Payment sent (sandbox)");
       } else if (updated.status === "BLOCKED") {
+        setSettled((s) => [
+          ...s,
+          { p: updated, outcome: "BLOCKED", queue: "waiting" },
+        ]);
         flagPuffNextLoad();
         const reason = (updated.errorMessage ?? updated.policyReason).replace(
           /^blocked on re-check:\s*/i,
@@ -238,35 +290,70 @@ export default function PolicyPage() {
     }
   }
 
-  async function pendingAct(p: Purchase, action: "capture" | "cancel") {
+  async function cancelPending(p: Purchase) {
     if (cardBusy) return;
     setCardBusy(p.id);
     setCardErr((e) => ({ ...e, [p.id]: "" }));
     try {
-      const res = await fetch(`/api/purchases/${p.id}/${action}`, {
+      const res = await fetch(`/api/purchases/${p.id}/cancel`, {
         method: "POST",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `${action} failed`);
+      if (!res.ok) throw new Error(data.error || "cancel failed");
       setPending((l) => (l ?? []).filter((x) => x.id !== p.id));
-      toast(
-        action === "capture"
-          ? "Payment captured (sandbox)"
-          : "Checkout cancelled"
-      );
+      setSettled((s) => [
+        ...s,
+        { p: data.purchase ?? p, outcome: "REJECTED", queue: "paypal" },
+      ]);
+      toast("Checkout cancelled");
       refreshBudget();
     } catch (err) {
-      const em = err instanceof Error ? err.message : String(err);
-      setCardErr((e) => ({
-        ...e,
-        [p.id]: em.includes("ORDER_NOT_APPROVED")
-          ? "Not approved in PayPal yet — finish the checkout, then capture."
-          : friendlyClientError(err),
-      }));
+      setCardErr((e) => ({ ...e, [p.id]: friendlyClientError(err) }));
     } finally {
       setCardBusy(null);
     }
   }
+
+  const settledCards = (queue: "waiting" | "paypal") =>
+    settled
+      .filter((s) => s.queue === queue)
+      .map((s) => (
+        <div className="wait-card settled" key={`done-${s.p.id}`}>
+          {s.p.imageUrl && (
+            <img
+              className="product-thumb wc-thumb"
+              src={s.p.imageUrl}
+              alt={s.p.productTitle}
+              width={64}
+              height={64}
+            />
+          )}
+          <div className="title-row">
+            <strong>{s.p.productTitle}</strong>
+            <span className="amount">{fmtDollars(s.p.amountCents)}</span>
+          </div>
+          <div
+            className="row"
+            style={{
+              marginTop: 12,
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <StatusBadge status={s.outcome} />
+            <button
+              type="button"
+              className="ac-dismiss"
+              aria-label="Dismiss"
+              onClick={() =>
+                setSettled((l) => l.filter((x) => x.p.id !== s.p.id))
+              }
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ));
 
   const capC = parseDollars(form.cap) ?? 0;
   const maxC = parseDollars(form.max) ?? 0;
@@ -475,6 +562,7 @@ export default function PolicyPage() {
               </div>
             </div>
           ))}
+          {settledCards("waiting")}
           </div>
 
           <h2 style={{ marginTop: 24 }}>
@@ -515,15 +603,7 @@ export default function PolicyPage() {
                 </div>
               )}
               {cardErr[w.id] && (
-                <div className="card-err">
-                  {cardErr[w.id]}
-                  <button
-                    className="text"
-                    onClick={() => pendingAct(w, "capture")}
-                  >
-                    Retry capture
-                  </button>
-                </div>
+                <div className="card-err">{cardErr[w.id]}</div>
               )}
               <div className="row" style={{ marginTop: 12 }}>
                 <button
@@ -536,25 +616,19 @@ export default function PolicyPage() {
                   Resume checkout
                 </button>
                 <button
-                  className="secondary"
-                  onClick={() => pendingAct(w, "capture")}
+                  className="secondary danger"
+                  onClick={() => cancelPending(w)}
                   disabled={cardBusy === w.id}
                 >
                   {cardBusy === w.id && (
                     <span className="spinner" aria-hidden="true" />
                   )}
-                  Capture now
-                </button>
-                <button
-                  className="secondary danger"
-                  onClick={() => pendingAct(w, "cancel")}
-                  disabled={cardBusy === w.id}
-                >
                   Cancel
                 </button>
               </div>
             </div>
           ))}
+          {settledCards("paypal")}
           </div>
         </section>
       </div>

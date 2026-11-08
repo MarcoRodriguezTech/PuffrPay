@@ -59,7 +59,8 @@
   --st-paypal: #60a5fa;
   --st-waiting: #93c5fd;
   --st-blocked: #ff6b5e;
-  --st-rejected: #64748b;
+  --st-rejected: #ff6b5e; /* owner-declined is a hard no — same red as blocked */
+  --st-skipped: #64748b; /* unchosen shelf cards — the muted gray rejected used to wear */
   --st-failed: #94a3b8;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
@@ -185,7 +186,8 @@
   --st-paypal: #60a5fa;
   --st-waiting: #93c5fd;
   --st-blocked: #dc2626;
-  --st-rejected: #64748b;
+  --st-rejected: #dc2626;
+  --st-skipped: #64748b;
   --st-failed: #475569;
   --glow: none;
   --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
@@ -1130,8 +1132,8 @@ img[src*="/mascot/"] {
   border-color: var(--st-paypal);
 }
 .status-badge.SKIPPED {
-  color: var(--st-rejected);
-  border-color: var(--st-rejected);
+  color: var(--st-skipped);
+  border-color: var(--st-skipped);
 }
 
 /* ---------- chips ---------- */
@@ -2007,6 +2009,46 @@ img[src*="/mascot/"] {
   gap: var(--s2);
 }
 
+/* once-per-ask pointer — text left, × right */
+.ask-note {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.ask-note .ac-dismiss {
+  position: static;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  font-size: 13px;
+}
+
+/* hide-from-agent dismiss — the ask stays in the Policy queue */
+.ac-dismiss {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.approval-card .ac-dismiss:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--line);
+  filter: none;
+}
+
 .approval-card .ac-body {
   display: flex;
   justify-content: space-between;
@@ -2082,6 +2124,53 @@ img[src*="/mascot/"] {
   flex: 1;
 }
 
+/* dictation button — icon-only square beside Send; pulses while listening */
+.mic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-ctl);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.mic-btn:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mic-btn.live {
+  color: var(--danger);
+  border-color: var(--danger);
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-btn.live {
+    animation: none;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+}
+
 .typing {
   display: inline-flex;
   align-items: center;
@@ -2126,8 +2215,16 @@ img[src*="/mascot/"] {
   flex: none;
   border-left: 1px solid var(--line);
   padding: var(--s6);
-  overflow-y: auto;
   height: calc(100dvh - 72px - 12px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* scrolling region — everything except the pinned side-note */
+.agent-side .side-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (max-width: 1100px) {
@@ -2217,9 +2314,18 @@ img[src*="/mascot/"] {
     border-bottom: 1px solid var(--line);
     padding: var(--s4) 0;
     display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--s4);
+  }
+  .agent-side .side-scroll {
+    display: contents;
+  }
+  .agent-side .side-note {
+    flex: 0 0 100%;
+    margin-top: 0;
+    padding-top: 0;
   }
   .agent-side .side-inner {
     flex: 1;
@@ -2682,6 +2788,11 @@ img[src*="/mascot/"] {
 .wait-card .row {
   flex-wrap: wrap;
   gap: var(--s2);
+}
+
+/* resolved this session — stays in the grid dimmed with its outcome badge */
+.wait-card.settled {
+  opacity: 0.55;
 }
 
 .clamp3 {
@@ -3675,6 +3786,17 @@ img[src*="/mascot/"] {
   animation: ask-panel-in var(--dur) var(--ease);
 }
 
+/* AG lays the panel out on fixed px tracks — a divider column plus
+   --ag-studio-panel-width (inline-styled to 350px) — while the drawer
+   itself is --ask-w wide. The delta showed as dead space on the right and
+   a header that stopped short of the edge. Fluid tracks instead: the
+   divider column collapses (the divider is display:none anyway), the title
+   row sizes to content, and the body fills the drawer edge-to-edge. */
+.studio-card .ag-studio-panel.ag-studio-panel-right:not(.ag-studio-panel-collapsed) {
+  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
 .studio-card .ag-studio-root-panel-container:has(.ag-studio-panel:not(.ag-studio-panel-collapsed)) {
   /* The container is a 1px dock strip — un-clip it so the fixed drawer isn't
      clipped. No background/backdrop-filter here: a backdrop-filter would
@@ -3725,7 +3847,15 @@ img[src*="/mascot/"] {
   color: var(--ink-soft);
 }
 .studio-card .ag-studio-panel .ag-studio-panel-header:hover .ag-studio-panel-chevron {
+  /* neutralize AG's hover halo — one quiet color change is enough */
+  background: none;
+  box-shadow: none;
   color: var(--ink);
+}
+.studio-card .ag-studio-panel .ag-studio-panel-header:focus-visible {
+  outline: 2px solid var(--tide);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 .studio-card .ag-studio-panel .ag-studio-panel-chevron .ag-icon {
   width: 14px;
@@ -3743,6 +3873,8 @@ img[src*="/mascot/"] {
 }
 
 .studio-card .ag-studio-panel .ag-studio-panel-content {
+  width: auto; /* AG ties this to the inline --ag-studio-panel-width (350px) */
+  min-height: 0;
   padding: var(--s4) var(--s5) var(--s5);
   overflow-y: auto;
 }
@@ -3803,68 +3935,164 @@ img[src*="/mascot/"] {
 
 /* --- AI assistant drawer --- */
 
+/* one spacing / radius / control system — every section in the panel shares
+   these edges so the column reads as a single aligned stack */
+.studio-card .ag-studio-ai-panel {
+  --ai-pad: var(--s4); /* 16px — the shared content inset */
+  --ai-gap: var(--s3); /* 12px between sections */
+  --ai-ctl-h: 44px; /* dropdown, New and chips take the app touch height */
+  --ai-radius: 12px; /* one radius for every control */
+  --ai-line: var(--glass-line);
+}
+
+.studio-card .ag-studio-ai-panel,
+.studio-card .ag-studio-ai-panel * {
+  box-sizing: border-box;
+}
+
+/* AG's global resets also reach these controls — pin them down here */
+.studio-card .ag-studio-ai-panel button,
+.studio-card .ag-studio-ai-panel textarea {
+  appearance: none;
+  margin: 0;
+  font: inherit;
+}
+
+.studio-card .ag-studio-ai-panel .ag-studio-panel-content {
+  width: auto; /* AG ties this to the inline --ag-studio-panel-width */
+  padding: 0;
+  overflow: hidden;
+}
+
+/* the column: thread row on top, messages scroll in the middle,
+   starters + input pinned to the bottom */
 .studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: var(--s3);
+  min-height: 0;
+  gap: var(--ai-gap);
+  padding: var(--ai-pad);
 }
+
+/* AG gives every section its own horizontal inset — zero them so
+   --ai-pad is the only left/right edge. */
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-control,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-scroll-content,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starters,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-controls,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* thread row: dropdown takes the slack, New stays compact — same height,
+   radius and border on both so they read as one control family */
 .studio-card .ag-studio-ai-panel .ag-studio-ai-thread-control {
-  display: flex;
-  align-items: center;
+  height: auto; /* AG pins this to --ag-studio-panel-header-height */
+  border: none; /* AG draws top + bottom rules on it */
   gap: var(--s2);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button {
+  height: var(--ai-ctl-h);
+  padding: 0 var(--s3);
+  border: 1px solid var(--ai-line);
+  border-radius: var(--ai-radius);
+  font-size: var(--t12);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button {
   flex: 1;
   min-width: 0;
-  display: inline-flex;
-  align-items: center;
   justify-content: space-between;
   gap: var(--s2);
-  padding: 7px var(--s3);
-  border-radius: var(--radius-ctl);
-  border: 1px solid var(--glass-line);
   background: var(--card-grad);
   color: var(--ink);
-  font-family: var(--sans);
-  font-size: var(--t12);
-  font-weight: 600;
-  cursor: pointer;
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px var(--s3);
-  border-radius: var(--radius-ctl);
-  border: 1px solid var(--glass-line);
+  flex: none;
+  gap: var(--s1);
   background: var(--ocean-soft);
   color: var(--tide);
-  font-family: var(--sans);
-  font-size: var(--t12);
   font-weight: 700;
-  cursor: pointer;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button:hover,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button:hover {
+  border-color: color-mix(in srgb, var(--tide) 45%, transparent);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button:active,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button:active {
+  transform: translateY(1px);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button:focus-visible,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button:focus-visible {
+  outline: 2px solid var(--tide);
+  outline-offset: 2px;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button:disabled,
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* the shipped glyph reads as a native select caret — draw a clean chevron */
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button .ag-icon {
+  display: none;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button::after {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: -2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.65;
 }
 
 .studio-card .ag-studio-ai-panel .ag-studio-ai-scroll-container {
   flex: 1;
   min-height: 0;
 }
+.studio-card .ag-studio-ai-panel .ag-studio-ai-scroll-content {
+  min-height: 0;
+  padding-top: var(--s1);
+  padding-bottom: var(--s1);
+}
 .studio-card .ag-studio-ai-panel .ag-studio-ai-message-container > * {
   max-width: 88%;
   padding: var(--s3);
-  border-radius: var(--radius-ctl);
+  border-radius: var(--ai-radius);
   background: var(--card-grad);
-  border: 1px solid var(--glass-line);
+  border: 1px solid var(--ai-line);
   margin-bottom: var(--s2);
   font-size: var(--t14);
 }
 
 .studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar {
+  padding-top: var(--s1);
+  padding-bottom: var(--s1);
+  border-top: none;
   font-size: var(--t12);
   color: var(--ink-soft);
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar button {
+  min-height: 0;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--ai-radius);
   font-family: var(--sans);
   font-size: var(--t12);
   color: var(--ink-soft);
@@ -3876,45 +4104,64 @@ img[src*="/mascot/"] {
   color: var(--ink);
 }
 
-/* prompt starters → full-width ghost chips */
+/* prompt starters → quiet full-width rows on the shared edges */
 .studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starters {
-  display: flex;
-  flex-direction: column;
+  align-items: stretch;
   gap: var(--s2);
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter {
   display: flex;
   align-items: center;
   gap: var(--s2);
   width: 100%;
-  padding: var(--s3);
-  border-radius: var(--radius-ctl);
-  border: 1px solid var(--glass-line);
+  height: var(--ai-ctl-h);
+  padding: 0 var(--s3);
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-line);
   background: var(--card-grad);
   color: var(--ink);
-  font-family: var(--sans);
   font-size: var(--t12);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--dur-fast), background var(--dur-fast);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter:hover {
   border-color: color-mix(in srgb, var(--tide) 45%, transparent);
   background: var(--ocean-soft);
 }
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter:active {
+  transform: translateY(1px);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter:focus-visible {
+  outline: 2px solid var(--tide);
+  outline-offset: 2px;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 .studio-card .ag-studio-ai-panel .ag-studio-widget-icon-container:empty {
   display: none;
 }
 
-/* input → glass card with a tide focus ring, gradient send */
+/* input → glass card on the shared edges, Send tucked bottom-right */
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-controls {
+  padding-top: var(--ai-gap);
+  border-top: 1px solid var(--line);
+}
 .studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-input {
   display: flex;
   flex-direction: column;
   gap: var(--s2);
   padding: var(--s3);
-  border-radius: var(--radius-ctl);
-  border: 1px solid var(--glass-line);
+  border-radius: var(--ai-radius);
+  border: 1px solid var(--ai-line);
   background: var(--card-grad);
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-input:focus-within {
@@ -3923,6 +4170,7 @@ img[src*="/mascot/"] {
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-textarea {
   width: 100%;
+  padding: 0;
   border: none;
   outline: none;
   background: transparent;
@@ -3939,17 +4187,37 @@ img[src*="/mascot/"] {
   align-items: center;
   justify-content: flex-end;
   gap: var(--s2);
+  padding: 0;
 }
 .studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button {
+  height: 32px;
+  min-height: 0; /* nested control — exempt from the 44px touch minimum */
+  padding: 0 var(--s4);
   border: none;
-  border-radius: var(--pill);
+  border-radius: var(--ai-radius);
   background: var(--btn-grad);
   color: #fff;
-  font-family: var(--sans);
   font-size: var(--t12);
   font-weight: 700;
-  padding: 6px 16px;
   cursor: pointer;
+  transition:
+    filter var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button:hover {
+  filter: brightness(1.1);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button:active {
+  transform: translateY(1px);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button:focus-visible {
+  outline: 2px solid var(--tide);
+  outline-offset: 2px;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* custom grid cells */
@@ -4163,9 +4431,10 @@ img[src*="/mascot/"] {
   padding: var(--s6) 0;
 }
 
-.app-footer {
-  margin: 0 auto;
-  padding: var(--s4) var(--gutter-wide) var(--s6);
+/* sandbox disclaimer pinned to the bottom of the Agent sidebar */
+.agent-side .side-note {
+  margin-top: auto;
+  padding-top: var(--s4);
   color: var(--ink-soft);
   font-size: var(--t12);
 }
@@ -4334,6 +4603,53 @@ img[src*="/mascot/"] {
 .bento-chart .axis-label {
   fill: var(--ink-soft);
   font-size: 12px;
+}
+/* week pager on the Spend-by-day widget — middle of the head, in flow so it
+   can never overlap the pills */
+.wk-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  flex: 1;
+  min-width: 0;
+}
+.wk-range {
+  font-size: var(--t12);
+  font-family: var(--mono);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.wk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.wk-btn:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.wk-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+/* tighter legend pills only where the centred week nav shares the head */
+.bento-head:has(.wk-nav) .legend-pills .lp {
+  padding: 2px 8px;
+  font-size: 11px;
+  gap: 5px;
 }
 .bento-chart .gridline {
   stroke: var(--ink-soft);
@@ -4920,6 +5236,36 @@ img[src*="/mascot/"] {
   padding: 0;
   border-radius: 999px;
   cursor: pointer;
+  /* pill depth: top-lit edge, shaded base, faint halo in the seg's own
+     status color (set as `color` inline) — flat paint reads glossy */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.22),
+    0 0 10px -3px currentColor;
+  transition:
+    filter var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+/* glass sheen across the top half — sits above the flat fill, below the tip */
+.leash-seg::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  pointer-events: none;
+}
+.leash-seg:hover {
+  filter: brightness(1.12) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.22),
+    0 0 14px -2px currentColor;
 }
 .leash-seg:focus-visible {
   outline: 2px solid var(--ink);

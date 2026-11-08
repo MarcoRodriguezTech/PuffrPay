@@ -16,6 +16,20 @@ export class MockLLM implements LLM {
   readonly name = "mock";
 
   async planSearch(message: string): Promise<SearchPlan> {
+    // Mirror the real provider's intent gate: greeting/question openers with
+    // no shopping verbs are chat, not a purchase request. Conservative —
+    // borderline messages still search rather than going silent.
+    const m = message.trim().toLowerCase();
+    const chatty =
+      /^(hi|hello|hey|yo|sup|help|what'?s?|what|who|why|how|thanks?|bye|ok|okay)\b/.test(
+        m
+      );
+    const shopping =
+      /\b(buy|find|get|order|search|shop|gift|need|want|look(ing)? for)\b/.test(
+        m
+      );
+    if (chatty && !shopping) return { query: null, maxPriceCents: 0 };
+
     const budget = dollarsToCents(message) ?? 50_00;
     // strip budget phrasing to leave a usable search term
     const query = message

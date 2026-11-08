@@ -38,6 +38,9 @@ function requestRows(purchases: PurchaseRequest[], policy: Policy) {
       reason: p.policyReason,
       reasoning: p.agentReasoning,
       orderId: p.paypalOrderId,
+      // 1/0 flag — the WAITING split (Awaiting PayPal vs Waiting for you)
+      // filters on this; text fields don't support null-test operators.
+      hasOrder: p.paypalOrderId ? 1 : 0,
       isStub:
         (p.paypalOrderId?.startsWith("STUB-") ?? false) ||
         (p.paypalCaptureId?.startsWith("STUB-") ?? false),
@@ -159,6 +162,7 @@ function optionCardRows(
                 : "not picked",
           reasoning: null,
           orderId: null,
+          hasOrder: 0,
           isStub: false,
           // Cards never count toward request measures — they stay 0 so any
           // sum over the merged table keeps request scope.

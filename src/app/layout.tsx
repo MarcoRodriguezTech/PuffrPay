@@ -74,7 +74,6 @@ export default function RootLayout({
         <div className="shell">
           <TopBar />
           {children}
-          <footer className="app-footer">Sandbox mode. No real money moves.</footer>
         </div>
         <Toaster />
       </body>

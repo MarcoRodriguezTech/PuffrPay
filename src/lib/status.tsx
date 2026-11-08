@@ -83,10 +83,10 @@ export const STATUSES: readonly StatusInfo[] = [
     ),
   },
   {
-    // Owner-declined — shown as "Skipped": one word for everything the
-    // human didn't proceed with (matches the option-row vocabulary).
+    // Owner-declined — its own word. "Skipped" stays option-card
+    // vocabulary: unchosen shelf cards, not a decision the owner made.
     key: "REJECTED",
-    label: "Skipped",
+    label: "Rejected",
     colorVar: "var(--st-rejected)",
     icon: (
       <svg width={S} height={S} viewBox="0 0 12 12" aria-hidden="true">
@@ -118,8 +118,18 @@ export const STATUS_COLORS = Object.fromEntries(
   STATUSES.map((s) => [s.key, s.colorVar])
 ) as Record<StatusKey, string>;
 
-export function statusKey(status: string, decision?: string | null): StatusKey {
+export function statusKey(
+  status: string,
+  decision?: string | null,
+  hasOrder?: boolean
+): StatusKey {
   if (status === "WAITING") {
+    // An open checkout is "Awaiting PayPal" no matter how the request got
+    // there — an approved ASK keeps decision=ASK but now carries an order
+    // id. `hasOrder` is the ground truth; the decision is only a fallback
+    // for callers that can't see the order field (ALLOW went straight to
+    // checkout).
+    if (hasOrder != null) return hasOrder ? "PAYPAL" : "WAITING";
     return decision === "ALLOW" ? "PAYPAL" : "WAITING";
   }
   return (status in STATUS_LABELS ? status : "FAILED") as StatusKey;
@@ -136,38 +146,42 @@ export function statusLabel(raw: string): string | null {
 // Field ids on the requests table (studio/data.ts).
 export const STATUS_FIELD = "requests.status";
 export const DECISION_FIELD = "requests.decision";
+// 1/0 flag on every row — text fields don't support null-test operators, so
+// "has a PayPal order" filters on this integer equals instead of orderId.
+export const ORDER_FIELD = "requests.hasOrder";
 
-const eq = (id: string, value: string): AgFilterState =>
+const eq = (id: string, value: string | number): AgFilterState =>
   ({ field: { id }, model: { operator: "equals", value } }) as AgFilterState;
 
-// Filter entries selecting exactly this status — WAITING splits on the policy
-// decision so Awaiting PayPal and Waiting for you stay distinct. A WAITING
-// row is always ALLOW (checkout open) or ASK (owner approval pending), so
-// equals matches the same set as "not ALLOW" while staying an operator the
-// Studio datasource applies.
+// Filter entries selecting exactly this status — WAITING splits on whether a
+// PayPal order exists (mirroring Policy's Awaiting PayPal queue), not the
+// policy decision: an approved ASK keeps decision=ASK while carrying an
+// order id, so decision-based filtering would mis-bucket it.
 export function statusFilterEntries(key: StatusKey): AgFilterState[] {
   if (key === "PAYPAL")
-    return [eq(STATUS_FIELD, "WAITING"), eq(DECISION_FIELD, "ALLOW")];
+    return [eq(STATUS_FIELD, "WAITING"), eq(ORDER_FIELD, 1)];
   if (key === "WAITING")
-    return [eq(STATUS_FIELD, "WAITING"), eq(DECISION_FIELD, "ASK")];
+    return [eq(STATUS_FIELD, "WAITING"), eq(ORDER_FIELD, 0)];
   return [eq(STATUS_FIELD, key)];
 }
 
-// Any page-filter entry aimed at the status/decision fields — the leash owns
-// status filtering, so a click replaces whatever status filter is live.
+// Any page-filter entry aimed at the status/decision/order fields — the
+// leash owns status filtering, so a click replaces whatever status filter
+// is live.
 export function isStatusFilterEntry(f: AgFilterState): boolean {
   const id = f?.field?.id;
-  return id === STATUS_FIELD || id === DECISION_FIELD;
+  return id === STATUS_FIELD || id === DECISION_FIELD || id === ORDER_FIELD;
 }
 
-// The status a page-filter set currently selects, or null. Reads equals-
-// entries only, so ask-set status filters light up the bar too.
+// The status a page-filter set currently selects, or null. Reads equals- and
+// null-test entries only, so ask-set status filters light up the bar too.
 export function activeStatusKey(
   filters: AgFilterState[] | undefined | null
 ): StatusKey | null {
   if (!filters) return null;
   let status: string | null = null;
   let decision: string | null = null;
+  let hasOrder: boolean | undefined;
   for (const f of filters) {
     if (f?.field?.id === STATUS_FIELD && f?.model?.operator === "equals") {
       status = String(f.model.value ?? "");
@@ -175,7 +189,10 @@ export function activeStatusKey(
     if (f?.field?.id === DECISION_FIELD && f?.model?.operator === "equals") {
       decision = String(f.model.value ?? "");
     }
+    if (f?.field?.id === ORDER_FIELD && f?.model?.operator === "equals") {
+      hasOrder = Number(f.model.value) === 1;
+    }
   }
   if (!status) return null;
-  return statusKey(status.toUpperCase(), decision?.toUpperCase() ?? null);
+  return statusKey(status.toUpperCase(), decision?.toUpperCase() ?? null, hasOrder);
 }

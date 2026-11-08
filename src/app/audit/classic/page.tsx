@@ -104,8 +104,14 @@ const COLS: ColDef<Row>[] = [
     field: "status",
     width: 150,
     filter: "agTextColumnFilter",
-    cellRenderer: (p: { value?: string }) =>
-      p.value ? <StatusBadge status={p.value} /> : null,
+    cellRenderer: (p: { value?: string; data?: Row }) =>
+      p.value ? (
+        <StatusBadge
+          status={p.value}
+          decision={p.data?.policyDecision}
+          hasOrder={p.data?.paypalOrderId != null}
+        />
+      ) : null,
   },
   {
     headerName: "Decided by",
@@ -419,7 +425,11 @@ export default function AuditPage() {
           </div>
           <div className="d-row">
             <span className="k">Status</span>
-            <StatusBadge status={detail.status} />
+            <StatusBadge
+              status={detail.status}
+              decision={detail.policyDecision}
+              hasOrder={detail.paypalOrderId != null}
+            />
           </div>
           <div className="d-row">
             <span className="k">Decided by</span>

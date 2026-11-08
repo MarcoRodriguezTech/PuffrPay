@@ -7,11 +7,14 @@ export type { StatusKey } from "@/lib/status";
 export function StatusBadge({
   status,
   decision,
+  hasOrder,
 }: {
   status: PurchaseStatus | string;
   decision?: PolicyDecision | string | null;
+  /** Purchase carries a PayPal order id — decides WAITING's badge. */
+  hasOrder?: boolean;
 }) {
-  const s = STATUS_BY_KEY[statusKey(status, decision)];
+  const s = STATUS_BY_KEY[statusKey(status, decision, hasOrder)];
   return (
     <span className={`status-badge ${s.key}`} title={s.label}>
       {s.icon}

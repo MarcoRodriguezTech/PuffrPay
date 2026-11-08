@@ -15,6 +15,7 @@ import type {
   AgAiToolSchema,
   AgLlmRequest,
 } from "ag-studio";
+import { toGeminiParameters, toGeminiSchema } from "@/lib/gemini-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -43,10 +44,23 @@ function toContents(items: AgAiConversationItem[]): {
   const system: string[] = [];
   const callNames = new Map<string, string>();
   // Gemini 3.x requires the model's own thought_signature echoed back on
-  // replayed functionCall parts. Items that lack one (older history, other
-  // adapters) are described as text instead — a bare functionCall 400s.
+  // replayed functionCall parts — a bare functionCall 400s. Unsigned calls
+  // therefore can't be replayed as protocol parts; describing them as model
+  // text ("[Called tool X...]") teaches the model to emit that literal string
+  // as its reply, so they're retold as user-side context instead.
   // callIds can repeat across sub-turns, so track the latest call per id.
   const callSigned = new Map<string, boolean>();
+  const unsignedCalls = new Map<
+    string,
+    { name: string; args: Record<string, unknown> }
+  >();
+  // Consecutive same-role turns are merged — Gemini alternates roles, and
+  // tool-result notes can land user messages back to back.
+  const push = (role: "user" | "model", part: Part) => {
+    const last = contents[contents.length - 1];
+    if (last && last.role === role) last.parts.push(part);
+    else contents.push({ role, parts: [part] });
+  };
   for (const item of items) {
     const it = item as unknown as Record<string, unknown> & {
       type?: string;
@@ -55,9 +69,9 @@ function toContents(items: AgAiConversationItem[]): {
     if (it.type === "message" && it.role === "system") {
       system.push(textOf(it.content));
     } else if (it.type === "message" && it.role === "user") {
-      contents.push({ role: "user", parts: [{ text: textOf(it.content) }] });
+      push("user", { text: textOf(it.content) });
     } else if (it.type === "message" && it.role === "assistant") {
-      contents.push({ role: "model", parts: [{ text: textOf(it.content) }] });
+      push("model", { text: textOf(it.content) });
     } else if (it.type === "function_call") {
       const name = String(it.name ?? "");
       const callId = String(it.callId ?? it.id ?? name);
@@ -72,34 +86,39 @@ function toContents(items: AgAiConversationItem[]): {
         typeof it.thoughtSignature === "string" ? it.thoughtSignature : undefined;
       callSigned.set(callId, !!sig);
       if (sig) {
-        contents.push({
-          role: "model",
-          parts: [{ functionCall: { name, args }, thoughtSignature: sig }],
+        unsignedCalls.delete(callId);
+        push("model", {
+          functionCall: { name, args },
+          thoughtSignature: sig,
         });
       } else {
-        contents.push({
-          role: "model",
-          parts: [{ text: `[Called tool ${name} with ${JSON.stringify(args)}]` }],
-        });
+        unsignedCalls.set(callId, { name, args });
       }
     } else if (it.type === "function_call_output") {
-      const name = callNames.get(String(it.callId)) ?? "tool";
+      const callId = String(it.callId);
+      const name = callNames.get(callId) ?? "tool";
       const output = String(it.output ?? "");
-      if (callSigned.get(String(it.callId))) {
-        contents.push({
-          role: "user",
-          parts: [
-            { functionResponse: { name, response: { result: output } } },
-          ],
+      if (callSigned.get(callId)) {
+        push("user", {
+          functionResponse: { name, response: { result: output } },
         });
       } else {
-        contents.push({
-          role: "user",
-          parts: [{ text: `[Tool ${name} returned: ${output}]` }],
+        const call = unsignedCalls.get(callId);
+        push("user", {
+          text: `[Tool ${name} was called${
+            call ? ` with ${JSON.stringify(call.args)}` : ""
+          } and returned: ${output}]`,
         });
+        unsignedCalls.delete(callId);
       }
     }
     // reasoning items: not sent back to the model.
+  }
+  // unsigned calls that never got a result — still worth mentioning as context
+  for (const call of unsignedCalls.values()) {
+    push("user", {
+      text: `[Tool ${call.name} was called with ${JSON.stringify(call.args)}]`,
+    });
   }
   return { contents, system };
 }
@@ -111,7 +130,9 @@ function toToolConfig(request: AgLlmRequest) {
     .map((t) => ({
       name: t.name,
       description: t.description,
-      parameters: t.parameters as Record<string, unknown>,
+      // AG ships full JSON Schema ($defs/$ref/oneOf/allOf) — Gemini 400s on
+      // it, so every declaration is folded down to its accepted subset.
+      parameters: toGeminiParameters(t.parameters),
     }));
   const config: Record<string, unknown> = {};
   if (declarations.length) config.tools = [{ functionDeclarations: declarations }];
@@ -128,7 +149,7 @@ function toToolConfig(request: AgLlmRequest) {
   if (request.responseFormat?.type === "json") {
     config.responseMimeType = "application/json";
     if (request.responseFormat.schema) {
-      config.responseSchema = request.responseFormat.schema;
+      config.responseSchema = toGeminiSchema(request.responseFormat.schema);
     }
   }
   return config;
@@ -143,8 +164,17 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) =>
-        controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      // enqueue/close throw once the client aborts (e.g. a tool navigates the
+      // page mid-run) — guard so teardown can't crash the handler
+      let closed = false;
+      const send = (obj: unknown) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        } catch {
+          closed = true;
+        }
+      };
       try {
         const apiKey = process.env.GEMINI_API_KEY || process.env.LLM_API_KEY;
         if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
@@ -165,6 +195,7 @@ export async function POST(req: Request) {
           if (!textBuf) return;
           output.push({
             id: `msg-${++textId}`,
+            kind: "output",
             type: "message",
             role: "assistant",
             content: [{ type: "text", text: textBuf }],
@@ -179,10 +210,14 @@ export async function POST(req: Request) {
           config: config as never,
         });
         for await (const chunk of res) {
+          if (closed || req.signal.aborted) break;
           const parts =
             (chunk as { candidates?: { content?: { parts?: Record<string, unknown>[] } }[] })
               .candidates?.[0]?.content?.parts ?? [];
           for (const part of parts) {
+            // thought parts are the model's private reasoning — never let
+            // them stream into the chat as visible text
+            if ((part as { thought?: unknown }).thought === true) continue;
             if (typeof part.text === "string" && part.text) {
               const messageId = `msg-${textId + 1}`;
               send({ e: { type: "TEXT_MESSAGE_CHUNK", messageId, delta: part.text } });
@@ -198,6 +233,7 @@ export async function POST(req: Request) {
               });
               output.push({
                 id,
+                kind: "output",
                 type: "function_call",
                 callId: id,
                 name: String(fc.name ?? ""),
@@ -228,7 +264,11 @@ export async function POST(req: Request) {
           },
         });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          /* client already went away */
+        }
       }
     },
   });

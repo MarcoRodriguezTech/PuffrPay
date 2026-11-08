@@ -83,14 +83,21 @@ export class GeminiLLM implements LLM {
 
   async planSearch(message: string): Promise<SearchPlan> {
     const raw = await this.generateJson(
-      `You are the search planner for a shopping agent. Turn the owner's request into a product search query and a budget in cents (USD).
-Rules: infer maxPriceCents from the message; if none is given, use 5000. Keep the query short (2-6 words), product-focused, no prices or filler words.
-Return ONLY JSON: {"query": string, "maxPriceCents": number}
+      `You are the search planner for a shopping agent. Decide whether the owner's message is a request to buy or find a product.
+If it is a shopping request: turn it into a product search query and a budget in cents (USD). Infer maxPriceCents from the message; if none is given, use 5000. Keep the query short (2-6 words), product-focused, no prices or filler words.
+If it is NOT a shopping request — greetings, questions about you or this app, chit-chat — return {"query": null, "maxPriceCents": 0}.
+Return ONLY JSON: {"query": string|null, "maxPriceCents": number}
 Owner request: ${JSON.stringify(message)}`
     );
     const parsed = JSON.parse(raw);
+    // explicit null = chat; a missing query field keeps the old
+    // message-as-query fallback so malformed replies still search
+    const q: unknown = "query" in parsed ? parsed.query : message;
     return {
-      query: String(parsed.query ?? message).slice(0, 200),
+      query:
+        q == null || String(q).trim() === "" || String(q).toLowerCase() === "null"
+          ? null
+          : String(q).slice(0, 200),
       maxPriceCents: Math.max(0, Math.round(Number(parsed.maxPriceCents) || 5000)),
     };
   }
@@ -108,7 +115,7 @@ Owner request: ${JSON.stringify(message)}`
       .join("\n");
     const raw = await this.generateJson(
       `You are a shopping agent. Pick the single best product for the owner's request from the list. Explain why in one short sentence.
-If nothing fits, return {"productId": null, "reasoning": "why nothing fits"}.
+Prefer imperfect fits over returning nothing: if no product is a perfect match, still pick the closest option and say what's off in "reasoning". Return {"productId": null} only when the products are completely unrelated to the request.
 Return ONLY JSON: {"productId": string|null, "reasoning": string}
 Owner request: ${JSON.stringify(message)}
 Products:
@@ -135,9 +142,9 @@ ${list}`
       )
       .join("\n");
     const raw = await this.generateJson(
-      `You are a shopping agent curating options for the owner. Pick up to ${maxPicks} DIFFERENT products from the list that fit the owner's request — vary the angle (e.g. a playful pick, a practical pick, a wildcard) so they feel like genuinely different suggestions, best first.
+      `You are a shopping agent curating options for the owner. Pick exactly ${maxPicks} DIFFERENT products from the list that fit the owner's request (fewer only if the list itself has fewer) — vary the angle (e.g. a playful pick, a practical pick, a wildcard) so they feel like genuinely different suggestions, best first.
 Give each a "tag" (1-3 words naming its angle) and a one-sentence "reasoning" why it fits.
-If nothing fits, return [].
+Prefer imperfect fits over returning nothing: if no product is a perfect match, still pick the closest options and say what's off in "reasoning". Return [] only when the products are completely unrelated to the request.
 Return ONLY JSON: [{"productId": string, "tag": string, "reasoning": string}]
 Owner request: ${JSON.stringify(message)}
 Products:

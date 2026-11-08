@@ -32,6 +32,18 @@ interface ChatMsg {
   content: string;
 }
 
+/** Minimal shape of SpeechRecognition — the DOM lib types vary by TS version. */
+interface SpeechRec {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((e: unknown) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  start(): void;
+  stop(): void;
+}
+
 interface OptionItem {
   id: string;
   title: string;
@@ -83,6 +95,11 @@ function markPicked(content: string, productId: string): string {
   }
 }
 
+// The old "…needs owner approval. Approve or reject it below." lines are no
+// longer generated — hide the ones already logged in chat history.
+const ASK_NAG = /Approve or reject it below\.?\s*$/;
+const isNagMsg = (m: ChatMsg) => m.role === "agent" && ASK_NAG.test(m.content);
+
 interface Step {
   step: string;
   detail: string;
@@ -90,6 +107,7 @@ interface Step {
 
 interface Purchase {
   id: number;
+  createdAt: string;
   productTitle: string;
   merchantUrl: string | null;
   imageUrl: string | null;
@@ -172,18 +190,33 @@ export default function AgentPage() {
   const [budget, setBudget] = useState<Budget | null>(null);
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [input, setInput] = useState("");
+  // Voice input — Web Speech API. The transcript lands in the input as a
+  // draft; the owner still reviews and hits Send (never auto-submit speech).
+  const [speechOk, setSpeechOk] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
   const [busy, setBusy] = useState(false);
   const [deciding, setDeciding] = useState(false);
   const [blockedAt, setBlockedAt] = useState<number | null>(null);
   const [busyError, setBusyError] = useState(false);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
-  const [pendingErr, setPendingErr] = useState<string | null>(null);
+
   const [outcome, setOutcome] = useState<"approved" | "rejected" | null>(null);
   // the last successfully bought purchase — kept so a receipt card can show
   const [receipt, setReceipt] = useState<Purchase | null>(null);
+  // once the owner hides an approval card, no WAITING ask surfaces in the
+  // agent view again this session — they still queue in Controls. hideAsksAt
+  // also gates the pointer: only asks created after the mute get one flash.
+  const [hideAsks, setHideAsks] = useState(false);
+  const [hideAsksAt, setHideAsksAt] = useState(0);
+  // asks the "waiting" pointer has already flashed for — it shows once each
+  const [seenAsks, setSeenAsks] = useState<Set<number>>(new Set());
   const [choosing, setChoosing] = useState<number | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // start of the in-flight request — the waiting-poll only surfaces asks
+  // created after this, never stale queued ones
+  const requestStartRef = useRef(0);
 
   const appendStep = useCallback((s: Step) => {
     setSteps((prev) => [...prev, s]);
@@ -203,14 +236,70 @@ export default function AgentPage() {
     const asks = (waiting?.purchases ?? []).filter(
       (x: Purchase) => x.policyDecision === "ASK" && !x.paypalOrderId
     );
-    if (asks.length > 0) setPurchase((cur) => cur ?? asks[0]);
+    const waitingById = new Map<number, Purchase>(
+      (waiting?.purchases ?? []).map((x: Purchase) => [x.id, x])
+    );
+    setPurchase((cur) => {
+      // A WAITING purchase resolved elsewhere (rejected/cancelled/captured
+      // in Controls) drops off; one still live picks up server-side changes
+      // (e.g. an order id attached by a Controls approve). id 0 is the
+      // optimistic card — the in-flight response owns it.
+      if (cur && cur.id !== 0 && cur.status === "WAITING") {
+        return waitingById.get(cur.id) ?? asks[0] ?? null;
+      }
+      return cur ?? asks[0] ?? null;
+    });
     refreshBudget();
   }, []);
 
   useEffect(() => {
     setBlockedAt(consumePuffFlag());
     refresh();
+    const w = window as unknown as {
+      SpeechRecognition?: unknown;
+      webkitSpeechRecognition?: unknown;
+    };
+    setSpeechOk(Boolean(w.SpeechRecognition ?? w.webkitSpeechRecognition));
+    return () => recRef.current?.stop();
   }, [refresh]);
+
+  function toggleVoice() {
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRec;
+      webkitSpeechRecognition?: new () => SpeechRec;
+    };
+    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "en-US";
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (e: unknown) => {
+      const ev = e as {
+        results: { length: number; [i: number]: { [j: number]: { transcript: string } } };
+      };
+      let text = "";
+      for (let i = 0; i < ev.results.length; i++) text += ev.results[i][0].transcript;
+      setInput(text);
+    };
+    rec.onend = () => {
+      setListening(false);
+      recRef.current = null;
+    };
+    rec.onerror = (e: unknown) => {
+      const err = e as { error?: string };
+      if (err.error === "not-allowed" || err.error === "service-not-allowed") {
+        toast("Microphone blocked — allow mic access for this site");
+      }
+    };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
 
   // reveal log lines one every 120ms once the response lands
   useEffect(() => {
@@ -245,7 +334,6 @@ export default function AgentPage() {
     setInput("");
     setBusy(true);
     setBusyError(false);
-    setPendingErr(null);
     setApproveUrl(null);
     setPurchase(null);
     setReceipt(null);
@@ -253,6 +341,7 @@ export default function AgentPage() {
     setShown(0);
     setOutcome(null);
     setLastMessage(message);
+    requestStartRef.current = Date.now();
     setMessages((m) => [...m, { id: Date.now(), role: "owner", content: message }]);
     try {
       const res = await fetch("/api/agent", {
@@ -296,15 +385,41 @@ export default function AgentPage() {
 
   const choose = useCallback(async (messageId: number, productId: string) => {
     if (choosing != null || busy) return;
+    // The picked card's stamped verdict is known before the round-trip — an
+    // ASK gets an optimistic approval card instantly (id 0 keeps the buttons
+    // disabled until the real purchase lands).
+    const item = parseOptions(
+      messages.find((x) => x.id === messageId)?.content ?? ""
+    )?.items.find((i) => i.id === productId);
     setChoosing(messageId);
     setBusyError(false);
-    setPendingErr(null);
     setApproveUrl(null);
     setPurchase(null);
     setReceipt(null);
     setOutcome(null);
     setSteps([]);
     setShown(0);
+    requestStartRef.current = Date.now();
+    if (item?.decision === "ASK") {
+      const now = new Date().toISOString();
+      setPurchase({
+        id: 0,
+        createdAt: now,
+        productTitle: item.title,
+        merchantUrl: item.merchantUrl,
+        imageUrl: item.imageUrl,
+        amountCents: item.priceCents,
+        status: "WAITING",
+        policyDecision: "ASK",
+        policyReason: item.decisionReason,
+        agentReasoning: item.reasoning,
+        paypalOrderId: null,
+        paypalCaptureId: null,
+        decidedBy: "policy",
+        updatedAt: now,
+        errorMessage: null,
+      });
+    }
     try {
       const res = await fetch("/api/agent/choose", {
         method: "POST",
@@ -337,12 +452,13 @@ export default function AgentPage() {
       }
     } catch (err) {
       console.error("[agent] choose failed:", err);
+      setPurchase(null);
       toast(friendlyClientError(err));
     } finally {
       setChoosing(null);
       refresh();
     }
-  }, [busy, choosing, policy, refresh]);
+  }, [busy, choosing, policy, refresh, messages]);
 
   // Non-pick edits to the live options set: bail entirely ("wasn't able to
   // choose") or drop one card (e.g. a blocked item). Server persists the
@@ -376,7 +492,8 @@ export default function AgentPage() {
   }, [busy, choosing]);
 
   async function decide(action: "approve" | "reject") {
-    if (!purchase || deciding) return;
+    // id 0 is the optimistic card — no real purchase to act on yet
+    if (!purchase || purchase.id === 0 || deciding) return;
     setDeciding(true);
     try {
       const res = await fetch(`/api/purchases/${purchase.id}/${action}`, {
@@ -420,40 +537,100 @@ export default function AgentPage() {
     }
   }
 
-  async function captureNow() {
-    if (!purchase || deciding) return;
-    setDeciding(true);
-    setPendingErr(null);
-    try {
-      const res = await fetch(`/api/purchases/${purchase.id}/capture`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "capture failed");
-      appendStep({ step: "result", detail: "BOUGHT" });
-      setPurchase(null);
-      setApproveUrl(null);
-      setReceipt(data.purchase);
-      setOutcome("approved");
-      toast("Payment sent (sandbox)");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setPendingErr(
-        msg.includes("ORDER_NOT_APPROVED")
-          ? "PayPal says the order isn't approved yet — finish it in the PayPal window, then capture again."
-          : friendlyClientError(err)
-      );
-    } finally {
-      setDeciding(false);
-      refresh();
-    }
-  }
-
-  const awaitingOwner =
+  const askWaiting =
     purchase?.status === "WAITING" &&
     purchase.policyDecision === "ASK" &&
     !purchase.paypalOrderId;
+  const awaitingOwner = askWaiting && !hideAsks;
+  const askId = askWaiting ? purchase.id : null;
+  const showAskNote =
+    askWaiting &&
+    hideAsks &&
+    askId != null &&
+    !seenAsks.has(askId) &&
+    // only asks that arrived after the mute flash — old queued asks were
+    // already sitting there when the owner hid the card
+    new Date(purchase.createdAt).getTime() > hideAsksAt;
+
+  // While a request is in flight, surface an ASK the moment its row exists —
+  // the card doesn't wait for the full round-trip. Gated to asks created
+  // after the request started so older queued asks are never resurrected.
+  useEffect(() => {
+    if (!busy && choosing == null) return;
+    const iv = setInterval(async () => {
+      const r = await fetch("/api/purchases?status=WAITING")
+        .then((x) => x.json())
+        .catch(() => null);
+      const all: Purchase[] = r?.purchases ?? [];
+      const asks = all.filter(
+        (x: Purchase) =>
+          x.policyDecision === "ASK" &&
+          !x.paypalOrderId &&
+          new Date(x.createdAt).getTime() > requestStartRef.current
+      );
+      setPurchase((cur) => {
+        if (cur?.id === 0) return cur; // optimistic card — response owns it
+        if (cur && cur.status === "WAITING") {
+          const fresh = all.find((x) => x.id === cur.id);
+          return fresh ?? asks[0] ?? null;
+        }
+        return cur ?? asks[0] ?? null;
+      });
+    }, 500);
+    return () => clearInterval(iv);
+  }, [busy, choosing]);
+
+  // the pointer flashes once per ask — auto-dismiss after a few seconds
+  useEffect(() => {
+    if (!showAskNote || askId == null) return;
+    const t = setTimeout(
+      () => setSeenAsks((s) => new Set(s).add(askId)),
+      8000
+    );
+    return () => clearTimeout(t);
+  }, [showAskNote, askId]);
   const paymentPending = purchase?.status === "WAITING" && !!purchase.paypalOrderId;
+
+  // While a checkout is open, sweep every 8s: reconcile catches orders the
+  // buyer approved in PayPal (even when the return redirect never reached
+  // us), and the list check catches rows resolved another way (return-URL
+  // capture, a cancel in Controls). Either path ends in the receipt.
+  const purchaseId = purchase?.id ?? null;
+  useEffect(() => {
+    if (!paymentPending || purchaseId == null) return;
+    const sweep = async () => {
+      const rec = await fetch("/api/purchases/reconcile", { method: "POST" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      let mine: Purchase | undefined = (rec?.resolved ?? []).find(
+        (x: Purchase) => x.id === purchaseId
+      );
+      if (!mine) {
+        const [pb, rb] = await Promise.all([
+          fetch("/api/purchases?status=PURCHASED").then((r) => r.json()).catch(() => null),
+          fetch("/api/purchases?status=REJECTED").then((r) => r.json()).catch(() => null),
+        ]);
+        mine =
+          (pb?.purchases ?? []).find((x: Purchase) => x.id === purchaseId) ??
+          (rb?.purchases ?? []).find((x: Purchase) => x.id === purchaseId);
+      }
+      if (!mine) return;
+      if (mine.status === "PURCHASED") {
+        appendStep({ step: "result", detail: "BOUGHT" });
+        setReceipt(mine);
+        setOutcome("approved");
+        toast("Payment sent (sandbox)");
+      } else {
+        toast("Checkout expired on PayPal");
+      }
+      setPurchase(null);
+      setApproveUrl(null);
+      refresh();
+    };
+    sweep();
+    const iv = setInterval(sweep, 8_000);
+    return () => clearInterval(iv);
+  }, [paymentPending, purchaseId, appendStep, refresh]);
 
   // The live options set is the latest options message — live only while
   // nothing's been picked from it. Older unpicked sets render as the plain
@@ -479,8 +656,9 @@ export default function AgentPage() {
   // in flight it sits at the tail of the feed; once the reply lands it
   // tucks in right before that bubble.
   const showReceipt = visibleSteps.length > 0 || busy;
-  const lastIsAgent = messages[messages.length - 1]?.role === "agent";
-  const receiptIdx = !busy && lastIsAgent ? messages.length - 1 : messages.length;
+  const feed = useMemo(() => messages.filter((m) => !isNagMsg(m)), [messages]);
+  const lastIsAgent = feed[feed.length - 1]?.role === "agent";
+  const receiptIdx = !busy && lastIsAgent ? feed.length - 1 : feed.length;
   const receiptEl = showReceipt && (
     <div className={`agent-log${logOpen ? " open" : " closed"}`} aria-live="polite">
       <button
@@ -560,7 +738,7 @@ export default function AgentPage() {
             </div>
           ) : (
             <>
-              {messages.map((m, i) => (
+              {feed.map((m, i) => (
                 <Fragment key={m.id}>
                   {i === receiptIdx && receiptEl}
                   <ChatMessageRow
@@ -571,7 +749,7 @@ export default function AgentPage() {
                   />
                 </Fragment>
               ))}
-              {receiptIdx === messages.length && receiptEl}
+              {receiptIdx === feed.length && receiptEl}
 
               {blockedReason && !busy && (
                 <div className="blocked-strip" role="status">
@@ -608,9 +786,53 @@ export default function AgentPage() {
             </div>
           )}
 
+          {showAskNote && (
+            <div className="muted ask-note">
+              An approval is waiting —{" "}
+              <Link href="/policy">decide it in Controls</Link>.
+              <button
+                type="button"
+                className="ac-dismiss"
+                aria-label="Dismiss"
+                onClick={() =>
+                  askId != null &&
+                  setSeenAsks((s) => new Set(s).add(askId))
+                }
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {awaitingOwner && (
             <div className="approval-card">
-              <div className="ac-head">Puffr needs your OK</div>
+              <div className="ac-head">
+                Puffr needs your OK
+                <button
+                  type="button"
+                  className="ac-dismiss"
+                  aria-label="Hide approvals from agent — still waiting in Controls"
+                  title="Hide approvals — still waiting in Controls"
+                  onClick={() => {
+                    setHideAsks(true);
+                    setHideAsksAt(Date.now());
+                    // dismissing the card also counts as having seen the
+                    // pointer for this ask — no immediate re-flash
+                    setSeenAsks((s) => new Set(s).add(purchase.id));
+                    // …but the dismissed ask leaves a trace in the feed
+                    setMessages((m) => [
+                      ...m,
+                      {
+                        id: Date.now(),
+                        role: "agent",
+                        content: `"${purchase.productTitle}" is ${fmtDollars(purchase.amountCents)} — needs owner approval. Decide it in Controls.`,
+                      },
+                    ]);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
               <div className="ac-body">
                 <div className="ac-detail">
                   {purchase.imageUrl && (
@@ -633,14 +855,20 @@ export default function AgentPage() {
                   </div>
                 </div>
                 <div className="actions">
-                  <button onClick={() => decide("approve")} disabled={deciding}>
+                  <button
+                    onClick={() => decide("approve")}
+                    disabled={deciding || purchase.id === 0}
+                  >
+                    {purchase.id === 0 && (
+                      <span className="spinner" aria-hidden="true" />
+                    )}
                     {deciding && <span className="spinner" aria-hidden="true" />}
                     Approve
                   </button>
                   <button
                     className="secondary danger"
                     onClick={() => decide("reject")}
-                    disabled={deciding}
+                    disabled={deciding || purchase.id === 0}
                   >
                     Reject
                   </button>
@@ -672,14 +900,6 @@ export default function AgentPage() {
                       window and it captures automatically.
                     </div>
                   </div>
-                  {pendingErr && (
-                    <div className="card-err">
-                      {pendingErr}
-                      <button className="text" onClick={captureNow}>
-                        Retry
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <div className="actions">
                   {approveUrl && (
@@ -703,10 +923,6 @@ export default function AgentPage() {
                       Open PayPal sandbox
                     </a>
                   )}
-                  <button className="secondary" onClick={captureNow} disabled={deciding}>
-                    {deciding && <span className="spinner" aria-hidden="true" />}
-                    I&apos;ve approved — capture now
-                  </button>
                 </div>
               </div>
             </div>
@@ -746,10 +962,37 @@ export default function AgentPage() {
               id="agent-msg"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="What should I buy?"
+              placeholder={listening ? "Listening…" : "What should I buy?"}
               disabled={busy}
               autoComplete="off"
             />
+            {speechOk && (
+              <button
+                type="button"
+                className={`mic-btn${listening ? " live" : ""}`}
+                onClick={toggleVoice}
+                disabled={busy}
+                aria-pressed={listening}
+                aria-label={listening ? "Stop dictation" : "Dictate a request"}
+                title={listening ? "Listening — click to stop" : "Speak your request"}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="2" width="6" height="12" rx="3" />
+                  <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+                  <line x1="12" y1="18" x2="12" y2="22" />
+                </svg>
+              </button>
+            )}
             <button type="submit" disabled={busy || !input.trim()}>
               Send
             </button>
@@ -758,6 +1001,7 @@ export default function AgentPage() {
       </div>
 
       <aside className="agent-side">
+        <div className="side-scroll">
         <div className="side-inner">
           <div className="side-title">Fun money — {MONTH}</div>
           {budget ? (
@@ -797,6 +1041,10 @@ export default function AgentPage() {
             <Link href="/policy">Edit rules</Link>
           </>
         )}
+        </div>
+        <div className="side-note">
+          Sandbox mode. No real money moves.
+        </div>
       </aside>
     </main>
   );

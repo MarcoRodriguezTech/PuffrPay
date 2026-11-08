@@ -87,7 +87,7 @@ Policy order (`src/lib/policy.ts`): blocked category → per-purchase max → mo
 | E6 | `/paypal/return` with missing/garbage token | Error state, no capture, purchase untouched |
 | E7 | captureOrder throws a non-retryable error | Status FAILED + errorMessage (terminal) |
 | E8 | PayPal API down at createOrder time | See GAP-1 — purchase row may stay phantom-PURCHASED |
-| E9 | Order approved in sandbox but never captured for days | See GAP-2 — row stays "Awaiting PayPal" forever; verify desired behavior |
+| E9 | Order approved in sandbox but never captured for days | Fixed via GAP-2 — the next queue load/sweep captures it (or expires a dead order) |
 
 ## F. Dedupe
 
@@ -178,7 +178,7 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 | # | Severity | Issue |
 |---|---|---|
 | GAP-1 | **high** | `finalizePick` writes `status: PURCHASED` *before* `startPayment`. If `createOrder` throws (PayPal outage), the row stays PURCHASED with no order/capture — a phantom "Bought" that **inflates monthly spend**. (`agent.ts` ~line 304 vs executor catch) |
-| GAP-2 | **high** | "Awaiting PayPal" never expires. Abandoned sandbox orders stay WAITING forever — no expiry sweep, no reconcile job. (Resume + cancel now exist via GAP-3 fix; expiry is still open.) |
+| GAP-2 | ~~high~~ **fixed** | ~~"Awaiting PayPal" never expires~~ → `reconcileWaiting()` sweeps open checkouts on every `/policy` load and every 8s while the agent page shows an open checkout (`POST /api/purchases/reconcile`): PayPal `APPROVED` → capture → PURCHASED, dead order (404) → REJECTED "checkout expired", CREATED → untouched. Manual "Capture now" buttons removed — approval in the sandbox window resolves on its own. |
 | GAP-3 | ~~medium~~ **fixed** | ~~No in-app cancel once an order exists~~ → `paypal_approve_url` is now persisted (migration 002, backfilled), open checkouts appear under "AWAITING PAYPAL" in the `/policy` queue with Resume / Capture now / Cancel (`cancelPurchase` → REJECTED). `capturePurchase` also guards `status !== "WAITING"` so cancelled rows can't resurrect via a stale PayPal tab. |
 | GAP-4 | **high** | `chooseOption` does not check `payload.picked` — replaying `/api/agent/choose` with a different card id on an already-picked set creates a **second purchase**. UI disables buttons but the endpoint itself is unguarded. |
 | GAP-5 | low (data) | Pre-change payloads lost their X'd cards permanently — leash "offered/skipped" undercounts old sets. Unrecoverable; going forward is correct. |
@@ -197,5 +197,5 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 
 1. **GAP-4** (double-purchase) — cheap fix, real money-path bug.
 2. **GAP-1** (phantom PURCHASED) — corrupts spend totals; the cap then mis-decides future requests.
-3. **GAP-2/GAP-3** — decide the product answer for abandoned checkouts (expire? cancel button?).
+3. ~~GAP-2/GAP-3~~ — both fixed: reconcile sweep expires dead orders and captures approved ones.
 4. **GAP-6** — product question: should leash numbers follow the date filters?

@@ -111,6 +111,10 @@ function matchCell(raw: unknown, op?: string, v?: unknown): boolean {
       return numOrDate(raw) < numOrDate(v);
     case "lessThanOrEqual":
       return numOrDate(raw) <= numOrDate(v);
+    case "isNull":
+      return raw === null || raw === undefined;
+    case "isNotNull":
+      return raw !== null && raw !== undefined;
     default:
       return true;
   }
@@ -595,7 +599,11 @@ function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
               <span className="recent-right">
                 <span className="a">{money(item.amount)}</span>
                 {e.kind === "req" ? (
-                  <StatusBadge status={e.r.status} decision={e.r.decision} />
+                  <StatusBadge
+                    status={e.r.status}
+                    decision={e.r.decision}
+                    hasOrder={e.r.orderId != null}
+                  />
                 ) : (
                   <OptBadge state={e.c.state} />
                 )}
@@ -647,12 +655,12 @@ function KpiRow(params: Ctx) {
   const waitC = useCountUp(waiting);
 
   const tiles = [
+    { label: "Spent", value: fmtDollars(spentC), helper: "Paid via PayPal sandbox" },
     {
       label: "Kept by the leash",
       value: fmtDollars(keptC),
       helper: "Purchases the rules stopped",
     },
-    { label: "Spent", value: fmtDollars(spentC), helper: "Paid via PayPal sandbox" },
     { label: "Requests", value: String(reqC), helper: "Purchase requests made" },
     { label: "Waiting on you", value: String(waitC), helper: "Need your approval" },
   ];
@@ -675,28 +683,34 @@ function KpiRow(params: Ctx) {
 function SpendByDay(params: Ctx) {
   const rows = useFilteredRows(params);
   const [hover, setHover] = useState<number | null>(null);
+  // Paged 7-day window — 0 = the week ending today, 1 = the week before, ...
+  const [weekOffset, setWeekOffset] = useState(0);
   const [ref, { w, h }] = useSize<HTMLDivElement>();
   const today = todayKey();
+
+  const weekEnd = useMemo(
+    () => fmtKey(new Date(Date.now() - weekOffset * 7 * 864e5)),
+    [weekOffset]
+  );
 
   const days = useMemo(() => {
     const bought = new Map<string, number>();
     const requested = new Map<string, number>();
-    const cutoff = new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10);
     for (const r of rows) {
       const k = dayKey(r.createdAt);
-      if (k < cutoff) continue;
       if (r.status === "PURCHASED") {
         bought.set(k, (bought.get(k) ?? 0) + r.amount);
       } else {
         requested.set(k, (requested.get(k) ?? 0) + r.amount);
       }
     }
+    const start = fmtKey(new Date(+new Date(weekEnd + "T12:00:00") - 6 * 864e5));
     const out: { key: string; bought: number; requested: number }[] = [];
-    for (const k of eachDay(cutoff, today)) {
+    for (const k of eachDay(start, weekEnd)) {
       out.push({ key: k, bought: bought.get(k) ?? 0, requested: requested.get(k) ?? 0 });
     }
     return out;
-  }, [rows, today]);
+  }, [rows, weekEnd]);
 
   const PAD = { l: 34, r: 8, t: 12, b: 20 };
   const iw = Math.max(10, w - PAD.l - PAD.r);
@@ -711,6 +725,40 @@ function SpendByDay(params: Ctx) {
     <div className="bento">
       <div className="bento-head">
         <h3 className="bento-title">Spend by day</h3>
+        <div className="wk-nav">
+          <button
+            type="button"
+            className="wk-btn"
+            aria-label="Previous 7 days"
+            title="Previous 7 days"
+            onClick={() => {
+              setHover(null);
+              setWeekOffset((o) => o + 1);
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M7.5 2.5 4 6l3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <span className="wk-range">
+            {days[0] ? `${dayOf(days[0].key + "T12:00:00")} – ${dayOf(weekEnd + "T12:00:00")}` : ""}
+          </span>
+          <button
+            type="button"
+            className="wk-btn"
+            aria-label="Next 7 days"
+            title="Next 7 days"
+            disabled={weekOffset === 0}
+            onClick={() => {
+              setHover(null);
+              setWeekOffset((o) => Math.max(0, o - 1));
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
         <div className="legend-pills">
           <span className="lp"><i className="dot-bought" />Bought</span>
           <span className="lp"><i className="dot-requested" />Requested</span>
@@ -779,11 +827,9 @@ function SpendByDay(params: Ctx) {
                       height={Math.max(4, (total / maxV) * ih + 8)}
                     />
                   )}
-                  {(i === days.length - 1 || (i % 3 === 0 && i < days.length - 2)) && (
-                    <text className="axis-label" x={bx + bw / 2} y={h - 4} textAnchor="middle">
-                      {isToday ? "Today" : dayOf(d.key + "T12:00:00")}
-                    </text>
-                  )}
+                  <text className="axis-label" x={bx + bw / 2} y={h - 4} textAnchor="middle">
+                    {isToday ? "Today" : dayOf(d.key + "T12:00:00")}
+                  </text>
                 </g>
               );
             })}
@@ -813,13 +859,25 @@ const useData = (params: Ctx): DashboardData | undefined =>
   (params.context as { data?: DashboardData })?.data;
 
 // One legend row per non-zero canonical status; the badge re-derives the
-// display key from status+decision, so PAYPAL stays WAITING/ALLOW underneath.
+// display key from status+hasOrder, so PAYPAL stays WAITING underneath.
 type LegendRow = {
-  key: StatusKey;
+  key: StatusKey | "SKIPPED";
   status: string;
-  decision: string | null;
+  hasOrder?: boolean;
   n: number;
   amt: number;
+  /** "skipped" renders the shelf OptBadge instead of a request StatusBadge. */
+  optState?: "skipped";
+};
+
+type Seg = {
+  key: StatusKey | "SKIPPED";
+  label: string;
+  color: string;
+  n: number;
+  amt: number;
+  tip: string;
+  legend: LegendRow;
 };
 
 // Compact transparent theme — the card's glass surface shows through the grid.
@@ -844,7 +902,11 @@ const legendCols: ColDef<LegendRow>[] = [
     width: 220,
     cellRenderer: (p: ICellRendererParams<LegendRow>) =>
       p.data ? (
-        <StatusBadge status={p.data.status} decision={p.data.decision} />
+        p.data.optState === "skipped" ? (
+          <OptBadge state="skipped" />
+        ) : (
+          <StatusBadge status={p.data.status} hasOrder={p.data.hasOrder} />
+        )
       ) : null,
   },
   {
@@ -917,34 +979,30 @@ function LeashReport(params: Ctx) {
   const offered = sets.reduce((a, s) => a + s.options, 0);
   const auto = sets.reduce((a, s) => a + s.autoOk, 0);
   const needs = sets.reduce((a, s) => a + s.needsOk, 0);
-  const stopped = sets.reduce((a, s) => a + s.blocked, 0);
+  // Refused = everything the rules stopped, both layers: cards that never
+  // left the shelf + picked requests the policy blocked.
+  const stopped =
+    sets.reduce((a, s) => a + s.blocked, 0) +
+    rows.filter(
+      (r) => statusKey(r.status, r.decision, r.orderId != null) === "BLOCKED"
+    ).length;
   // Per-card outcomes reconcile exactly: offered = picked + skipped + open.
   // Skipped covers X'd-out cards, every card in a dismissed set, and the
   // unchosen rest of a picked set.
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
   const open = sets.reduce((a, s) => a + (s.open ? s.live : 0), 0);
 
-  // Skipped and Blocked merge the shelf layer with the request layer —
-  // declined requests + unchosen cards, rule-killed requests + refused
-  // cards — so the legend number, the bar segment and the grid's status
-  // filter all agree.
-  const cardStates: Partial<Record<StatusKey, "skipped" | "blocked">> = {
-    REJECTED: "skipped",
-    BLOCKED: "blocked",
-  };
-  const cardsAll = data?.cards ?? [];
-
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
-  // and charts all read the same status config.
-  const segs = STATUSES.map((st) => {
-    const list = rows.filter((r) => statusKey(r.status, r.decision) === st.key);
-    const cardList = cardStates[st.key]
-      ? cardsAll.filter((c) => c.state === cardStates[st.key])
-      : [];
-    const n = list.length + cardList.length;
-    const amt =
-      list.reduce((a, r) => a + r.amount, 0) +
-      cardList.reduce((a, c) => a + c.amount, 0);
+  // and charts all read the same status config. Request-layer statuses only:
+  // BLOCKED merges into the "Refused" stat above. Skipped is appended
+  // separately — it's shelf-layer (offered, never picked) not a request
+  // status, so it isn't a click-through filter like the rest.
+  const segs: Seg[] = STATUSES.filter((st) => st.key !== "BLOCKED").map((st) => {
+    const list = rows.filter(
+      (r) => statusKey(r.status, r.decision, r.orderId != null) === st.key
+    );
+    const n = list.length;
+    const amt = list.reduce((a, r) => a + r.amount, 0);
     return {
       key: st.key,
       label: st.label,
@@ -955,12 +1013,32 @@ function LeashReport(params: Ctx) {
       legend: {
         key: st.key,
         status: st.key === "PAYPAL" ? "WAITING" : st.key,
-        decision:
-          st.key === "PAYPAL" ? "ALLOW" : st.key === "WAITING" ? "ASK" : null,
+        hasOrder:
+          st.key === "PAYPAL" ? true : st.key === "WAITING" ? false : undefined,
         n,
         amt,
       } as LegendRow,
     };
+  });
+  // Skipped — cards offered but never picked (X'd out, dismissed sets, the
+  // unchosen rest of a picked set). Shelf-layer, not a request status, so it
+  // doesn't get a status filter.
+  const skippedCards = (data?.cards ?? []).filter((c) => c.state === "skipped");
+  const skippedAmt = skippedCards.reduce((a, c) => a + c.amount, 0);
+  segs.push({
+    key: "SKIPPED",
+    label: "Skipped",
+    color: "var(--st-skipped)",
+    n: skippedCards.length,
+    amt: skippedAmt,
+    tip: `Skipped: ${skippedCards.length} — ${money(skippedAmt)}`,
+    legend: {
+      key: "SKIPPED",
+      status: "SKIPPED",
+      n: skippedCards.length,
+      amt: skippedAmt,
+      optState: "skipped",
+    },
   });
   // The colored bar shows only real counts; the legend lists every status so
   // the vocabulary (e.g. "Waiting for you") is visible even at zero.
@@ -1028,7 +1106,7 @@ function LeashReport(params: Ctx) {
                 />
               </svg>
               <span className="leash-num">{stoppedC}</span>
-              <span className="leash-cap">Refused on the shelf</span>
+              <span className="leash-cap">Blocked by puffr</span>
             </div>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
@@ -1055,14 +1133,23 @@ function LeashReport(params: Ctx) {
                       key={s.key}
                       className={`leash-seg${s.key === active ? " active" : ""}`}
                       aria-pressed={s.key === active}
-                      aria-label={`${s.label}: ${s.n} — ${money(s.amt)}. ${
-                        s.key === active ? "Clear" : "Apply"
-                      } the status filter.`}
-                      onClick={() => toggleStatus(s.key)}
+                      aria-label={`${s.label}: ${s.n} — ${money(s.amt)}.${
+                        s.key === "SKIPPED"
+                          ? ""
+                          : ` ${
+                              s.key === active ? "Clear" : "Apply"
+                            } the status filter.`
+                      }`}
+                      onClick={() =>
+                        s.key !== "SKIPPED" && toggleStatus(s.key)
+                      }
                       style={{
                         flexGrow: s.n,
                         minWidth: 10,
                         background: s.color,
+                        // also as `color` so the CSS halo can tint itself with
+                        // the segment's own status color via currentColor
+                        color: s.color,
                       }}
                     >
                       <span className="leash-tip" role="tooltip">
@@ -1080,7 +1167,9 @@ function LeashReport(params: Ctx) {
                     headerHeight={0}
                     suppressCellFocus
                     onRowClicked={(e: RowClickedEvent<LegendRow>) =>
-                      e.data && toggleStatus(e.data.key)
+                      e.data &&
+                      e.data.key !== "SKIPPED" &&
+                      toggleStatus(e.data.key)
                     }
                     rowClassRules={{
                       "leash-row-active": (p: RowClassParams<LegendRow>) =>

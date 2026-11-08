@@ -153,3 +153,23 @@ export async function captureOrder(orderId: string): Promise<CaptureResult> {
     json.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? null;
   return { captureId, status: json.status as string };
 }
+
+/**
+ * Current order status ("CREATED" | "APPROVED" | "COMPLETED" | ...).
+ * Returns null when PayPal no longer knows the order — sandbox orders are
+ * garbage-collected, so a 404 means the checkout expired.
+ */
+export async function getOrderStatus(orderId: string): Promise<string | null> {
+  const token = await getAccessToken();
+  const res = await fetch(`${baseUrl()}/v2/checkout/orders/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      `PayPal get order failed (${res.status}): ${JSON.stringify(json)}`
+    );
+  }
+  return (json.status as string) ?? null;
+}
