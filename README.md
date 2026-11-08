@@ -39,7 +39,6 @@ allow/block/ask decision.
 - **AG Grid Community** — classic audit grid (fallback view).
 - **AG Studio** — the Activity report at `/activity` (data sources,
   relationships, theme and default report in `src/app/activity/studio/`).
-- **Render** — `render.yaml` blueprint deploys web + Postgres.
 
 ## Setup
 
@@ -173,19 +172,6 @@ plus a red tint + "Max" tag). `puffr.png` is the default art for static
 uses (favicon, error/404, empty states). The gauge still bobs, pops on a
 block, and blows bubbles; motion respects `prefers-reduced-motion`.
 
-## Deploy on Render
-
-1. Push to GitHub, then in Render: **New → Blueprint** → pick the repo
-   (it reads `render.yaml`, creates the web service + Postgres, and prompts for
-   the `sync: false` secrets — paste your PayPal/Channel3/Gemini keys there).
-2. The build command runs `npm ci && npm run migrate && npm run seed &&
-   npm run build`, so the schema and demo data are ready on first deploy.
-3. Set `APP_BASE_URL` to the service URL (e.g.
-   `https://puffrpay.onrender.com`) so PayPal's return redirect lands back on
-   the app — on Render, `RENDER_EXTERNAL_URL` is used automatically if
-   `APP_BASE_URL` is unset, so you can skip it there.
-4. The app is live at the Render URL — everything runs in PayPal sandbox.
-
 ## Demo script (~2 min)
 
 Reset the data first with `npm run reset:demo` (or `npm run seed:demo` on an
@@ -220,5 +206,4 @@ src/components     SideRail, TopBar, ThemeToggle, PufferGauge, LeashBar, StatusB
 db/migrations      SQL migrations
 scripts            migrate.ts, seed.ts
 public/mascot      pufferfish art (calm / swelling / puffed + default)
-render.yaml        Render blueprint
 ```

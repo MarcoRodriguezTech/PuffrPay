@@ -69,11 +69,10 @@ export interface CreatedOrder {
 
 /** Absolute URL PayPal returns the buyer to after approval (and on cancel). */
 function appBaseUrl(): string {
-  return (
-    process.env.APP_BASE_URL ||
-    process.env.RENDER_EXTERNAL_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
+  return (process.env.APP_BASE_URL || "http://localhost:3000").replace(
+    /\/$/,
+    ""
+  );
 }
 
 export async function createOrder(input: {
