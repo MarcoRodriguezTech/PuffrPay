@@ -79,11 +79,14 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
   // show what happened *before* a purchase row exists: how many options were
   // auto-ok / needed approval / blocked by rules, and the set's outcome.
   return sets.map((s) => {
+    // Cards the owner X'd out are archived on the payload — they were still
+    // offered, so every card-level total includes them.
+    const all = [...s.items, ...s.removed];
     const by = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
     const amt = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
     let pickedAmt: number | null = null;
     let totalAmt = 0;
-    for (const i of s.items) {
+    for (const i of all) {
       totalAmt += i.priceCents / 100;
       by[i.decision] = (by[i.decision] ?? 0) + 1;
       amt[i.decision] = (amt[i.decision] ?? 0) + i.priceCents / 100;
@@ -92,7 +95,9 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
     return {
       ref: String(s.id),
       createdAt: s.createdAt,
-      options: s.items.length,
+      options: all.length,
+      live: s.items.length,
+      removed: s.removed.length,
       picked: s.picked != null,
       dismissed: s.dismissed,
       open: s.picked == null && !s.dismissed,

@@ -264,13 +264,14 @@ export default function AuditPage() {
                 ratio={budget.ratio}
                 size={220}
                 showLabel
+                label={state === "super" ? "???" : undefined}
                 blockedAt={blockedAt}
               />
               <div className="gauge-amount">
                 {fmtWhole(budget.spentCents)} of {fmtWhole(budget.capCents)}
               </div>
               <div className="gauge-state">
-                {pct}% — {STATE_LABELS[state]}
+                {pct}% — {state === "super" ? "???" : STATE_LABELS[state]}
               </div>
             </div>
           ) : (
@@ -281,7 +282,8 @@ export default function AuditPage() {
           <div className="legend">
             <div className="row"><span>0-50%</span><span className="muted">Calm</span></div>
             <div className="row"><span>50-80%</span><span className="muted">Swelling</span></div>
-            <div className="row"><span>80-99%</span><span className="muted">Puffed</span></div>
+            <div className="row"><span>80-90%</span><span className="muted">Puffed</span></div>
+            <div className="row"><span>90-99%</span><span className="muted">???</span></div>
             <div className="row"><span>100%</span><span className="muted">Maxed out</span></div>
           </div>
         </aside>

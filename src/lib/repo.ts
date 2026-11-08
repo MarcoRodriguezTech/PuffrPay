@@ -267,6 +267,8 @@ export interface OptionSetRow {
   id: number;
   createdAt: string;
   items: { id: string; priceCents: number; decision: PolicyDecision }[];
+  /** Cards the owner X'd out; archived on the payload so they still count as offered. */
+  removed: { id: string; priceCents: number; decision: PolicyDecision }[];
   picked: string | null;
   dismissed: boolean;
 }
@@ -287,14 +289,16 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
     try {
       const p = JSON.parse(r.content);
       if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
+      const item = (i: { id?: string; priceCents?: number; decision?: string }) => ({
+        id: String(i.id ?? ""),
+        priceCents: Number(i.priceCents ?? 0),
+        decision: (i.decision ?? "ALLOW") as PolicyDecision,
+      });
       out.push({
         id: r.id,
         createdAt: r.created_at.toISOString(),
-        items: p.items.map((i: { id?: string; priceCents?: number; decision?: string }) => ({
-          id: String(i.id ?? ""),
-          priceCents: Number(i.priceCents ?? 0),
-          decision: (i.decision ?? "ALLOW") as PolicyDecision,
-        })),
+        items: p.items.map(item),
+        removed: (Array.isArray(p.removed) ? p.removed : []).map(item),
         picked: typeof p.picked === "string" ? p.picked : null,
         dismissed: p.dismissed === true,
       });

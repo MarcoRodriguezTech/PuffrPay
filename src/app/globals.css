@@ -55,12 +55,12 @@
   /* request statuses: one token per canonical status (src/lib/status.tsx),
      each >=4.5:1 on card surfaces. --ok/--warn/--danger stay reserved for
      genuine warnings (cap line, errors, delta chips). */
-  --st-bought: #2bc48a;
+  --st-bought: #3b82f6;
   --st-paypal: #60a5fa;
-  --st-waiting: #f2b84b;
+  --st-waiting: #93c5fd;
   --st-blocked: #ff6b5e;
-  --st-rejected: #94a3b8;
-  --st-failed: #fb923c;
+  --st-rejected: #64748b;
+  --st-failed: #94a3b8;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
@@ -175,12 +175,12 @@
   --danger-soft: rgba(220, 38, 38, 0.08);
   --danger-line: rgba(220, 38, 38, 0.3);
   --reject: #64748b;
-  --st-bought: #047857;
+  --st-bought: #1e40af;
   --st-paypal: #2563eb;
-  --st-waiting: #8a5a00;
+  --st-waiting: #0369a1;
   --st-blocked: #dc2626;
   --st-rejected: #64748b;
-  --st-failed: #c2410c;
+  --st-failed: #475569;
   --glow: none;
   --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
   --shadow-raise-sm: 0 8px 32px rgba(15, 23, 42, 0.05);
@@ -2020,10 +2020,8 @@ img[src*="/mascot/"] {
 }
 
 .side-title {
-  font-family: var(--mono);
   font-size: var(--t12);
   font-weight: 600;
-  letter-spacing: 0.12em;
   color: var(--ink-soft);
   margin-bottom: var(--s4);
 }
@@ -3524,7 +3522,7 @@ img[src*="/mascot/"] {
   box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.25);
 }
 .funmoney.funrecent .fm-bar-fill {
-  background: linear-gradient(90deg, #bae6fd, #ffffff);
+  background: var(--st-bought);
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.75);
 }
 .funmoney.funrecent .fm-actions .primary {
@@ -3799,7 +3797,7 @@ img[src*="/mascot/"] {
 /* requested-but-not-bought sits on top of the bought gradient in a lighter
    tint of the same ocean blue so the stack reads as one money series */
 .bento-chart .bar-requested {
-  fill: var(--tide);
+  fill: var(--st-bought);
   fill-opacity: 0.3;
   rx: 6;
 }
@@ -3815,10 +3813,10 @@ img[src*="/mascot/"] {
   filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.35));
 }
 .legend-pills .lp i.dot-bought {
-  background: linear-gradient(180deg, var(--tide), var(--deep));
+  background: var(--st-bought);
 }
 .legend-pills .lp i.dot-requested {
-  background: var(--tide);
+  background: var(--st-bought);
   opacity: 0.3;
 }
 @keyframes bar-in {
@@ -4184,11 +4182,8 @@ img[src*="/mascot/"] {
   font-variant-numeric: tabular-nums;
 }
 .statusbars-label {
-  font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--t12);
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 .statusbars-label:not(:first-child) {
@@ -4206,31 +4201,12 @@ img[src*="/mascot/"] {
 .bento.leash {
   overflow-y: auto;
   overflow-x: hidden;
-  gap: 6px;
-  /* Card-local status palette: blue for what went through or is pending,
-     red for what the rules stopped, gray for dead ends. Re-declaring the
-     shared --st-* tokens here recolors the bar, legend badges and tips in
-     this card only — every other widget keeps the app-wide colors. */
-  --st-bought: #3b82f6;
-  --st-paypal: #60a5fa;
-  --st-waiting: #93c5fd;
-  --st-blocked: var(--danger);
-  --st-rejected: #64748b;
-  --st-failed: #94a3b8;
-}
-:root[data-theme="light"] .bento.leash {
-  --st-bought: #1e40af;
-  --st-paypal: #2563eb;
-  --st-waiting: #0369a1;
-  --st-rejected: #64748b;
-  --st-failed: #475569;
+  gap: 10px;
 }
 
 .leash-stats {
   display: grid;
-  /* the hero tile is text-heaviest — it gets the widest share so the row
-     doesn't balloon to 5 wrapped lines */
-  grid-template-columns: 0.85fr 1.55fr 0.85fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 .leash-stat {
@@ -4325,7 +4301,8 @@ img[src*="/mascot/"] {
 .leash-outcome {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 2px;
 }
 .leashbar {
   display: flex;
@@ -4371,6 +4348,7 @@ img[src*="/mascot/"] {
 .leash-legend {
   margin-top: 0;
 }
+/* one line: verdicts (pass/ask/blocked) | outcomes (picked/skipped/open) */
 .leash-foot {
   font-size: var(--t12);
   color: var(--ink-soft);

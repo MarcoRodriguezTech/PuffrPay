@@ -3,18 +3,21 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
-/** Single source for the mascot art — swap files in /public/mascot to restyle. */
-export const MASCOT_SRC = "/mascot/puffr.png";
+/** Single source for the mascot art — swap files in /public/mascot to restyle.
+    Files carry a version suffix so a new render can never hit a cached
+    /_next/image rendition of the previous fish — bump the suffix on the next
+    art swap. */
+export const MASCOT_SRC = "/mascot/puffr-v2.png";
 
 export type PufferState = "calm" | "swelling" | "puffed" | "super" | "maxed";
 
 // One render per gauge state; maxed reuses the super-puffed art plus the Max tag.
 const MASCOT_ART: Record<PufferState, string> = {
-  calm: "/mascot/puffr-calm.png",
-  swelling: "/mascot/puffr-swelling.png",
-  puffed: "/mascot/puffr-puffed.png",
-  super: "/mascot/puffr-super-puffed.png",
-  maxed: "/mascot/puffr-super-puffed.png",
+  calm: "/mascot/puffr-calm-v2.png",
+  swelling: "/mascot/puffr-swelling-v2.png",
+  puffed: "/mascot/puffr-puffed-v2.png",
+  super: "/mascot/puffr-super-puffed-v2.png",
+  maxed: "/mascot/puffr-super-puffed-v2.png",
 };
 
 export function stateForRatio(ratio: number): PufferState {
@@ -39,6 +42,7 @@ export function PufferGauge({
   ratio,
   size = 160,
   showLabel = false,
+  label,
   blockedAt,
 }: {
   /** spent / cap — can exceed 1 */
@@ -46,6 +50,8 @@ export function PufferGauge({
   /** nominal art size: 28, 96, 140, 160, or 220 px */
   size?: number;
   showLabel?: boolean;
+  /** overrides the state name under the fish (classic log shows "???" at 90+) */
+  label?: string;
   /** when this timestamp changes the fish plays the 600ms puff animation */
   blockedAt?: number | null;
 }) {
@@ -102,7 +108,9 @@ export function PufferGauge({
           </span>
         )}
       </span>
-      {showLabel && <span className="puffer-label">{STATE_LABELS[state]}</span>}
+      {showLabel && (
+        <span className="puffer-label">{label ?? STATE_LABELS[state]}</span>
+      )}
     </span>
   );
 }

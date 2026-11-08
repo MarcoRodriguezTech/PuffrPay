@@ -454,7 +454,7 @@ function FunMoney(params: Ctx) {
 
 function RecentBody({ rows }: { rows: Row[] }) {
   const latest = useMemo(
-    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6),
+    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5),
     [rows]
   );
 
@@ -617,7 +617,7 @@ function SpendByDay(params: Ctx) {
           >
             <defs>
               <linearGradient id="barBought" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--tide)" />
+                <stop offset="0%" stopColor="var(--st-bought)" />
                 <stop offset="100%" stopColor="var(--deep)" />
               </linearGradient>
             </defs>
@@ -717,7 +717,7 @@ const legendTheme = themeQuartz.withParams({
   foregroundColor: "var(--ink)",
   borderColor: "transparent",
   rowHoverColor: "var(--ocean-soft)",
-  rowHeight: 28,
+  rowHeight: 32,
   headerHeight: 0,
   fontSize: 12,
   spacing: 4,
@@ -730,7 +730,7 @@ const legendTheme = themeQuartz.withParams({
 const legendCols: ColDef<LegendRow>[] = [
   {
     field: "status",
-    flex: 1,
+    width: 150,
     cellRenderer: (p: ICellRendererParams<LegendRow>) =>
       p.data ? (
         <StatusBadge status={p.data.status} decision={p.data.decision} />
@@ -738,13 +738,13 @@ const legendCols: ColDef<LegendRow>[] = [
   },
   {
     field: "n",
-    width: 44,
+    flex: 1,
     cellClass: "leash-col-num",
     cellStyle: { justifyContent: "flex-end" },
   },
   {
     field: "amt",
-    width: 84,
+    flex: 1,
     cellClass: "leash-col-amt",
     cellStyle: { justifyContent: "flex-end" },
     valueFormatter: (p) => money(p.value ?? 0),
@@ -799,13 +799,18 @@ function LeashReport(params: Ctx) {
     setActive(next);
   };
 
-  // Carousel layer, item level: everything Puffr ever put on the stack.
+  // Carousel layer, per option card: everything Puffr ever put on the stack,
+  // including cards the owner X'd out (kept on the payload as `removed`).
   const offered = sets.reduce((a, s) => a + s.options, 0);
   const auto = sets.reduce((a, s) => a + s.autoOk, 0);
   const needs = sets.reduce((a, s) => a + s.needsOk, 0);
   const stopped = sets.reduce((a, s) => a + s.blocked, 0);
+  // Per-card outcomes reconcile exactly: offered = picked + skipped + open.
+  // Skipped covers X'd-out cards, every card in a dismissed set, and the
+  // unchosen rest of a picked set.
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
-  const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
+  const open = sets.reduce((a, s) => a + (s.open ? s.live : 0), 0);
+  const skipped = offered - picked - open;
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
@@ -861,7 +866,7 @@ function LeashReport(params: Ctx) {
           <div className="leash-stats">
             <div className="leash-stat">
               <span className="leash-num">{offeredC}</span>
-              <span className="leash-cap">Offered</span>
+              <span className="leash-cap">Options offered</span>
             </div>
             <div className="leash-stat hero">
               <svg
@@ -888,12 +893,11 @@ function LeashReport(params: Ctx) {
                 />
               </svg>
               <span className="leash-num">{stoppedC}</span>
-              <span className="leash-cap">Stopped by the rules</span>
-              <span className="leash-helper">before you could pick them</span>
+              <span className="leash-cap">Blocked by the rules</span>
             </div>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
-              <span className="leash-cap">You picked</span>
+              <span className="leash-cap">Options you picked</span>
             </div>
           </div>
 
@@ -956,7 +960,10 @@ function LeashReport(params: Ctx) {
 
           <span className="leash-foot">
             {auto} pass · {needs} ask · {stopped} blocked
+            {" | "}
+            {picked} picked
             {skipped > 0 && ` · ${skipped} skipped`}
+            {open > 0 && ` · ${open} still open`}
           </span>
         </>
       )}

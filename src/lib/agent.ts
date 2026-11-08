@@ -43,6 +43,8 @@ export interface AgentOptionsPayload {
   kind: "options";
   text: string;
   items: OptionsItem[];
+  /** Cards the owner X'd out — kept so the dashboard still counts them as offered. */
+  removed?: OptionsItem[];
   picked?: string;
   dismissed?: boolean;
 }
@@ -253,7 +255,11 @@ export async function updateOptions(
   if (!payload || payload.picked) return null;
 
   if (change.removeId) {
+    // Archive rather than delete — the card was still offered, so the
+    // dashboard's option-level stats keep counting it.
+    const dropped = payload.items.filter((i) => i.id === change.removeId);
     payload.items = payload.items.filter((i) => i.id !== change.removeId);
+    payload.removed = [...(payload.removed ?? []), ...dropped];
   }
   if (change.dismiss || payload.items.length === 0) {
     payload.dismissed = true;
