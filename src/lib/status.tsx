@@ -83,8 +83,10 @@ export const STATUSES: readonly StatusInfo[] = [
     ),
   },
   {
+    // Owner-declined — shown as "Skipped": one word for everything the
+    // human didn't proceed with (matches the option-row vocabulary).
     key: "REJECTED",
-    label: "Rejected",
+    label: "Skipped",
     colorVar: "var(--st-rejected)",
     icon: (
       <svg width={S} height={S} viewBox="0 0 12 12" aria-hidden="true">

@@ -263,12 +263,20 @@ export async function getBudget(): Promise<BudgetInfo> {
 
 // Duck-typed mirror of AgentOptionsPayload in agent.ts (repo can't import
 // agent — agent already imports repo). Only the fields the dashboard needs.
+export interface OptionSetItem {
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  priceCents: number;
+  decision: PolicyDecision;
+}
+
 export interface OptionSetRow {
   id: number;
   createdAt: string;
-  items: { id: string; priceCents: number; decision: PolicyDecision }[];
+  items: OptionSetItem[];
   /** Cards the owner X'd out; archived on the payload so they still count as offered. */
-  removed: { id: string; priceCents: number; decision: PolicyDecision }[];
+  removed: OptionSetItem[];
   picked: string | null;
   dismissed: boolean;
 }
@@ -289,8 +297,16 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
     try {
       const p = JSON.parse(r.content);
       if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
-      const item = (i: { id?: string; priceCents?: number; decision?: string }) => ({
+      const item = (i: {
+        id?: string;
+        title?: string;
+        imageUrl?: string;
+        priceCents?: number;
+        decision?: string;
+      }): OptionSetItem => ({
         id: String(i.id ?? ""),
+        title: String(i.title ?? "Untitled pick"),
+        imageUrl: i.imageUrl ? String(i.imageUrl) : null,
         priceCents: Number(i.priceCents ?? 0),
         decision: (i.decision ?? "ALLOW") as PolicyDecision,
       });
@@ -307,4 +323,37 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
     }
   }
   return out;
+}
+
+/**
+ * Close every still-open options set (no pick, not dismissed). A new shelf
+ * supersedes them — only one live carousel exists at a time, so their cards
+ * resolve to Skipped in the feed instead of sitting Offered forever.
+ */
+export async function dismissOpenOptionSets(
+  exceptMessageId?: number
+): Promise<number> {
+  const rows = await query<{ id: number; content: string }>(
+    `SELECT id, content FROM chat_messages
+     WHERE role = 'agent' AND content LIKE '%"kind":"options"%'`,
+    []
+  );
+  let n = 0;
+  for (const r of rows) {
+    if (exceptMessageId != null && r.id === exceptMessageId) continue;
+    try {
+      const p = JSON.parse(r.content);
+      if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
+      if (p.picked || p.dismissed) continue;
+      p.dismissed = true;
+      await query("UPDATE chat_messages SET content = $1 WHERE id = $2", [
+        JSON.stringify(p),
+        r.id,
+      ]);
+      n++;
+    } catch {
+      /* not an options blob */
+    }
+  }
+  return n;
 }

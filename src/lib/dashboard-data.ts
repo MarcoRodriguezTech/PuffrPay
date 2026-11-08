@@ -113,6 +113,29 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
   });
 }
 
+function optionCardRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
+  // One flat row per offered card — the shelf layer the Recent feed shows
+  // alongside request rows. The picked card is excluded: its request row
+  // already carries the real request status (flip-on-pick).
+  return sets.flatMap((s) => {
+    const open = s.picked == null && !s.dismissed;
+    return [...s.items, ...s.removed]
+      .filter((i) => i.id !== s.picked)
+      .map((i) => ({
+        ref: `set${s.id}:${i.id}`,
+        createdAt: s.createdAt,
+        title: i.title,
+        imageUrl: i.imageUrl,
+        amount: i.priceCents / 100,
+        state: (i.decision === "BLOCK"
+          ? "blocked"
+          : open
+            ? "offered"
+            : "skipped") as "blocked" | "offered" | "skipped",
+      }));
+  });
+}
+
 export async function getDashboardData(asOf = new Date()) {
   const [policy, purchases, optionSets] = await Promise.all([
     getPolicy(),
@@ -124,6 +147,7 @@ export async function getDashboardData(asOf = new Date()) {
     asOf: asOf.toISOString(),
     requests: requestRows(purchases, policy),
     optionSets: optionSetRows(optionSets),
+    cards: optionCardRows(optionSets),
     policy: policyRow(policy),
   };
 }

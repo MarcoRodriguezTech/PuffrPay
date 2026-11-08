@@ -5,6 +5,7 @@ import { evaluatePolicy } from "./policy";
 import type { PolicyDecision } from "./types";
 import {
   createPurchaseRequest,
+  dismissOpenOptionSets,
   findPendingByProduct,
   getBudget,
   getMonthSpentCents,
@@ -127,12 +128,15 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   const spent = await getMonthSpentCents();
 
   // A single viable option skips the carousel — straight through the pipeline.
+  // The new run owns the shelf: any older still-open carousels are dismissed
+  // so their cards resolve to Skipped instead of sitting pickable forever.
   if (items.length === 1) {
     const product = items[0];
     steps.push({
       step: "pick",
       detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
     });
+    await dismissOpenOptionSets();
     return finalizePick(product, product.reasoning, steps, policy, spent);
   }
 
@@ -168,6 +172,9 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     text: `Found ${optionsItems.length} picks under $${(plan.maxPriceCents / 100).toFixed(0)} — choose one:`,
     items: optionsItems,
   } satisfies AgentOptionsPayload);
+  // The new shelf supersedes any older still-open carousels — dismiss them
+  // before this payload lands so only one live set exists at a time.
+  await dismissOpenOptionSets();
   await logChat("agent", reply);
   return { steps, reply, purchase: null, approveUrl: null, stub: false };
 }

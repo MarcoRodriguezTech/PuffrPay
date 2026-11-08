@@ -506,10 +506,47 @@ function FunMoney(params: Ctx) {
 
 /* ---------- Recent activity ---------- */
 
-function RecentBody({ rows }: { rows: Row[] }) {
+type CardRow = NonNullable<DashboardData>["cards"][number];
+
+// Option-card rows share the request-row anatomy but speak the shelf
+// vocabulary: Offered (set still live), Skipped (unchosen once resolved —
+// same word the human-declined REJECTED status shows), Blocked (the rules
+// refused the card — same badge as a blocked request).
+function OptBadge({ state }: { state: CardRow["state"] }) {
+  if (state === "blocked") return <StatusBadge status="BLOCKED" />;
+  const offered = state === "offered";
+  return (
+    <span
+      className={`status-badge ${offered ? "OFFERED" : "SKIPPED"}`}
+      title={offered ? "Offered — still pickable on the carousel" : "Skipped"}
+    >
+      {offered ? (
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <rect x="1.5" y="4" width="7" height="5.5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M4 4V2.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2.5 6h7" strokeWidth="2" strokeLinecap="round" fill="none" stroke="currentColor" />
+        </svg>
+      )}
+      {offered ? "Offered" : "Skipped"}
+    </span>
+  );
+}
+
+function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
+  // Requests and offered cards share one newest-first feed — a picked card
+  // shows only its request row, so each product lands once.
   const latest = useMemo(
-    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 5),
-    [rows]
+    () =>
+      [
+        ...rows.map((r) => ({ kind: "req" as const, at: +new Date(r.createdAt), r })),
+        ...cards.map((c) => ({ kind: "opt" as const, at: +new Date(c.createdAt), c })),
+      ]
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 5),
+    [rows, cards]
   );
 
   const viewAll = () => {
@@ -526,26 +563,33 @@ function RecentBody({ rows }: { rows: Row[] }) {
         <button className="recent-viewall" onClick={viewAll}>View all</button>
       </div>
       <div className="recent-list">
-        {latest.map((r) => (
-          <div className="recent-row" key={r.ref}>
-            {r.imageUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img className="recent-thumb" src={r.imageUrl} alt="" />
-            ) : (
-              <span className="recent-thumb letter" aria-hidden="true">
-                {r.title?.[0]?.toUpperCase() ?? "?"}
+        {latest.map((e) => {
+          const item = e.kind === "req" ? e.r : e.c;
+          return (
+            <div className="recent-row" key={`${e.kind}-${item.ref}`}>
+              {item.imageUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img className="recent-thumb" src={item.imageUrl} alt="" />
+              ) : (
+                <span className="recent-thumb letter" aria-hidden="true">
+                  {item.title?.[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="recent-meta">
+                <span className="t">{item.title}</span>
+                <span className="s">{timeOf(item.createdAt)}</span>
               </span>
-            )}
-            <span className="recent-meta">
-              <span className="t">{r.title}</span>
-              <span className="s">{timeOf(r.createdAt)}</span>
-            </span>
-            <span className="recent-right">
-              <span className="a">{money(r.amount)}</span>
-              <StatusBadge status={r.status} decision={r.decision} />
-            </span>
-          </div>
-        ))}
+              <span className="recent-right">
+                <span className="a">{money(item.amount)}</span>
+                {e.kind === "req" ? (
+                  <StatusBadge status={e.r.status} decision={e.r.decision} />
+                ) : (
+                  <OptBadge state={e.c.state} />
+                )}
+              </span>
+            </div>
+          );
+        })}
         {latest.length === 0 && <p className="muted">Nothing yet.</p>}
       </div>
     </>
@@ -554,9 +598,10 @@ function RecentBody({ rows }: { rows: Row[] }) {
 
 function Recent(params: Ctx) {
   const rows = useFilteredRows(params);
+  const cards = useData(params)?.cards ?? [];
   return (
     <div className="bento">
-      <RecentBody rows={rows} />
+      <RecentBody rows={rows} cards={cards} />
     </div>
   );
 }
@@ -565,11 +610,12 @@ function Recent(params: Ctx) {
 
 function FunRecent(params: Ctx) {
   const rows = useFilteredRows(params);
+  const cards = useData(params)?.cards ?? [];
   return (
     <div className="funmoney funrecent">
       <FunMoneyBody rows={rows} />
       <hr className="fr-sep" />
-      <RecentBody rows={rows} />
+      <RecentBody rows={rows} cards={cards} />
     </div>
   );
 }

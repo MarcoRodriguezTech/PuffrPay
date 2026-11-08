@@ -1031,6 +1031,16 @@ img[src*="/mascot/"] {
   color: var(--st-rejected);
   border-color: var(--st-rejected);
 }
+/* Option-card row states (Recent activity shelf rows): Offered = live on the
+   carousel; Skipped = unchosen — same human-declined gray as rejected asks. */
+.status-badge.OFFERED {
+  color: var(--st-paypal);
+  border-color: var(--st-paypal);
+}
+.status-badge.SKIPPED {
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
+}
 
 /* ---------- chips ---------- */
 
