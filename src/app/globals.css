@@ -3406,8 +3406,8 @@ img[src*="/mascot/"] {
 
 /* ---------- activity (AG Studio) ---------- */
 
-/* Filters + Customize live on the topbar title row at >=1100px (via the
-   .topbar-actions portal); below that they fall back to this inline row. */
+/* Customize lives on the topbar title row at >=1100px (via the
+   .topbar-actions portal); below that it falls back to this inline row. */
 .studio-filters-bar {
   display: flex;
   flex-wrap: wrap;
@@ -3600,10 +3600,9 @@ img[src*="/mascot/"] {
   box-shadow: var(--glass-hi), var(--hero-glow);
 }
 
-/* The collapsed Filters rail is dead chrome on the report's right edge;
-   the toolbar Filters button still expands it into a drawer. */
 /* Hide a dock only while every panel in it is collapsed — the container is
-   shared by filters + the AI assistant, so one being open must keep it. */
+   shared by filters (edit mode) + the AI assistant, so one being open must
+   keep it. */
 .studio-card .ag-studio-root-panel-container:not(:has(.ag-studio-panel:not(.ag-studio-panel-collapsed))) {
   display: none;
 }
@@ -3642,8 +3641,8 @@ img[src*="/mascot/"] {
   height: 480px;
 }
 
-/* The collapsed panel rail stays hidden — the toolbar "Filters" button is the
-   only way in, so nothing eats canvas width. */
+/* The collapsed panel rail stays hidden — panels only open as the overlay
+   drawer (AI FAB / Studio toolbar), so nothing eats canvas width. */
 .studio-card .ag-studio-panel.ag-studio-panel-collapsed {
   display: none;
 }

@@ -107,10 +107,6 @@ const STUDIO_LOCALE_TEXT = {
   aggregationCountdFieldName: "${name}",
 };
 
-// Dock the AI assistant panel on the left. `ai` is typed as an
-// edit-mode-only panel, but the runtime honours it in view mode
-// too — and declaring `view` removes the edit defaults, so both
-// modes are spelled out here.
 const STUDIO_PANELS: StudioProps["panels"] = {
   // Dock every panel on the right — the overlay CSS slides
   // expanded panels in from the right edge, and a left-docked
@@ -118,7 +114,13 @@ const STUDIO_PANELS: StudioProps["panels"] = {
   // edit-mode-only but the runtime honours it in view mode too;
   // declaring `view` removes the edit defaults, so both modes
   // are spelled out here.
-  view: { right: ["ai" as never, "filters"] },
+  //
+  // View mode gets only the AI assistant: the Ask box, Leash legend
+  // and column headers already cover filtering, and the generic
+  // filters panel just exposes denormalized internals (Spent to
+  // date, Stub Order, per-row policy caps). Filters stay in edit
+  // mode, where composing the report can still need them.
+  view: { right: ["ai" as never] },
   edit: { right: ["ai", "filters", "edit", "data"] },
 };
 
@@ -219,14 +221,11 @@ function StudioDashboard({
     () => saved?.pageTitles ?? DEFAULT_PAGE_TITLES
   );
 
-  // Studio reads initialState once, when it is created. The filters panel
-  // starts collapsed — the Ask box does page filtering, and an expanded panel
-  // would cover the right edge of the report.
+  // Studio reads initialState once, when it is created. The Ask box and
+  // Leash legend do page filtering — the generic filters panel only
+  // exists in edit mode.
   const [initialState] = useState(() => {
-    const st = reportState.withFiltersPanelFor(
-      "view",
-      saved?.state ?? baseReport
-    );
+    const st = reportState.withCollapsedFilters(saved?.state ?? baseReport);
     return {
       ...st,
       panels: {
@@ -314,7 +313,7 @@ function StudioDashboard({
     } catch {}
     setSaved(null);
     if (api) {
-      api.setState(reportState.withFiltersPanelFor("view", baseReport));
+      api.setState(reportState.withCollapsedFilters(baseReport));
       api.clearHistory();
       setStudioState(api.getState());
       setMode("view");
@@ -496,35 +495,19 @@ function StudioDashboard({
     };
   }, [menuOpen]);
 
-  // Filters/Customize mount into the TopBar's actions slot on wide
-  // viewports (the .studio-filters-bar fallback below is hidden there).
+  // Customize mounts into the TopBar's actions slot on wide viewports
+  // (the .studio-filters-bar fallback below is hidden there).
   const [topbarSlot, setTopbarSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setTopbarSlot(document.getElementById("topbar-actions"));
   }, []);
 
-  // The Studio filters panel opens as an overlay drawer from the toolbar.
-  const filtersPanelOpen = !(state.panels?.filters?.collapsed ?? true);
-  const toggleFiltersPanel = () => {
-    const api = apiRef.current;
-    const st = api?.getState();
-    if (!api || !st) return;
-    // One drawer at a time — opening filters closes the AI assistant too.
-    api.setState({
-      ...st,
-      panels: {
-        ...st.panels,
-        filters: { ...st.panels?.filters, collapsed: filtersPanelOpen },
-        ...(filtersPanelOpen ? {} : { ai: { ...st.panels?.ai, collapsed: true } }),
-      },
-    });
-  };
-
   const openAiPanel = () => {
     const api = apiRef.current;
     const st = api?.getState();
     if (!api || !st) return;
-    // One drawer at a time — opening the assistant closes the filters panel.
+    // One drawer at a time — opening the assistant closes the filters
+    // panel too (edit mode still has it).
     api.setState({
       ...st,
       panels: {
@@ -549,15 +532,6 @@ function StudioDashboard({
     );
   }
 
-  const filtersButton = (
-    <button
-      className={`secondary filters-btn${filtersPanelOpen ? " chip-active" : ""}`}
-      onClick={toggleFiltersPanel}
-      aria-pressed={filtersPanelOpen}
-    >
-      Filters
-    </button>
-  );
   const customizeMenu = (
     <div className="customize" ref={menuRef}>
       <button
@@ -611,17 +585,11 @@ function StudioDashboard({
     <>
       {topbarSlot &&
         createPortal(
-          <div className="topbar-activity-controls">
-            {filtersButton}
-            {customizeMenu}
-          </div>,
+          <div className="topbar-activity-controls">{customizeMenu}</div>,
           topbarSlot
         )}
 
-      <div className="studio-filters-bar">
-        {filtersButton}
-        {customizeMenu}
-      </div>
+      <div className="studio-filters-bar">{customizeMenu}</div>
 
       <div className="studio-card">
         {hasData(data) ? (

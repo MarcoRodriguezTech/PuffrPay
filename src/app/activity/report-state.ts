@@ -1,7 +1,7 @@
 // Pure helpers over AG Studio's report state (AgReportState), trimmed from the
 // boilerplate's report-state.ts to what this simpler shell uses.
 
-import type { AgReportState, AgStudioMode } from "ag-studio";
+import type { AgReportState } from "ag-studio";
 
 // Whether `state` differs from `saved` in anything worth saving. The selected
 // page, cross-filters, selection and panel sizes also live in state, but
@@ -21,11 +21,11 @@ const durable = (state: AgReportState) =>
     })),
   });
 
-// The filters panel starts expanded in view mode, where it's the only panel,
-// and collapsed in edit mode, where Compose and Data need the room.
-export const withFiltersPanelFor = (mode: AgStudioMode, state: AgReportState): AgReportState => ({
+// The filters panel only exists in edit mode; keep its state entry
+// collapsed either way so a persisted "expanded" flag can't leak in.
+export const withCollapsedFilters = (state: AgReportState): AgReportState => ({
   ...state,
-  panels: { ...state.panels, filters: { ...state.panels?.filters, collapsed: mode === "edit" } },
+  panels: { ...state.panels, filters: { ...state.panels?.filters, collapsed: true } },
 });
 
 // Studio leaves page navigation to the host.
