@@ -178,8 +178,8 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 | # | Severity | Issue |
 |---|---|---|
 | GAP-1 | **high** | `finalizePick` writes `status: PURCHASED` *before* `startPayment`. If `createOrder` throws (PayPal outage), the row stays PURCHASED with no order/capture — a phantom "Bought" that **inflates monthly spend**. (`agent.ts` ~line 304 vs executor catch) |
-| GAP-2 | **high** | "Awaiting PayPal" never expires. Abandoned sandbox orders stay WAITING forever — currently 4 rows / $51.63 parked. No expiry sweep, no reconcile job. |
-| GAP-3 | medium | No in-app cancel once an order exists — `rejectPurchase` throws "cancel it in PayPal" but the UI offers no cancel button. |
+| GAP-2 | **high** | "Awaiting PayPal" never expires. Abandoned sandbox orders stay WAITING forever — no expiry sweep, no reconcile job. (Resume + cancel now exist via GAP-3 fix; expiry is still open.) |
+| GAP-3 | ~~medium~~ **fixed** | ~~No in-app cancel once an order exists~~ → `paypal_approve_url` is now persisted (migration 002, backfilled), open checkouts appear under "AWAITING PAYPAL" in the `/policy` queue with Resume / Capture now / Cancel (`cancelPurchase` → REJECTED). `capturePurchase` also guards `status !== "WAITING"` so cancelled rows can't resurrect via a stale PayPal tab. |
 | GAP-4 | **high** | `chooseOption` does not check `payload.picked` — replaying `/api/agent/choose` with a different card id on an already-picked set creates a **second purchase**. UI disables buttons but the endpoint itself is unguarded. |
 | GAP-5 | low (data) | Pre-change payloads lost their X'd cards permanently — leash "offered/skipped" undercounts old sets. Unrecoverable; going forward is correct. |
 | GAP-6 | question | Leash report ignores page/date filters entirely (reads raw rows + sets). Decide whether funnel stats should respond to range pills / ask-box filters. |

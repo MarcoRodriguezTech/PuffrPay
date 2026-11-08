@@ -46,6 +46,7 @@ export async function startPayment(purchase: PurchaseRequest): Promise<ExecuteRe
   });
   const updated = await updatePurchase(purchase.id, {
     paypalOrderId: order.orderId,
+    paypalApproveUrl: order.approveUrl,
     status: "WAITING",
   });
   return { purchase: updated, approveUrl: order.approveUrl, stub: false };
@@ -92,10 +93,28 @@ export async function rejectPurchase(id: number): Promise<PurchaseRequest> {
   }
   if (purchase.paypalOrderId) {
     throw new Error(
-      `purchase ${id} already has a payment in progress — cancel it in PayPal instead`
+      `purchase ${id} already has a payment in progress — use Cancel in the queue instead`
     );
   }
   return updatePurchase(id, { status: "REJECTED", decidedBy: "owner" });
+}
+
+/**
+ * Owner cancelled an open checkout. PayPal offers no API to void an
+ * unapproved order — it simply expires unused — so the row is rejected
+ * and capturePurchase refuses it from then on.
+ */
+export async function cancelPurchase(id: number): Promise<PurchaseRequest> {
+  const purchase = await getPurchase(id);
+  if (!purchase) throw new Error(`purchase ${id} not found`);
+  if (purchase.status !== "WAITING" || !purchase.paypalOrderId) {
+    throw new Error(`purchase ${id} has no open checkout to cancel`);
+  }
+  return updatePurchase(id, {
+    status: "REJECTED",
+    decidedBy: "owner",
+    errorMessage: "checkout cancelled by owner",
+  });
 }
 
 /**
@@ -109,6 +128,9 @@ export async function capturePurchase(id: number): Promise<PurchaseRequest> {
     throw new Error(`purchase ${id} has no PayPal order to capture`);
   }
   if (purchase.status === "PURCHASED") return purchase;
+  if (purchase.status !== "WAITING") {
+    throw new Error(`purchase ${id} is not awaiting payment`);
+  }
 
   if (purchase.paypalOrderId.startsWith("STUB-ORDER-")) {
     return updatePurchase(id, {

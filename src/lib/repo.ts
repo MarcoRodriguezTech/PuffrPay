@@ -46,6 +46,7 @@ interface PurchaseRow {
   decided_by: "policy" | "owner";
   paypal_order_id: string | null;
   paypal_capture_id: string | null;
+  paypal_approve_url: string | null;
   error_message: string | null;
   updated_at: Date;
 }
@@ -68,6 +69,7 @@ function toPurchase(r: PurchaseRow): PurchaseRequest {
     decidedBy: r.decided_by,
     paypalOrderId: r.paypal_order_id,
     paypalCaptureId: r.paypal_capture_id,
+    paypalApproveUrl: r.paypal_approve_url,
     errorMessage: r.error_message,
     updatedAt: r.updated_at.toISOString(),
   };
@@ -208,6 +210,7 @@ export async function updatePurchase(
     decidedBy: "policy" | "owner";
     paypalOrderId: string | null;
     paypalCaptureId: string | null;
+    paypalApproveUrl: string | null;
     errorMessage: string | null;
   }>
 ): Promise<PurchaseRequest> {
@@ -216,6 +219,7 @@ export async function updatePurchase(
     decidedBy: "decided_by",
     paypalOrderId: "paypal_order_id",
     paypalCaptureId: "paypal_capture_id",
+    paypalApproveUrl: "paypal_approve_url",
     errorMessage: "error_message",
   };
   const sets: string[] = [];

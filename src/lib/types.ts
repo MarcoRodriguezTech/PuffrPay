@@ -33,6 +33,7 @@ export interface PurchaseRequest {
   decidedBy: "policy" | "owner";
   paypalOrderId: string | null;
   paypalCaptureId: string | null;
+  paypalApproveUrl: string | null;
   errorMessage: string | null;
   updatedAt: string;
 }
