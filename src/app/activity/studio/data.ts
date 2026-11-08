@@ -52,7 +52,7 @@ const ratio = (
 export const hasData = (data: DashboardData) => data.requests.length > 0;
 
 export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
-  const dates = data.requests
+  const dates = data.activity
     .map((r) => r.createdAt?.slice(0, 10))
     .filter((d): d is string => !!d)
     .sort();
@@ -69,12 +69,19 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
         id: "requests",
         name: "Purchase requests",
         description:
-          "One row per purchase request the agent made. Spent is the amount only when the row is " +
-          "PURCHASED; blocked/waiting/purchased/autoApproved are 1/0 flags for rate measures. " +
-          "Policy limits are repeated on every row so spend-to-cap ratios work without a join.",
-        data: data.requests,
+          "The full ledger — one row per purchase request the agent made (kind='request') plus " +
+          "one row per option card it offered on the carousel (kind='card'). Card rows are " +
+          "shelf items the owner skipped (status REJECTED, shown as 'Skipped') or that are still " +
+          "live and pickable (status OFFERED); they were never purchase requests, so their " +
+          "spent/purchased/blocked/waiting flags are always 0 and they never count as spend. " +
+          "Spent is the amount only when a request row is PURCHASED; blocked/waiting/purchased/" +
+          "autoApproved are 1/0 flags for rate measures. Policy limits are repeated on every " +
+          "row so spend-to-cap ratios work without a join.",
+        data: data.activity,
         fields: fields([
           ["ref", "Request Ref", "textFormat", true],
+          ["kind", "Row Kind", "textFormat", true],
+          ["state", "Card State", "textFormat", true],
           ["rowIdx", "Row Index", "integerFormat", true],
           ["createdAt", "Requested", "dateTimeFormat"],
           ["title", "Item", "textFormat"],
@@ -84,6 +91,8 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
           ["amount", "Amount", "currencyFormat"],
           ["currency", "Currency", "textFormat", true],
           ["decision", "Policy Decision", "textFormat"],
+          // PURCHASED/WAITING/BLOCKED/REJECTED/FAILED on requests; card rows
+          // also carry OFFERED (live shelf card).
           ["status", "Status", "textFormat"],
           ["decidedBy", "Decided By", "textFormat"],
           ["reason", "Policy Reason", "textFormat"],

@@ -267,8 +267,11 @@ export interface OptionSetItem {
   id: string;
   title: string;
   imageUrl: string | null;
+  merchantUrl: string | null;
+  category: string | null;
   priceCents: number;
   decision: PolicyDecision;
+  decisionReason: string | null;
 }
 
 export interface OptionSetRow {
@@ -301,14 +304,20 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
         id?: string;
         title?: string;
         imageUrl?: string;
+        merchantUrl?: string;
+        category?: string;
         priceCents?: number;
         decision?: string;
+        decisionReason?: string;
       }): OptionSetItem => ({
         id: String(i.id ?? ""),
         title: String(i.title ?? "Untitled pick"),
         imageUrl: i.imageUrl ? String(i.imageUrl) : null,
+        merchantUrl: i.merchantUrl ? String(i.merchantUrl) : null,
+        category: i.category ? String(i.category) : null,
         priceCents: Number(i.priceCents ?? 0),
         decision: (i.decision ?? "ALLOW") as PolicyDecision,
+        decisionReason: i.decisionReason ? String(i.decisionReason) : null,
       });
       out.push({
         id: r.id,

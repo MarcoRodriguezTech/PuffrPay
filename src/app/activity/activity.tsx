@@ -629,7 +629,7 @@ function StudioDashboard({
       <div className="studio-card">
         {hasData(data) ? (
           <AgStudioProvider licenseKey={licenseKey}>
-            <DashRowsContext.Provider value={data.requests}>
+            <DashRowsContext.Provider value={data.activity}>
             <AgStudio
               key={theme}
               style={STUDIO_STYLE}

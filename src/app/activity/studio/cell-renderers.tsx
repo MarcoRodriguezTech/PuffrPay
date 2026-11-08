@@ -9,9 +9,9 @@ import { createContext, useContext, type ComponentType } from "react";
 import type { AgWidgetField } from "ag-studio";
 import type { CustomCellRendererProps } from "ag-grid-react";
 import type { DashboardData } from "@/lib/dashboard-data";
-import { StatusBadge } from "@/components/StatusBadge";
+import { OptBadge, StatusBadge } from "@/components/StatusBadge";
 
-type Row = DashboardData["requests"][number];
+type Row = DashboardData["activity"][number];
 
 // The footer totals come from the full dashboard rows (matching the KPI
 // tiles), not the grid's aggregation — pagination and filters must not shrink
@@ -47,13 +47,26 @@ const isFooter = (
 function StatusCell({ value, data }: CustomCellRendererProps) {
   const rows = useContext(DashRowsContext);
   if (!value) return null;
+  // OFFERED only exists on shelf cards — it isn't a request status, so it
+  // takes the option badge rather than StatusBadge's FAILED fallback.
+  // (Card REJECTED rows render "Skipped" through the normal path.)
+  if (value === "OFFERED") {
+    return (
+      <span className="status-cell">
+        <OptBadge state="offered" />
+      </span>
+    );
+  }
   // The grid row only carries mapped columns — `decision` isn't one — so the
   // row is matched back to the full dashboard rows by title + amount.
   const title = rowValue(data as Record<string, unknown>, "title");
   const amount = Number(rowValue(data as Record<string, unknown>, "amount"));
   const decision =
     rows.find(
-      (r) => r.title === title && (isNaN(amount) || r.amount === amount)
+      (r) =>
+        r.kind === "request" &&
+        r.title === title &&
+        (isNaN(amount) || r.amount === amount)
     )?.decision ?? null;
   return (
     <span className="status-cell">
@@ -85,10 +98,10 @@ function ItemCell({ value, data, node }: CustomCellRendererProps) {
   const rows = useContext(DashRowsContext);
   // Footer row: the all-statuses counterpart next to "Total bought".
   if (isFooter(data, node)) {
-    const requested = rows.reduce((s, r) => s + r.amount, 0);
+    const listed = rows.reduce((s, r) => s + r.amount, 0);
     return (
       <span className="grand-total-label muted">
-        Total requested (all statuses) <b>${requested.toFixed(2)}</b>
+        Total listed (all rows) <b>${listed.toFixed(2)}</b>
       </span>
     );
   }

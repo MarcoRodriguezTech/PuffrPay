@@ -22,6 +22,7 @@ function requestRows(purchases: PurchaseRequest[], policy: Policy) {
     const purchased = p.status === "PURCHASED";
     return {
       ref: String(p.id),
+      kind: "request" as const,
       // 1-based rank newest-first — the grid pager widget filters on it.
       rowIdx: i + 1,
       createdAt: p.createdAt,
@@ -113,26 +114,65 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
   });
 }
 
-function optionCardRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
-  // One flat row per offered card — the shelf layer the Recent feed shows
-  // alongside request rows. The picked card is excluded: its request row
-  // already carries the real request status (flip-on-pick).
+function optionCardRows(
+  sets: Awaited<ReturnType<typeof listOptionSets>>,
+  policy: Policy
+) {
+  // One flat ledger row per offered card — the shelf layer shown alongside
+  // request rows in the Recent feed and the "All activity" grid. The picked
+  // card is excluded: its request row already carries the real request
+  // status (flip-on-pick). X'd-out cards (`removed`) resolve to skipped even
+  // while their set is still open — the owner declined that card already.
   return sets.flatMap((s) => {
     const open = s.picked == null && !s.dismissed;
     return [...s.items, ...s.removed]
       .filter((i) => i.id !== s.picked)
-      .map((i) => ({
-        ref: `set${s.id}:${i.id}`,
-        createdAt: s.createdAt,
-        title: i.title,
-        imageUrl: i.imageUrl,
-        amount: i.priceCents / 100,
-        state: (i.decision === "BLOCK"
-          ? "blocked"
-          : open
-            ? "offered"
-            : "skipped") as "blocked" | "offered" | "skipped",
-      }));
+      .map((i) => {
+        const isRemoved = s.removed.some((r) => r.id === i.id);
+        const state = (
+          i.decision === "BLOCK" ? "blocked" : open && !isRemoved ? "offered" : "skipped"
+        ) as "blocked" | "offered" | "skipped";
+        return {
+          ref: `set${s.id}:${i.id}`,
+          kind: "card" as const,
+          // rowIdx is ranked over the merged ledger in getDashboardData.
+          rowIdx: 0,
+          createdAt: s.createdAt,
+          title: i.title,
+          merchantUrl: i.merchantUrl,
+          imageUrl: i.imageUrl,
+          category: i.category ?? "Uncategorised",
+          amount: i.priceCents / 100,
+          currency: "USD",
+          decision: i.decision,
+          // Reuses request status values so badges + status filters work:
+          // skipped cards render the same "Skipped" label as declined asks.
+          status:
+            state === "offered" ? "OFFERED" : state === "blocked" ? "BLOCKED" : "REJECTED",
+          decidedBy: state === "offered" ? "—" : "owner",
+          reason:
+            state === "offered"
+              ? "awaiting pick"
+              : state === "blocked"
+                ? (i.decisionReason ?? "blocked by rules")
+                : "not picked",
+          reasoning: null,
+          orderId: null,
+          isStub: false,
+          // Cards never count toward request measures — they stay 0 so any
+          // sum over the merged table keeps request scope.
+          spent: 0,
+          cumulative: 0,
+          purchased: 0,
+          blocked: 0,
+          waiting: 0,
+          autoApproved: 0,
+          monthlyCap: policy.monthlyCapCents / 100,
+          perPurchaseMax: policy.perPurchaseMaxCents / 100,
+          autoApproveUnder: policy.autoApproveUnderCents / 100,
+          state,
+        };
+      });
   });
 }
 
@@ -143,11 +183,22 @@ export async function getDashboardData(asOf = new Date()) {
     listOptionSets(),
   ]);
 
+  const requests = requestRows(purchases, policy);
+  const cards = optionCardRows(optionSets, policy);
+  // The ledger the Studio "requests" table + grid pager read: every request
+  // plus every offered/skipped shelf card (shelf-blocked stays in the hero
+  // stat and feed only). Requests keep their own rows in `requests` so the
+  // request-scope widgets and footers never see cards.
+  const activity = [...requests, ...cards.filter((c) => c.state !== "blocked")]
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .map((r, i) => ({ ...r, rowIdx: i + 1 }));
+
   return {
     asOf: asOf.toISOString(),
-    requests: requestRows(purchases, policy),
+    requests,
     optionSets: optionSetRows(optionSets),
-    cards: optionCardRows(optionSets),
+    cards,
+    activity,
     policy: policyRow(policy),
   };
 }

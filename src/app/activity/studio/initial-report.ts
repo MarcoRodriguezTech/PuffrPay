@@ -71,7 +71,7 @@ const activityWidgets: AgPageState["widgets"] = {
     },
     sort: [{ field: { id: "requests.createdAt" }, direction: "desc" }],
     format: {
-      ...title("All purchase requests"),
+      ...title("All activity"),
       style: {
         // Columns size to content so every column fits without a sideways
         // scroll on desktop widths; the pinned footer row is relabelled in

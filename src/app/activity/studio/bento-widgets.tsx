@@ -28,7 +28,7 @@ import type {
 } from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { StatusBadge } from "@/components/StatusBadge";
+import { OptBadge, StatusBadge } from "@/components/StatusBadge";
 import {
   STATUSES,
   activeStatusKey,
@@ -92,7 +92,7 @@ function matchCell(raw: unknown, op?: string, v?: unknown): boolean {
   }
 }
 
-function applyPageFilters(rows: Row[], filters: AgFilterState[]): Row[] {
+function applyPageFilters<T>(rows: T[], filters: AgFilterState[]): T[] {
   let out = rows;
   for (const f of filters) {
     const key = reqField(f?.field?.id);
@@ -107,6 +107,22 @@ function applyPageFilters(rows: Row[], filters: AgFilterState[]): Row[] {
 
 const useFilteredRows = (params: Ctx): Row[] =>
   applyPageFilters(useRows(params), usePageFilters(params));
+
+// The merged ledger (requests + offered/skipped cards) the grid table and
+// its pager count over — `useFilteredRows` stays request-scope for metrics.
+type ActivityRow = NonNullable<DashboardData>["activity"][number];
+const useActivity = (params: Ctx): ActivityRow[] =>
+  (params.context as { data?: DashboardData })?.data?.activity ?? [];
+const useFilteredActivity = (params: Ctx): ActivityRow[] =>
+  applyPageFilters(useActivity(params), usePageFilters(params));
+
+// Feed cards honor the same page filters — their `status` values
+// (OFFERED/REJECTED/BLOCKED) line up with the request statuses they display.
+const useFilteredCards = (params: Ctx): CardRow[] =>
+  applyPageFilters(
+    (params.context as { data?: DashboardData })?.data?.cards ?? [],
+    usePageFilters(params)
+  );
 
 const noMap = ({ createDefaults }: { createDefaults: (o: object) => unknown }) =>
   createDefaults({ dataMappingItems: [] });
@@ -508,33 +524,6 @@ function FunMoney(params: Ctx) {
 
 type CardRow = NonNullable<DashboardData>["cards"][number];
 
-// Option-card rows share the request-row anatomy but speak the shelf
-// vocabulary: Offered (set still live), Skipped (unchosen once resolved —
-// same word the human-declined REJECTED status shows), Blocked (the rules
-// refused the card — same badge as a blocked request).
-function OptBadge({ state }: { state: CardRow["state"] }) {
-  if (state === "blocked") return <StatusBadge status="BLOCKED" />;
-  const offered = state === "offered";
-  return (
-    <span
-      className={`status-badge ${offered ? "OFFERED" : "SKIPPED"}`}
-      title={offered ? "Offered — still pickable on the carousel" : "Skipped"}
-    >
-      {offered ? (
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <rect x="1.5" y="4" width="7" height="5.5" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" />
-          <path d="M4 4V2.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
-        </svg>
-      ) : (
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M2.5 6h7" strokeWidth="2" strokeLinecap="round" fill="none" stroke="currentColor" />
-        </svg>
-      )}
-      {offered ? "Offered" : "Skipped"}
-    </span>
-  );
-}
-
 function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
   // Requests and offered cards share one newest-first feed — a picked card
   // shows only its request row, so each product lands once.
@@ -598,7 +587,7 @@ function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
 
 function Recent(params: Ctx) {
   const rows = useFilteredRows(params);
-  const cards = useData(params)?.cards ?? [];
+  const cards = useFilteredCards(params);
   return (
     <div className="bento">
       <RecentBody rows={rows} cards={cards} />
@@ -610,7 +599,7 @@ function Recent(params: Ctx) {
 
 function FunRecent(params: Ctx) {
   const rows = useFilteredRows(params);
-  const cards = useData(params)?.cards ?? [];
+  const cards = useFilteredCards(params);
   return (
     <div className="funmoney funrecent">
       <FunMoneyBody rows={rows} />
@@ -910,26 +899,34 @@ function LeashReport(params: Ctx) {
   // unchosen rest of a picked set.
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
   const open = sets.reduce((a, s) => a + (s.open ? s.live : 0), 0);
-  const skipped = offered - picked - open;
+
+  // Skipped merges both human-declined things — declined requests (REJECTED)
+  // and every unchosen/X'd-out/dismissed shelf card — so the legend number,
+  // the bar segment and the grid's Skipped filter all agree.
+  const skippedCards = (data?.cards ?? []).filter((c) => c.state === "skipped");
+  const skipCardAmt = skippedCards.reduce((a, c) => a + c.amount, 0);
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
   const segs = STATUSES.map((st) => {
     const list = rows.filter((r) => statusKey(r.status, r.decision) === st.key);
-    const amt = list.reduce((a, r) => a + r.amount, 0);
+    const isSkip = st.key === "REJECTED";
+    const n = list.length + (isSkip ? skippedCards.length : 0);
+    const amt =
+      list.reduce((a, r) => a + r.amount, 0) + (isSkip ? skipCardAmt : 0);
     return {
       key: st.key,
       label: st.label,
       color: st.colorVar,
-      n: list.length,
+      n,
       amt,
-      tip: `${st.label}: ${list.length} — ${money(amt)}`,
+      tip: `${st.label}: ${n} — ${money(amt)}`,
       legend: {
         key: st.key,
         status: st.key === "PAYPAL" ? "WAITING" : st.key,
         decision:
           st.key === "PAYPAL" ? "ALLOW" : st.key === "WAITING" ? "ASK" : null,
-        n: list.length,
+        n,
         amt,
       } as LegendRow,
     };
@@ -1062,7 +1059,6 @@ function LeashReport(params: Ctx) {
             {auto} pass · {needs} ask · {stopped} blocked
             {" | "}
             {picked} picked
-            {skipped > 0 && ` · ${skipped} skipped`}
             {open > 0 && ` · ${open} still open`}
           </span>
         </>
@@ -1086,7 +1082,7 @@ const pageFilter = (page: number) => [
 export const gridPageFilter = pageFilter;
 
 function GridPager(params: Ctx) {
-  const rows = useFilteredRows(params);
+  const rows = useFilteredActivity(params);
   const api = params.api;
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -1121,7 +1117,7 @@ function GridPager(params: Ctx) {
   return (
     <div className="grid-pager">
       <span className="grid-pager-info">
-        {total === 0 ? "No requests" : `${lo}–${hi} of ${total} requests · ${PAGE_SIZE} per page`}
+        {total === 0 ? "No items" : `${lo}–${hi} of ${total} items · ${PAGE_SIZE} per page`}
       </span>
       <div className="grid-pager-nav">
         <button
