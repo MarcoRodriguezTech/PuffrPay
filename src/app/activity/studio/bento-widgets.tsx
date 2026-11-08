@@ -900,20 +900,27 @@ function LeashReport(params: Ctx) {
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
   const open = sets.reduce((a, s) => a + (s.open ? s.live : 0), 0);
 
-  // Skipped merges both human-declined things — declined requests (REJECTED)
-  // and every unchosen/X'd-out/dismissed shelf card — so the legend number,
-  // the bar segment and the grid's Skipped filter all agree.
-  const skippedCards = (data?.cards ?? []).filter((c) => c.state === "skipped");
-  const skipCardAmt = skippedCards.reduce((a, c) => a + c.amount, 0);
+  // Skipped and Blocked merge the shelf layer with the request layer —
+  // declined requests + unchosen cards, rule-killed requests + refused
+  // cards — so the legend number, the bar segment and the grid's status
+  // filter all agree.
+  const cardStates: Partial<Record<StatusKey, "skipped" | "blocked">> = {
+    REJECTED: "skipped",
+    BLOCKED: "blocked",
+  };
+  const cardsAll = data?.cards ?? [];
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
   const segs = STATUSES.map((st) => {
     const list = rows.filter((r) => statusKey(r.status, r.decision) === st.key);
-    const isSkip = st.key === "REJECTED";
-    const n = list.length + (isSkip ? skippedCards.length : 0);
+    const cardList = cardStates[st.key]
+      ? cardsAll.filter((c) => c.state === cardStates[st.key])
+      : [];
+    const n = list.length + cardList.length;
     const amt =
-      list.reduce((a, r) => a + r.amount, 0) + (isSkip ? skipCardAmt : 0);
+      list.reduce((a, r) => a + r.amount, 0) +
+      cardList.reduce((a, c) => a + c.amount, 0);
     return {
       key: st.key,
       label: st.label,
@@ -990,7 +997,7 @@ function LeashReport(params: Ctx) {
                 />
               </svg>
               <span className="leash-num">{stoppedC}</span>
-              <span className="leash-cap">Blocked by the rules</span>
+              <span className="leash-cap">Refused on the shelf</span>
             </div>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
@@ -1056,8 +1063,8 @@ function LeashReport(params: Ctx) {
           </div>
 
           <span className="leash-foot">
-            {auto} pass · {needs} ask · {stopped} blocked
-            {" | "}
+            {offered} offered — {auto} auto-ok · {needs} would-ask · {stopped} refused
+            {" → "}
             {picked} picked
             {open > 0 && ` · ${open} still open`}
           </span>
@@ -1075,22 +1082,35 @@ const GRID_ID = "requests-grid";
 const ROWIDX = "requests.rowIdx";
 const PAGE_SIZE = 8;
 
+// First-paint widget filter: page 1 = the newest 8 rows of the unfiltered
+// ledger (rowIdx is the merged rank). Once the pager or a page filter is
+// involved, `go` re-emits the concrete `isIn` set of the filtered slice —
+// a range on absolute rank returns nothing for rows filtered to old pages.
 const pageFilter = (page: number) => [
   { field: { id: ROWIDX }, model: { operator: "greaterThanOrEqual", value: (page - 1) * PAGE_SIZE + 1 } },
   { field: { id: ROWIDX }, model: { operator: "lessThanOrEqual", value: page * PAGE_SIZE } },
 ];
 export const gridPageFilter = pageFilter;
 
+const inFilter = (rowIdx: number[]) => [
+  { field: { id: ROWIDX }, model: { operator: "isIn", value: rowIdx } },
+];
+
 function GridPager(params: Ctx) {
+  // Filtered rows in ledger order — the same set the grid sees before its
+  // own widget (rowIdx) filter, so each page's slice is the exact `isIn` set.
   const rows = useFilteredActivity(params);
   const api = params.api;
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const [page, setPage] = useState(1);
 
-  const go = (p: number) => {
-    const clamped = Math.min(Math.max(1, p), pages);
+  const go = (p: number, list = rows) => {
+    const clamped = Math.min(Math.max(1, p), Math.max(1, Math.ceil(list.length / PAGE_SIZE)));
     setPage(clamped);
+    const slice = list
+      .slice((clamped - 1) * PAGE_SIZE, clamped * PAGE_SIZE)
+      .map((r) => r.rowIdx);
     const st = api.getState();
     api.setState({
       ...st,
@@ -1102,7 +1122,7 @@ function GridPager(params: Ctx) {
                 ...pg.filter,
                 widget: {
                   ...pg.filter?.widget,
-                  [GRID_ID]: pageFilter(clamped) as never,
+                  [GRID_ID]: inFilter(slice) as never,
                 },
               },
             }
@@ -1110,6 +1130,14 @@ function GridPager(params: Ctx) {
       ),
     });
   };
+
+  // The filtered set changed (status pill, Ask filter, new data): land back
+  // on page 1 of the new set instead of pointing at stale rank values.
+  const rowsSig = rows.map((r) => r.ref).join(",");
+  useEffect(() => {
+    go(1, rows);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsSig]);
 
   const lo = (page - 1) * PAGE_SIZE + 1;
   const hi = Math.min(page * PAGE_SIZE, total);

@@ -71,8 +71,9 @@ export function buildStudioData(data: DashboardData): AgDataSourcesDefinition {
         description:
           "The full ledger — one row per purchase request the agent made (kind='request') plus " +
           "one row per option card it offered on the carousel (kind='card'). Card rows are " +
-          "shelf items the owner skipped (status REJECTED, shown as 'Skipped') or that are still " +
-          "live and pickable (status OFFERED); they were never purchase requests, so their " +
+          "shelf items the owner skipped (status REJECTED, shown as 'Skipped'), cards still " +
+          "live and pickable (status OFFERED), or cards the rules refused before they could " +
+          "be picked (status BLOCKED, decided-by 'policy'); they were never purchase requests, so their " +
           "spent/purchased/blocked/waiting flags are always 0 and they never count as spend. " +
           "Spent is the amount only when a request row is PURCHASED; blocked/waiting/purchased/" +
           "autoApproved are 1/0 flags for rate measures. Policy limits are repeated on every " +

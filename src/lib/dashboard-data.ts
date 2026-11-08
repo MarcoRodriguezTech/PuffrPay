@@ -149,7 +149,8 @@ function optionCardRows(
           // skipped cards render the same "Skipped" label as declined asks.
           status:
             state === "offered" ? "OFFERED" : state === "blocked" ? "BLOCKED" : "REJECTED",
-          decidedBy: state === "offered" ? "—" : "owner",
+          decidedBy:
+            state === "blocked" ? "policy" : state === "offered" ? "—" : "owner",
           reason:
             state === "offered"
               ? "awaiting pick"
@@ -164,7 +165,7 @@ function optionCardRows(
           spent: 0,
           cumulative: 0,
           purchased: 0,
-          blocked: 0,
+          blocked: state === "blocked" ? 1 : 0,
           waiting: 0,
           autoApproved: 0,
           monthlyCap: policy.monthlyCapCents / 100,
@@ -186,10 +187,9 @@ export async function getDashboardData(asOf = new Date()) {
   const requests = requestRows(purchases, policy);
   const cards = optionCardRows(optionSets, policy);
   // The ledger the Studio "requests" table + grid pager read: every request
-  // plus every offered/skipped shelf card (shelf-blocked stays in the hero
-  // stat and feed only). Requests keep their own rows in `requests` so the
-  // request-scope widgets and footers never see cards.
-  const activity = [...requests, ...cards.filter((c) => c.state !== "blocked")]
+  // plus every offered/skipped/blocked shelf card. Requests keep their own
+  // rows in `requests` so request-scope widgets and footers never see cards.
+  const activity = [...requests, ...cards]
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
     .map((r, i) => ({ ...r, rowIdx: i + 1 }));
 
