@@ -56,7 +56,9 @@ export function SideRail() {
     <nav className="rail" aria-label="Main">
       <Link href="/" className="rail-logo" aria-label="PuffrPay home">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ASSETS.logoMark} alt="" width={40} height={40} />
+        <img src={ASSETS.logoMark} alt="" width={64} height={64} className="logo-dark" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ASSETS.logoMarkLight} alt="" width={64} height={64} className="logo-light" />
       </Link>
 
       <div className="rail-nav">

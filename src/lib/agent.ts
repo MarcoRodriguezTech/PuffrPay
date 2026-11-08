@@ -1,7 +1,7 @@
 import { getLLM } from "./llm";
 import type { OptionPick } from "./llm/types";
 import { searchProducts } from "./channel3";
-import { evaluatePolicy } from "./policy";
+import { evaluatePolicy, matchesBlocked } from "./policy";
 import type { PolicyDecision } from "./types";
 import {
   createPurchaseRequest,
@@ -144,7 +144,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   const optionsItems: OptionsItem[] = items.map((p) => {
     const d = evaluatePolicy(
       policy,
-      { amountCents: p.priceCents, category: p.category },
+      { amountCents: p.priceCents, category: p.category, title: p.title },
       spent
     );
     return {
@@ -302,11 +302,21 @@ async function finalizePick(
   // --- deterministic policy engine (never the LLM) ---
   const decision = evaluatePolicy(
     policy,
-    { amountCents: product.priceCents, category: product.category },
+    {
+      amountCents: product.priceCents,
+      category: product.category,
+      title: product.title,
+    },
     spent
   );
   steps.push(
-    ...describeChecks(policy, product.priceCents, spent, product.category)
+    ...describeChecks(
+      policy,
+      product.priceCents,
+      spent,
+      product.category,
+      product.title
+    )
   );
 
   const status =
@@ -378,7 +388,8 @@ function describeChecks(
   policy: Policy,
   amountCents: number,
   monthSpentCents: number,
-  category: string | null
+  category: string | null,
+  title: string | null
 ): AgentStep[] {
   const fmt = (c: number) => `$${(c / 100).toFixed(0)}`;
   const pad = (s: string) => s.padEnd(38, ".");
@@ -402,11 +413,7 @@ function describeChecks(
     }`,
   });
   if (policy.blockedCategories.length > 0) {
-    const hit =
-      category != null &&
-      policy.blockedCategories
-        .map((c) => c.trim().toLowerCase())
-        .includes(category.trim().toLowerCase());
+    const hit = matchesBlocked(policy.blockedCategories, { category, title });
     steps.push({
       step: "policy",
       detail: `${pad(`blocked categories: ${policy.blockedCategories.join(", ")}`)} ${

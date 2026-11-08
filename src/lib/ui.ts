@@ -15,6 +15,12 @@ export function refreshBudget() {
 
 export const BUDGET_EVENT = "puffr:budget";
 export const TOAST_EVENT = "puffr:toast";
+export const RECEIPTS_EVENT = "puffr:receipts";
+
+/** Open the receipts drawer (TopBar listens for this). */
+export function openReceipts() {
+  window.dispatchEvent(new Event(RECEIPTS_EVENT));
+}
 
 const PUFF_KEY = "puffr:puff-at";
 

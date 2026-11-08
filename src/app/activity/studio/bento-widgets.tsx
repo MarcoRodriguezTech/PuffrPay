@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useLayoutEffect, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AgGridReact } from "ag-grid-react";
 import {
   AllCommunityModule,
@@ -46,6 +47,29 @@ type Ctx = AgWidgetParams<AgWidgetData<Record<string, never>, AgWidgetDataFormat
 
 const useRows = (params: Ctx): Row[] =>
   (params.context as { data?: DashboardData })?.data?.requests ?? [];
+
+/* Hover tooltips portal to <body> at fixed coordinates — Studio's widget
+   chrome clips overflow, so an in-chart tip gets cut at the card edge. */
+function ChartTip({
+  chartRef,
+  x,
+  y,
+  children,
+}: {
+  chartRef: React.RefObject<HTMLElement | null>;
+  x: number;
+  y: number;
+  children: React.ReactNode;
+}) {
+  const rect = chartRef.current?.getBoundingClientRect();
+  if (!rect) return null;
+  return createPortal(
+    <div className="chart-tip" style={{ left: rect.left + x, top: rect.top + y }}>
+      {children}
+    </div>,
+    document.body,
+  );
+}
 
 /* ---------- page-filter plumbing ---------- */
 
@@ -345,10 +369,10 @@ function SpendTrend(params: Ctx) {
           </svg>
         )}
         {hover != null && pts[hover] && (
-          <div className="chart-tip" style={{ left: pts[hover][0], top: pts[hover][1] - 8 }}>
+          <ChartTip chartRef={ref} x={pts[hover][0]} y={pts[hover][1] - 8}>
             <span className="tip-date">{dayOf(days[hover].key + "T12:00:00")}</span>
             <span className="tip-amt">{money(days[hover].cum)}</span>
-          </div>
+          </ChartTip>
         )}
       </div>
       <div className="legend-pills">
@@ -495,7 +519,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
         <PufferGauge ratio={ratio} size={96} showLabel={false} />
       </span>
       <div className="fm-amount">
-        {money(spent)} <span className="of">of {money(cap)}</span>
+        {money(spent)} <span className="of">/ {money(cap)}</span>
       </div>
       <div className="fm-bar" role="presentation">
         <span className="fm-bar-fill" style={{ width: `${pct}%` }} />
@@ -766,19 +790,17 @@ function SpendByDay(params: Ctx) {
           </svg>
         )}
         {hover != null && days[hover] && (
-          <div
-            className="chart-tip"
-            style={{
-              left: PAD.l + hover * slot + slot / 2,
-              top: yAt(days[hover].bought + days[hover].requested) - 8,
-            }}
+          <ChartTip
+            chartRef={ref}
+            x={PAD.l + hover * slot + slot / 2}
+            y={yAt(days[hover].bought + days[hover].requested) - 8}
           >
             <span className="tip-date">{dayOf(days[hover].key + "T12:00:00")}</span>
             <span className="tip-amt">
               {money(days[hover].bought)} bought
               {days[hover].requested > 0 && ` · ${money(days[hover].requested)} requested`}
             </span>
-          </div>
+          </ChartTip>
         )}
       </div>
     </div>
@@ -819,7 +841,7 @@ const legendTheme = themeQuartz.withParams({
 const legendCols: ColDef<LegendRow>[] = [
   {
     field: "status",
-    width: 150,
+    width: 220,
     cellRenderer: (p: ICellRendererParams<LegendRow>) =>
       p.data ? (
         <StatusBadge status={p.data.status} decision={p.data.decision} />
@@ -829,13 +851,15 @@ const legendCols: ColDef<LegendRow>[] = [
     field: "n",
     flex: 1,
     cellClass: "leash-col-num",
-    cellStyle: { justifyContent: "flex-end" },
+    cellStyle: { textAlign: "right" },
   },
   {
+    // narrow fixed amount column — n right-aligns into it, so the pair
+    // "8  $184.33" glues together at the row's right edge
     field: "amt",
-    flex: 1,
+    width: 88,
     cellClass: "leash-col-amt",
-    cellStyle: { justifyContent: "flex-end" },
+    cellStyle: { textAlign: "left" },
     valueFormatter: (p) => money(p.value ?? 0),
   },
 ];
@@ -937,9 +961,16 @@ function LeashReport(params: Ctx) {
         amt,
       } as LegendRow,
     };
-  }).filter((s) => s.n > 0);
+  });
+  // The colored bar shows only real counts; the legend lists every status so
+  // the vocabulary (e.g. "Waiting for you") is visible even at zero.
+  const barSegs = segs.filter((s) => s.n > 0);
+  // Failed stays out of the always-on legend — it only matters when real.
+  const legendSegs = segs.filter((s) => s.key !== "FAILED");
   const totalPicks = segs.reduce((a, s) => a + s.n, 0);
-  const ariaBar = segs.map((s) => `${s.label} ${s.n} — ${money(s.amt)}`).join("; ");
+  const ariaBar = barSegs
+    .map((s) => `${s.label} ${s.n} — ${money(s.amt)}`)
+    .join("; ");
 
   const offeredC = useCountUp(offered, 400);
   const stoppedC = useCountUp(stopped, 400);
@@ -1018,7 +1049,7 @@ function LeashReport(params: Ctx) {
                   role="group"
                   aria-label={`Picks by status: ${ariaBar}`}
                 >
-                  {segs.map((s) => (
+                  {barSegs.map((s) => (
                     <button
                       type="button"
                       key={s.key}
@@ -1043,7 +1074,7 @@ function LeashReport(params: Ctx) {
                 <div className="leash-legend" aria-label="Purchases by status">
                   <AgGridReact<LegendRow>
                     theme={legendTheme}
-                    rowData={segs.map((s) => s.legend)}
+                    rowData={legendSegs.map((s) => s.legend)}
                     columnDefs={legendCols}
                     domLayout="autoHeight"
                     headerHeight={0}
@@ -1054,6 +1085,8 @@ function LeashReport(params: Ctx) {
                     rowClassRules={{
                       "leash-row-active": (p: RowClassParams<LegendRow>) =>
                         p.data?.key === active,
+                      "leash-row-empty": (p: RowClassParams<LegendRow>) =>
+                        p.data?.n === 0,
                     }}
                     getRowId={(p) => p.data.key}
                   />

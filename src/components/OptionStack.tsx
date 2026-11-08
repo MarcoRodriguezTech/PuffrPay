@@ -235,12 +235,23 @@ export function OptionStack({
                   ? "Needs your OK"
                   : "Blocked"}
             </span>
-            <strong>{active.title}</strong> — {fmtDollars(active.priceCents)}
+            {active.merchantUrl ? (
+              <a
+                className="stack-link"
+                href={active.merchantUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View item ↗
+              </a>
+            ) : (
+              <strong>{active.title}</strong>
+            )}
           </span>
-          {activeBlocked ? (
-            <span className="opt-blocked">{active.decisionReason}</span>
-          ) : (
-            <span className="stack-btnrow">
+          <span className="stack-btnrow">
+            {activeBlocked ? (
+              <span className="opt-blocked">{active.decisionReason}</span>
+            ) : (
               <button
                 type="button"
                 className="opt-pick stack-pick-btn"
@@ -250,17 +261,17 @@ export function OptionStack({
                 {busy && <span className="spinner" aria-hidden="true" />}
                 Pick this
               </button>
-              <button
-                type="button"
-                className="stack-close"
-                aria-label="Skip these picks"
-                onClick={() => onDismiss(msgId)}
-                disabled={busy}
-              >
-                ×
-              </button>
-            </span>
-          )}
+            )}
+            <button
+              type="button"
+              className="stack-close"
+              aria-label="Skip these picks"
+              onClick={() => onDismiss(msgId)}
+              disabled={busy}
+            >
+              ×
+            </button>
+          </span>
           <span className="stack-hint">
             {activeBlocked ? "drag to browse — × removes it" : "drag to browse · × to bail"}
           </span>

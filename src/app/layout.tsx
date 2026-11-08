@@ -30,7 +30,8 @@ export const metadata: Metadata = {
   description: "Your fun money, on a leash.",
   icons: {
     icon: [
-      { url: ASSETS.mascot, type: "image/png" },
+      { url: ASSETS.logoMark, media: "(prefers-color-scheme: dark)", type: "image/svg+xml" },
+      { url: ASSETS.logoMarkLight, media: "(prefers-color-scheme: light)", type: "image/svg+xml" },
       { url: ASSETS.icon192, sizes: "192x192", type: "image/png" },
       { url: ASSETS.icon512, sizes: "512x512", type: "image/png" },
     ],

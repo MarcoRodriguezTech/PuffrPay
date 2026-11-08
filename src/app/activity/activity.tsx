@@ -602,9 +602,6 @@ function StudioDashboard({
           >
             Reset layout
           </button>
-          <a role="menuitem" href="/audit/classic" onClick={() => setMenuOpen(false)}>
-            Classic log
-          </a>
         </div>
       )}
     </div>

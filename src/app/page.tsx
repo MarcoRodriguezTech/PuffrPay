@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LeashBar } from "@/components/LeashBar";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
+import { ReceiptCard } from "@/components/ReceiptCard";
 import {
   consumePuffFlag,
   fmtDollars,
@@ -13,6 +14,7 @@ import {
   friendlyClientError,
   GENERIC_ERROR,
   isRateLimitMsg,
+  openReceipts,
   refreshBudget,
   storeOf,
   toast,
@@ -97,6 +99,9 @@ interface Purchase {
   policyReason: string;
   agentReasoning: string | null;
   paypalOrderId: string | null;
+  paypalCaptureId: string | null;
+  decidedBy: "policy" | "owner";
+  updatedAt: string;
   errorMessage: string | null;
 }
 
@@ -174,6 +179,8 @@ export default function AgentPage() {
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [pendingErr, setPendingErr] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<"approved" | "rejected" | null>(null);
+  // the last successfully bought purchase — kept so a receipt card can show
+  const [receipt, setReceipt] = useState<Purchase | null>(null);
   const [choosing, setChoosing] = useState<number | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -241,6 +248,7 @@ export default function AgentPage() {
     setPendingErr(null);
     setApproveUrl(null);
     setPurchase(null);
+    setReceipt(null);
     setSteps([]);
     setShown(0);
     setOutcome(null);
@@ -266,6 +274,7 @@ export default function AgentPage() {
         setBlockedAt(Date.now());
         toast(blockedCopy(data.purchase.policyReason, policy));
       } else if (data.purchase?.status === "PURCHASED") {
+        setReceipt(data.purchase);
         toast("Bought. Under your auto-approve limit.");
       }
     } catch (err) {
@@ -292,6 +301,7 @@ export default function AgentPage() {
     setPendingErr(null);
     setApproveUrl(null);
     setPurchase(null);
+    setReceipt(null);
     setOutcome(null);
     setSteps([]);
     setShown(0);
@@ -322,6 +332,7 @@ export default function AgentPage() {
         setBlockedAt(Date.now());
         toast(blockedCopy(data.purchase.policyReason, policy));
       } else if (data.purchase?.status === "PURCHASED") {
+        setReceipt(data.purchase);
         toast("Bought. Under your auto-approve limit.");
       }
     } catch (err) {
@@ -382,6 +393,7 @@ export default function AgentPage() {
       } else if (p.status === "PURCHASED") {
         appendStep({ step: "result", detail: "BOUGHT" });
         setPurchase(null);
+        setReceipt(p);
         setOutcome("approved");
         toast("Payment sent (sandbox)");
       } else if (p.status === "BLOCKED") {
@@ -421,6 +433,7 @@ export default function AgentPage() {
       appendStep({ step: "result", detail: "BOUGHT" });
       setPurchase(null);
       setApproveUrl(null);
+      setReceipt(data.purchase);
       setOutcome("approved");
       toast("Payment sent (sandbox)");
     } catch (err) {
@@ -582,6 +595,19 @@ export default function AgentPage() {
             </div>
           )}
 
+          {receipt && (
+            <div className="chat-receipt">
+              <ReceiptCard purchase={receipt} />
+              <button
+                type="button"
+                className="text"
+                onClick={openReceipts}
+              >
+                All receipts
+              </button>
+            </div>
+          )}
+
           {awaitingOwner && (
             <div className="approval-card">
               <div className="ac-head">Puffr needs your OK</div>
@@ -739,7 +765,7 @@ export default function AgentPage() {
               <PufferGauge ratio={budget.ratio} size={200} blockedAt={blockedAt} />
               <div className="gauge-amount">
                 {fmtWhole(spentDisplay)}
-                <span className="of"> of {fmtWhole(budget.capCents)}</span>
+                <span className="of"> / {fmtWhole(budget.capCents)}</span>
               </div>
               <div style={{ width: "100%", marginTop: "var(--s3)" }}>
                 <LeashBar ratio={budget.ratio} width={180} />

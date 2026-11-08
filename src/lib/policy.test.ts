@@ -16,9 +16,14 @@ const policy: Pick<
   blockedCategories: ["gift cards", "weapons"],
 };
 
-const buy = (amountCents: number, category: string | null = "general") => ({
+const buy = (
+  amountCents: number,
+  category: string | null = "general",
+  title: string | null = null
+) => ({
   amountCents,
   category,
+  title,
 });
 
 describe("evaluatePolicy", () => {
@@ -66,6 +71,30 @@ describe("evaluatePolicy", () => {
   it("matches blocked categories case-insensitively and trims whitespace", () => {
     const r = evaluatePolicy(policy, buy(1_00, "  Gift Cards "), 0);
     expect(r.decision).toBe("BLOCK");
+  });
+
+  it("matches blocked words inside catalog taxonomy categories", () => {
+    // Channel3-style taxonomy never equals owner vocabulary exactly.
+    const r = evaluatePolicy(policy, buy(1_00, "Gift Giving"), 0);
+    expect(r.decision).toBe("BLOCK");
+  });
+
+  it("matches blocked words against the product title", () => {
+    const r = evaluatePolicy(
+      policy,
+      buy(1_00, "Hobby Kits", "Replica Weapon Model Kit"),
+      0
+    );
+    expect(r.decision).toBe("BLOCK");
+  });
+
+  it("does not block when no blocked word appears in category or title", () => {
+    const r = evaluatePolicy(
+      policy,
+      buy(1_00, "Climbing Shoes", "Approach Shoe"),
+      0
+    );
+    expect(r.decision).toBe("ALLOW");
   });
 
   it("two purchases in a row: first fills the cap, second is blocked", () => {

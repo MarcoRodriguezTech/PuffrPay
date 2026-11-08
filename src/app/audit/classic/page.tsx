@@ -268,7 +268,8 @@ export default function AuditPage() {
                 blockedAt={blockedAt}
               />
               <div className="gauge-amount">
-                {fmtWhole(budget.spentCents)} of {fmtWhole(budget.capCents)}
+                {fmtWhole(budget.spentCents)}
+                <span className="of"> / {fmtWhole(budget.capCents)}</span>
               </div>
               <div className="gauge-state">
                 {pct}% — {state === "super" ? "???" : STATE_LABELS[state]}
@@ -283,7 +284,6 @@ export default function AuditPage() {
             <div className="row"><span>0-50%</span><span className="muted">Calm</span></div>
             <div className="row"><span>50-80%</span><span className="muted">Swelling</span></div>
             <div className="row"><span>80-90%</span><span className="muted">Puffed</span></div>
-            <div className="row"><span>90-99%</span><span className="muted">???</span></div>
             <div className="row"><span>100%</span><span className="muted">Maxed out</span></div>
           </div>
         </aside>
