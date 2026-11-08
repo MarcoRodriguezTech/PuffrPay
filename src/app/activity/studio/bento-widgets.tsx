@@ -356,29 +356,36 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
 
   // The mascot drifts around its card like a fish in a tank, bouncing off the
   // card's side walls, the head bottom, and the top of the budget bar. Layout
-  // position stays put — we only animate transform — so nothing reflows.
+  // position stays put — we only animate `translate` — so nothing reflows.
+  //
+  // A constant-speed bounce is a triangle wave on each axis, so it runs as
+  // Web Animations instead of a per-frame JS loop: linear back-and-forth on
+  // X (outer span) and Y (inner gauge), plus a flip of the art at every X
+  // turnaround. These run on the compositor — no main-thread work per frame,
+  // where the old rAF loop drove a full style/paint pass at display rate.
   useEffect(() => {
     const mascot = mascotRef.current;
     const card = mascot?.closest<HTMLElement>(".funmoney");
     const head = card?.querySelector<HTMLElement>(".fm-head");
     const bar = card?.querySelector<HTMLElement>(".fm-bar");
+    const swimY = mascot?.querySelector<HTMLElement>(".puffer");
     const img = mascot?.querySelector<HTMLElement>("img.art");
-    if (!mascot || !card || !head || !bar) return;
+    if (!mascot || !card || !head || !bar || !swimY) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let pos = { x: 0, y: 0 };
-    let vel = { x: 60, y: 45 };
-    let flipped = false;
-    let raf = 0;
-    let last = performance.now();
+    // px per second — the same speeds as the old loop
+    const VX = 60;
+    const VY = 45;
+    let anims: Animation[] = [];
+    let onScreen = true;
+    let key = "";
 
-    const step = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-
-      // Displacement bounds derived from the mascot's transform-free home
-      // position. The gauge box pads the art ~1.5x for fx, so the bounds use
-      // the art's edge — the fish visibly touches the walls and the bar.
+    // Displacement bounds derived from the mascot's transform-free home
+    // position. The gauge box pads the art ~1.5x for fx, so the bounds use
+    // the art's edge — the fish visibly touches the walls and the bar.
+    // Re-measured (and the swim rebuilt) only when something in the card
+    // resizes.
+    const build = () => {
       const cardR = card.getBoundingClientRect();
       const cs = getComputedStyle(card);
       const padL = parseFloat(cs.paddingLeft) || 0;
@@ -393,27 +400,74 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
       const minY = headB - mascot.offsetTop - inset;
       const maxY = barT - h - mascot.offsetTop + inset;
 
-      pos.x += vel.x * dt;
-      pos.y += vel.y * dt;
-      if (pos.x <= minX) { pos.x = minX; vel.x = Math.abs(vel.x); }
-      else if (pos.x >= maxX) { pos.x = maxX; vel.x = -Math.abs(vel.x); }
-      if (minY <= maxY) {
-        if (pos.y <= minY) { pos.y = minY; vel.y = Math.abs(vel.y); }
-        else if (pos.y >= maxY) { pos.y = maxY; vel.y = -Math.abs(vel.y); }
-      } else {
-        pos.y = 0;
-      }
+      // Resize callbacks fire for every observed child — skip no-op rebuilds
+      // so the fish doesn't restart its path.
+      const next = [minX, maxX, minY, maxY].map(Math.round).join();
+      if (next === key) return;
+      key = next;
 
-      const wantFlip = vel.x < 0;
-      if (wantFlip !== flipped && img) {
-        flipped = wantFlip;
-        img.classList.toggle("flip", flipped);
+      anims.forEach((a) => a.cancel());
+      anims = [];
+      const loop = { iterations: Infinity, direction: "alternate", easing: "linear" } as const;
+      const spanX = maxX - minX;
+      if (spanX > 0) {
+        const tx = (spanX / VX) * 1000;
+        const ax = mascot.animate(
+          [{ translate: `${minX}px 0` }, { translate: `${maxX}px 0` }],
+          { ...loop, duration: tx }
+        );
+        // Start from the home position, heading right, like the old loop.
+        ax.currentTime = (Math.max(0, Math.min(spanX, -minX)) / spanX) * tx;
+        anims.push(ax);
+        if (img) {
+          // Facing follows the X leg: right-bound half of the cycle unflipped,
+          // left-bound half mirrored (the paired 0.5 offsets make it a jump).
+          const af = img.animate(
+            [
+              { scale: "1 1", offset: 0 },
+              { scale: "1 1", offset: 0.5 },
+              { scale: "-1 1", offset: 0.5 },
+              { scale: "-1 1", offset: 1 },
+            ],
+            { duration: tx * 2, iterations: Infinity, easing: "linear" }
+          );
+          af.currentTime = ax.currentTime;
+          anims.push(af);
+        }
       }
-      mascot.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`;
-      raf = requestAnimationFrame(step);
+      const spanY = maxY - minY;
+      if (spanY > 0) {
+        const ty = (spanY / VY) * 1000;
+        const ay = swimY.animate(
+          [{ translate: `0 ${minY}px` }, { translate: `0 ${maxY}px` }],
+          { ...loop, duration: ty }
+        );
+        ay.currentTime = (Math.max(0, Math.min(spanY, -minY)) / spanY) * ty;
+        anims.push(ay);
+      }
+      if (!onScreen) anims.forEach((a) => a.pause());
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    build();
+    // Any child changing size can move the head/bar edges.
+    const ro = new ResizeObserver(build);
+    ro.observe(card);
+    for (const el of card.children) ro.observe(el);
+
+    // Swim only while the card is on screen; scrolled away, the swim and the
+    // gauge's CSS bob/bubble animations pause (hidden tabs pause on their own).
+    const io = new IntersectionObserver((entries) => {
+      // Entries can arrive batched (e.g. "hidden" while Studio mounts the
+      // widget, then "visible") — only the newest one is current.
+      onScreen = entries[entries.length - 1].isIntersecting;
+      card.classList.toggle("fm-paused", !onScreen);
+      anims.forEach((a) => (onScreen ? a.play() : a.pause()));
+    });
+    io.observe(card);
+    return () => {
+      anims.forEach((a) => a.cancel());
+      ro.disconnect();
+      io.disconnect();
+    };
   }, []);
 
   return (

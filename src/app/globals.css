@@ -210,9 +210,11 @@ body {
   line-height: 1.45;
 }
 
-/* Dark glassmorphism: the UI is backlit by soft colored lights — blurred
-   radial blobs of electric blue, cyan and indigo fixed behind every panel.
-   The translucent cards + backdrop-filter blur let this glow bleed through. */
+/* Dark glassmorphism: the UI is backlit by soft colored lights — radial
+   blobs of electric blue, cyan and indigo fixed behind every panel, glowing
+   through the translucent cards. The softness is built into the gradients
+   (wide ellipses, an eased mid stop) rather than a filter: blur(), which
+   would cost a full-viewport GPU render pass on every frame. */
 body::before {
   content: "";
   position: fixed;
@@ -222,22 +224,20 @@ body::before {
   /* Key light top-right behind the hero card, a fill light low-left behind
      the lower cards, and a faint cool wash across the top. */
   background:
-    radial-gradient(34% 40% at 86% 16%, rgba(37, 99, 235, 0.55), transparent 70%),
-    radial-gradient(22% 24% at 92% 6%, rgba(125, 211, 252, 0.28), transparent 70%),
-    radial-gradient(38% 36% at 14% 88%, rgba(29, 78, 216, 0.4), transparent 70%),
-    radial-gradient(44% 30% at 30% 0%, rgba(56, 189, 248, 0.16), transparent 70%),
-    radial-gradient(50% 40% at 60% 60%, rgba(30, 58, 138, 0.18), transparent 70%);
-  filter: blur(90px);
+    radial-gradient(44% 52% at 86% 16%, rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0.2) 35%, transparent 75%),
+    radial-gradient(30% 32% at 92% 6%, rgba(125, 211, 252, 0.2), rgba(125, 211, 252, 0.09) 35%, transparent 75%),
+    radial-gradient(48% 46% at 14% 88%, rgba(29, 78, 216, 0.3), rgba(29, 78, 216, 0.14) 35%, transparent 75%),
+    radial-gradient(54% 40% at 30% 0%, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05) 35%, transparent 75%),
+    radial-gradient(60% 50% at 60% 60%, rgba(30, 58, 138, 0.14), rgba(30, 58, 138, 0.06) 35%, transparent 75%);
 }
 /* Light theme gets its own pastel lights: pale ocean and sky blue orbs,
-   blurred even harder, so the frosted panels float on soft color. */
+   softer still, so the frosted panels float on soft color. */
 :root[data-theme="light"] body::before {
   background:
-    radial-gradient(36% 40% at 86% 14%, rgba(96, 165, 250, 0.6), transparent 70%),
-    radial-gradient(40% 36% at 12% 90%, rgba(147, 197, 253, 0.55), transparent 70%),
-    radial-gradient(44% 34% at 28% 2%, rgba(186, 230, 253, 0.6), transparent 70%),
-    radial-gradient(40% 34% at 64% 52%, rgba(191, 219, 254, 0.4), transparent 70%);
-  filter: blur(110px);
+    radial-gradient(48% 52% at 86% 14%, rgba(96, 165, 250, 0.45), rgba(96, 165, 250, 0.2) 35%, transparent 75%),
+    radial-gradient(52% 48% at 12% 90%, rgba(147, 197, 253, 0.42), rgba(147, 197, 253, 0.18) 35%, transparent 75%),
+    radial-gradient(56% 46% at 28% 2%, rgba(186, 230, 253, 0.45), rgba(186, 230, 253, 0.2) 35%, transparent 75%),
+    radial-gradient(52% 46% at 64% 52%, rgba(191, 219, 254, 0.3), rgba(191, 219, 254, 0.13) 35%, transparent 75%);
 }
 
 a {
@@ -1686,7 +1686,6 @@ img[src*="/mascot/"] {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card-grad);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
@@ -3262,11 +3261,13 @@ img[src*="/mascot/"] {
 }
 
 /* Widget cards: lit glass. The container is the rounded, clipped box that
-   Studio draws the border on, so the gradient + blur live here. */
+   Studio draws the border on, so the gradient lives here. No backdrop
+   blur (see the dark glassmorphism block) — `isolation` keeps the stacking
+   context the widget body and skeleton veil were laid out against. */
 .studio-card .ag-studio-layout-widget-container {
   background: var(--card-sheen), var(--card-grad);
   border-color: var(--glass-line);
-  backdrop-filter: var(--glass-blur);
+  isolation: isolate;
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
@@ -3280,7 +3281,6 @@ img[src*="/mascot/"] {
 }
 .studio-card .ag-studio-layout-widget:has(.kpi-row) .ag-studio-layout-widget-container {
   background: none;
-  backdrop-filter: none;
   box-shadow: none;
 }
 
@@ -3300,16 +3300,15 @@ img[src*="/mascot/"] {
 }
 
 /* Widget-loading veil — the same glass recipe as the bento panels it covers:
-   translucent card gradient, glass edge, radius, blur + raise shadow. The
+   translucent card gradient, glass edge, radius + raise shadow. The
    --glass-* tokens resolve per theme (navy glass dark / frosted white light). */
 .studio-card .ag-studio-layout-widget-skeleton-overlay-container {
   background: var(--card-grad);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
   /* The veil stays mounted at opacity:0 after its widget loads — and the
-     backdrop-filter on .ag-studio-layout-widget-container makes it a
+     isolation on .ag-studio-layout-widget-container makes it a
      stacking context, so this later sibling sits above the widget body in
      hit order and eats every click. Purely visual: never let it hit-test. */
   pointer-events: none;
@@ -3435,9 +3434,8 @@ img[src*="/mascot/"] {
 
 /* ---------- dark glassmorphism ---------- */
 
-/* Every panel: translucent navy (via --card-grad), backdrop blur so the
-   ambient lights bleed through, hairline edge, and an inner top highlight —
-   the "lit glass" edge. */
+/* Every panel: translucent navy (via --card-grad), hairline edge, and an
+   inner top highlight — the "lit glass" edge. */
 :root[data-theme="dark"] .ag-studio-widget,
 :root[data-theme="dark"] .kpi-tile,
 :root[data-theme="dark"] .rail,
@@ -3454,8 +3452,19 @@ img[src*="/mascot/"] {
 :root[data-theme="dark"] .approval-card,
 :root[data-theme="dark"] .wait-card,
 :root[data-theme="dark"] .studio-skeleton {
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+/* Backdrop blur only where real content moves underneath: floating
+   overlays. In-page cards sit on the already-soft light field, where a blur
+   is invisible but costs an extra GPU render pass per card on every frame
+   (the main source of scroll jank). */
+:root[data-theme] .ask-panel,
+:root[data-theme] .drawer,
+:root[data-theme] .customize-menu,
+:root[data-theme] .ag-studio-panel-container,
+:root[data-theme] .toast {
+  backdrop-filter: var(--glass-blur);
 }
 
 /* The standalone fun money card is the same lit glass as the widgets; the
@@ -3472,7 +3481,8 @@ img[src*="/mascot/"] {
 }
 
 /* Frosted light glass: same panel list as dark — translucent white bg comes
-   from --card-grad; blur 20px, crisp white edge, soft diffuse shadow. */
+   from --card-grad; crisp white edge, soft diffuse shadow (overlay blur is
+   set above). */
 :root[data-theme="light"] .ag-studio-widget,
 :root[data-theme="light"] .kpi-tile,
 :root[data-theme="light"] .rail,
@@ -3489,7 +3499,6 @@ img[src*="/mascot/"] {
 :root[data-theme="light"] .approval-card,
 :root[data-theme="light"] .wait-card,
 :root[data-theme="light"] .studio-skeleton {
-  backdrop-filter: var(--glass-blur);
   border-color: var(--glass-line);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
@@ -3917,10 +3926,12 @@ img[src*="/mascot/"] {
   position: relative;
   z-index: 0;
   pointer-events: none;
-  will-change: transform;
+  will-change: translate;
 }
-.funmoney .fm-mascot img.art.flip {
-  scale: -1 1;
+/* off-screen: the swim animations pause (JS) and the gauge's idle CSS
+   animations pause with them */
+.funmoney.fm-paused .fm-mascot * {
+  animation-play-state: paused;
 }
 .funmoney .fm-amount {
   flex: none;

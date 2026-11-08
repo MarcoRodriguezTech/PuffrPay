@@ -9,7 +9,15 @@
 // Studio itself fails to load, we fall back to the classic AG Grid view at
 // /audit/classic.
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ComponentProps,
+} from "react";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import {
@@ -79,6 +87,40 @@ const PROMPT_STARTERS = [
   { label: "How much did Puffr spend?", prompt: "How much has the agent spent this month against the cap?" },
   { label: "Summarise the requests", prompt: "Summarise recent purchase requests and their statuses." },
 ];
+
+// Every <AgStudio> prop below keeps one identity for the page's lifetime.
+// Studio re-renders the page on each state update (filter clicks, panel
+// toggles, hover selection); fresh objects/handlers on every render made it
+// diff and re-apply its configuration each time.
+type StudioProps = ComponentProps<typeof AgStudio>;
+
+const STUDIO_STYLE = { height: "auto", width: "100%" } as const;
+const STUDIO_LAYOUT = { widgetBorderEnabled: true } as const;
+const STUDIO_MODULES = [AgStudioAiModule];
+
+// Studio appends "(sum)" etc. to aggregated field names — the
+// column headers and the reference design just want the name.
+const STUDIO_LOCALE_TEXT = {
+  aggregationSumFieldName: "${name}",
+  aggregationAvgFieldName: "${name}",
+  aggregationCountFieldName: "${name}",
+  aggregationCountdFieldName: "${name}",
+};
+
+// Dock the AI assistant panel on the left. `ai` is typed as an
+// edit-mode-only panel, but the runtime honours it in view mode
+// too — and declaring `view` removes the edit defaults, so both
+// modes are spelled out here.
+const STUDIO_PANELS: StudioProps["panels"] = {
+  // Dock every panel on the right — the overlay CSS slides
+  // expanded panels in from the right edge, and a left-docked
+  // panel would render off-screen. `ai` is typed as
+  // edit-mode-only but the runtime honours it in view mode too;
+  // declaring `view` removes the edit defaults, so both modes
+  // are spelled out here.
+  view: { right: ["ai" as never, "filters"] },
+  edit: { right: ["ai", "filters", "edit", "data"] },
+};
 
 type SavedDashboard = {
   state: AgReportState;
@@ -198,6 +240,21 @@ function StudioDashboard({
   });
   const [studioState, setStudioState] = useState<AgReportState | null>(null);
   const [mode, setMode] = useState<AgStudioMode>("view");
+
+  // Stable Studio event handlers — they only touch refs and state setters.
+  const onApiReady = useCallback<NonNullable<StudioProps["onApiReady"]>>((event) => {
+    apiRef.current = event.api;
+  }, []);
+  const onStudioReady = useCallback<NonNullable<StudioProps["onStudioReady"]>>((event) => {
+    setStudioState(event.api.getState());
+  }, []);
+  const onStateUpdated = useCallback<NonNullable<StudioProps["onStateUpdated"]>>((event) => {
+    setStudioState(event.state);
+  }, []);
+  const onErrorRaised = useCallback<NonNullable<StudioProps["onErrorRaised"]>>((event) => {
+    console.error("[studio] runtime error:", event);
+    setFailed(true);
+  }, []);
 
   const state = studioState ?? initialState;
   const studioData = useMemo(() => buildStudioData(data), [data]);
@@ -575,51 +632,22 @@ function StudioDashboard({
             <DashRowsContext.Provider value={data.requests}>
             <AgStudio
               key={theme}
-              style={{ height: "auto", width: "100%" }}
+              style={STUDIO_STYLE}
               theme={studioTheme}
-              layout={{ widgetBorderEnabled: true }}
+              layout={STUDIO_LAYOUT}
               data={studioData}
               context={context}
-              // Studio appends "(sum)" etc. to aggregated field names — the
-              // column headers and the reference design just want the name.
-              localeText={{
-                aggregationSumFieldName: "${name}",
-                aggregationAvgFieldName: "${name}",
-                aggregationCountFieldName: "${name}",
-                aggregationCountdFieldName: "${name}",
-              }}
+              localeText={STUDIO_LOCALE_TEXT}
               widgets={widgets}
-              modules={[AgStudioAiModule]}
-              // Dock the AI assistant panel on the left. `ai` is typed as an
-              // edit-mode-only panel, but the runtime honours it in view mode
-              // too — and declaring `view` removes the edit defaults, so both
-              // modes are spelled out here.
-              panels={{
-                // Dock every panel on the right — the overlay CSS slides
-                // expanded panels in from the right edge, and a left-docked
-                // panel would render off-screen. `ai` is typed as
-                // edit-mode-only but the runtime honours it in view mode too;
-                // declaring `view` removes the edit defaults, so both modes
-                // are spelled out here.
-                view: { right: ["ai" as never, "filters"] },
-                edit: { right: ["ai", "filters", "edit", "data"] },
-              }}
+              modules={STUDIO_MODULES}
+              panels={STUDIO_PANELS}
               ai={ai}
               initialState={initialState}
               mode={mode}
-              onApiReady={(event) => {
-                apiRef.current = event.api;
-              }}
-              onStudioReady={(event) => {
-                setStudioState(event.api.getState());
-              }}
-              onStateUpdated={(event) => {
-                setStudioState(event.state);
-              }}
-              onErrorRaised={(event) => {
-                console.error("[studio] runtime error:", event);
-                setFailed(true);
-              }}
+              onApiReady={onApiReady}
+              onStudioReady={onStudioReady}
+              onStateUpdated={onStateUpdated}
+              onErrorRaised={onErrorRaised}
             />
             </DashRowsContext.Provider>
           </AgStudioProvider>
