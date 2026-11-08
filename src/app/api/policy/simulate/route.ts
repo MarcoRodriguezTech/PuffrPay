@@ -5,10 +5,14 @@ import { friendlyError } from "@/lib/api-error";
 
 export const dynamic = "force-dynamic";
 
-/** Dry-run the policy engine: {amountCents, category} -> {decision, reason}. */
+/** Dry-run the policy engine: {amountCents, category, title?} -> {decision, reason}. */
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as { amountCents?: number; category?: string };
+    const body = (await req.json()) as {
+      amountCents?: number;
+      category?: string;
+      title?: string;
+    };
     const amountCents = Math.round(Number(body.amountCents));
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
       return NextResponse.json(
@@ -19,7 +23,11 @@ export async function POST(req: Request) {
     const [policy, budget] = await Promise.all([getPolicy(), getBudget()]);
     const result = evaluatePolicy(
       policy,
-      { amountCents, category: body.category?.trim() || null },
+      {
+        amountCents,
+        category: body.category?.trim() || null,
+        title: body.title?.trim() || null,
+      },
       budget.spentCents
     );
     return NextResponse.json(result);

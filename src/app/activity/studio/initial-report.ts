@@ -71,7 +71,7 @@ const activityWidgets: AgPageState["widgets"] = {
     },
     sort: [{ field: { id: "requests.createdAt" }, direction: "desc" }],
     format: {
-      ...title("All purchase requests"),
+      ...title("All activity"),
       style: {
         // Columns size to content so every column fits without a sideways
         // scroll on desktop widths; the pinned footer row is relabelled in
@@ -105,15 +105,15 @@ const activity: AgPageState = {
   filter: gridFilter,
   widgetLayout: {
     [W_KPI_ROW]: at(0, 0, 12, 8),
-    [W_SPEND_TREND]: at(0, 8, 8, 20),
+    [W_SPEND_TREND]: at(0, 8, 8, 18),
     // Tall right column: Fun money on top, Recent activity below — one card.
-    [W_FUN_RECENT]: at(8, 8, 4, 46),
-    // Spend by day + Leash report: both end at row 54, flush with the
-    // fun-recent column's bottom edge.
-    [W_SPEND_DAY]: at(0, 28, 4, 26),
-    [W_STATUS_BARS]: at(4, 28, 4, 26),
-    "requests-grid": at(0, 54, 12, 30),
-    [W_GRID_PAGER]: at(0, 84, 12, 4),
+    [W_FUN_RECENT]: at(8, 8, 4, 44),
+    // Spend by day + Leash report: both end at row 52, flush with the
+    // fun-recent column's bottom edge — keeps the row clear of the fold.
+    [W_SPEND_DAY]: at(0, 26, 4, 26),
+    [W_STATUS_BARS]: at(4, 26, 4, 26),
+    "requests-grid": at(0, 52, 12, 30),
+    [W_GRID_PAGER]: at(0, 82, 12, 4),
   },
 };
 

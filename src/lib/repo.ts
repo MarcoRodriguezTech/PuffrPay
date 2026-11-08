@@ -46,6 +46,7 @@ interface PurchaseRow {
   decided_by: "policy" | "owner";
   paypal_order_id: string | null;
   paypal_capture_id: string | null;
+  paypal_approve_url: string | null;
   error_message: string | null;
   updated_at: Date;
 }
@@ -68,6 +69,7 @@ function toPurchase(r: PurchaseRow): PurchaseRequest {
     decidedBy: r.decided_by,
     paypalOrderId: r.paypal_order_id,
     paypalCaptureId: r.paypal_capture_id,
+    paypalApproveUrl: r.paypal_approve_url,
     errorMessage: r.error_message,
     updatedAt: r.updated_at.toISOString(),
   };
@@ -208,6 +210,7 @@ export async function updatePurchase(
     decidedBy: "policy" | "owner";
     paypalOrderId: string | null;
     paypalCaptureId: string | null;
+    paypalApproveUrl: string | null;
     errorMessage: string | null;
   }>
 ): Promise<PurchaseRequest> {
@@ -216,6 +219,7 @@ export async function updatePurchase(
     decidedBy: "decided_by",
     paypalOrderId: "paypal_order_id",
     paypalCaptureId: "paypal_capture_id",
+    paypalApproveUrl: "paypal_approve_url",
     errorMessage: "error_message",
   };
   const sets: string[] = [];
@@ -263,10 +267,23 @@ export async function getBudget(): Promise<BudgetInfo> {
 
 // Duck-typed mirror of AgentOptionsPayload in agent.ts (repo can't import
 // agent — agent already imports repo). Only the fields the dashboard needs.
+export interface OptionSetItem {
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  merchantUrl: string | null;
+  category: string | null;
+  priceCents: number;
+  decision: PolicyDecision;
+  decisionReason: string | null;
+}
+
 export interface OptionSetRow {
   id: number;
   createdAt: string;
-  items: { id: string; priceCents: number; decision: PolicyDecision }[];
+  items: OptionSetItem[];
+  /** Cards the owner X'd out; archived on the payload so they still count as offered. */
+  removed: OptionSetItem[];
   picked: string | null;
   dismissed: boolean;
 }
@@ -287,14 +304,30 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
     try {
       const p = JSON.parse(r.content);
       if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
+      const item = (i: {
+        id?: string;
+        title?: string;
+        imageUrl?: string;
+        merchantUrl?: string;
+        category?: string;
+        priceCents?: number;
+        decision?: string;
+        decisionReason?: string;
+      }): OptionSetItem => ({
+        id: String(i.id ?? ""),
+        title: String(i.title ?? "Untitled pick"),
+        imageUrl: i.imageUrl ? String(i.imageUrl) : null,
+        merchantUrl: i.merchantUrl ? String(i.merchantUrl) : null,
+        category: i.category ? String(i.category) : null,
+        priceCents: Number(i.priceCents ?? 0),
+        decision: (i.decision ?? "ALLOW") as PolicyDecision,
+        decisionReason: i.decisionReason ? String(i.decisionReason) : null,
+      });
       out.push({
         id: r.id,
         createdAt: r.created_at.toISOString(),
-        items: p.items.map((i: { id?: string; priceCents?: number; decision?: string }) => ({
-          id: String(i.id ?? ""),
-          priceCents: Number(i.priceCents ?? 0),
-          decision: (i.decision ?? "ALLOW") as PolicyDecision,
-        })),
+        items: p.items.map(item),
+        removed: (Array.isArray(p.removed) ? p.removed : []).map(item),
         picked: typeof p.picked === "string" ? p.picked : null,
         dismissed: p.dismissed === true,
       });
@@ -303,4 +336,37 @@ export async function listOptionSets(limit = 200): Promise<OptionSetRow[]> {
     }
   }
   return out;
+}
+
+/**
+ * Close every still-open options set (no pick, not dismissed). A new shelf
+ * supersedes them — only one live carousel exists at a time, so their cards
+ * resolve to Skipped in the feed instead of sitting Offered forever.
+ */
+export async function dismissOpenOptionSets(
+  exceptMessageId?: number
+): Promise<number> {
+  const rows = await query<{ id: number; content: string }>(
+    `SELECT id, content FROM chat_messages
+     WHERE role = 'agent' AND content LIKE '%"kind":"options"%'`,
+    []
+  );
+  let n = 0;
+  for (const r of rows) {
+    if (exceptMessageId != null && r.id === exceptMessageId) continue;
+    try {
+      const p = JSON.parse(r.content);
+      if (p?.kind !== "options" || !Array.isArray(p.items)) continue;
+      if (p.picked || p.dismissed) continue;
+      p.dismissed = true;
+      await query("UPDATE chat_messages SET content = $1 WHERE id = $2", [
+        JSON.stringify(p),
+        r.id,
+      ]);
+      n++;
+    } catch {
+      /* not an options blob */
+    }
+  }
+  return n;
 }

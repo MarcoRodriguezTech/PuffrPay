@@ -1,10 +1,11 @@
 import { getLLM } from "./llm";
 import type { OptionPick } from "./llm/types";
 import { searchProducts } from "./channel3";
-import { evaluatePolicy } from "./policy";
+import { evaluatePolicy, matchesBlocked } from "./policy";
 import type { PolicyDecision } from "./types";
 import {
   createPurchaseRequest,
+  dismissOpenOptionSets,
   findPendingByProduct,
   getBudget,
   getMonthSpentCents,
@@ -43,6 +44,8 @@ export interface AgentOptionsPayload {
   kind: "options";
   text: string;
   items: OptionsItem[];
+  /** Cards the owner X'd out — kept so the dashboard still counts them as offered. */
+  removed?: OptionsItem[];
   picked?: string;
   dismissed?: boolean;
 }
@@ -125,12 +128,15 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   const spent = await getMonthSpentCents();
 
   // A single viable option skips the carousel — straight through the pipeline.
+  // The new run owns the shelf: any older still-open carousels are dismissed
+  // so their cards resolve to Skipped instead of sitting pickable forever.
   if (items.length === 1) {
     const product = items[0];
     steps.push({
       step: "pick",
       detail: `${product.title} - $${(product.priceCents / 100).toFixed(2)} - ${storeOf(product.merchantUrl)}`,
     });
+    await dismissOpenOptionSets();
     return finalizePick(product, product.reasoning, steps, policy, spent);
   }
 
@@ -138,7 +144,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   const optionsItems: OptionsItem[] = items.map((p) => {
     const d = evaluatePolicy(
       policy,
-      { amountCents: p.priceCents, category: p.category },
+      { amountCents: p.priceCents, category: p.category, title: p.title },
       spent
     );
     return {
@@ -166,6 +172,9 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     text: `Found ${optionsItems.length} picks under $${(plan.maxPriceCents / 100).toFixed(0)} — choose one:`,
     items: optionsItems,
   } satisfies AgentOptionsPayload);
+  // The new shelf supersedes any older still-open carousels — dismiss them
+  // before this payload lands so only one live set exists at a time.
+  await dismissOpenOptionSets();
   await logChat("agent", reply);
   return { steps, reply, purchase: null, approveUrl: null, stub: false };
 }
@@ -253,7 +262,11 @@ export async function updateOptions(
   if (!payload || payload.picked) return null;
 
   if (change.removeId) {
+    // Archive rather than delete — the card was still offered, so the
+    // dashboard's option-level stats keep counting it.
+    const dropped = payload.items.filter((i) => i.id === change.removeId);
     payload.items = payload.items.filter((i) => i.id !== change.removeId);
+    payload.removed = [...(payload.removed ?? []), ...dropped];
   }
   if (change.dismiss || payload.items.length === 0) {
     payload.dismissed = true;
@@ -289,11 +302,21 @@ async function finalizePick(
   // --- deterministic policy engine (never the LLM) ---
   const decision = evaluatePolicy(
     policy,
-    { amountCents: product.priceCents, category: product.category },
+    {
+      amountCents: product.priceCents,
+      category: product.category,
+      title: product.title,
+    },
     spent
   );
   steps.push(
-    ...describeChecks(policy, product.priceCents, spent, product.category)
+    ...describeChecks(
+      policy,
+      product.priceCents,
+      spent,
+      product.category,
+      product.title
+    )
   );
 
   const status =
@@ -365,7 +388,8 @@ function describeChecks(
   policy: Policy,
   amountCents: number,
   monthSpentCents: number,
-  category: string | null
+  category: string | null,
+  title: string | null
 ): AgentStep[] {
   const fmt = (c: number) => `$${(c / 100).toFixed(0)}`;
   const pad = (s: string) => s.padEnd(38, ".");
@@ -389,11 +413,7 @@ function describeChecks(
     }`,
   });
   if (policy.blockedCategories.length > 0) {
-    const hit =
-      category != null &&
-      policy.blockedCategories
-        .map((c) => c.trim().toLowerCase())
-        .includes(category.trim().toLowerCase());
+    const hit = matchesBlocked(policy.blockedCategories, { category, title });
     steps.push({
       step: "policy",
       detail: `${pad(`blocked categories: ${policy.blockedCategories.join(", ")}`)} ${

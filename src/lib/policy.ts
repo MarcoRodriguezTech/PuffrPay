@@ -3,11 +3,42 @@ import type { Policy, PolicyDecision } from "./types";
 export interface PolicyInput {
   amountCents: number;
   category: string | null;
+  title?: string | null;
 }
 
 export interface PolicyResult {
   decision: PolicyDecision;
   reason: string;
+}
+
+/**
+ * Word set for blocked-category matching: lowercase, split on non-alphanumerics,
+ * 3+ chars, trailing -s/-es stripped so singular and plural line up.
+ * Catalog taxonomies ("Gaming Headsets") never equal owner vocabulary
+ * ("headsets") exactly — matching is word-level, against category AND title.
+ */
+function wordsOf(s: string): Set<string> {
+  return new Set(
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 3)
+      .map((w) => w.replace(/(?:es|s)$/, ""))
+  );
+}
+
+export function matchesBlocked(
+  blockedCategories: string[],
+  input: { category: string | null; title?: string | null }
+): boolean {
+  if (blockedCategories.length === 0) return false;
+  const have = new Set([
+    ...wordsOf(input.category ?? ""),
+    ...wordsOf(input.title ?? ""),
+  ]);
+  return blockedCategories.some((b) =>
+    [...wordsOf(b)].some((w) => have.has(w))
+  );
 }
 
 /**
@@ -25,14 +56,9 @@ export function evaluatePolicy(
   input: PolicyInput,
   monthSpentCents: number
 ): PolicyResult {
-  const { amountCents, category } = input;
+  const { amountCents, category, title } = input;
 
-  if (
-    category != null &&
-    policy.blockedCategories
-      .map((c) => c.trim().toLowerCase())
-      .includes(category.trim().toLowerCase())
-  ) {
+  if (matchesBlocked(policy.blockedCategories, { category, title })) {
     return { decision: "BLOCK", reason: "blocked category" };
   }
 

@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { ReceiptCard, type ReceiptPurchase } from "@/components/ReceiptCard";
 
 function ReturnInner() {
   const params = useSearchParams();
   const token = params.get("token");
   const [state, setState] = useState<"working" | "ok" | "err">("working");
   const [detail, setDetail] = useState("");
+  const [purchase, setPurchase] = useState<ReceiptPurchase | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -25,9 +27,7 @@ function ReturnInner() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error || "capture failed");
         setState("ok");
-        setDetail(
-          `"${d.purchase.productTitle}" — $${(d.purchase.amountCents / 100).toFixed(2)} captured${d.purchase.paypalCaptureId ? ` (${d.purchase.paypalCaptureId})` : ""}.`
-        );
+        setPurchase(d.purchase);
       })
       .catch((e) => {
         setState("err");
@@ -39,10 +39,10 @@ function ReturnInner() {
     <main className="page">
       <div className="card" style={{ maxWidth: 520 }}>
         {state === "working" && <p>Capturing the sandbox payment…</p>}
-        {state === "ok" && (
+        {state === "ok" && purchase && (
           <>
             <h3 style={{ marginTop: 0 }}>Payment captured</h3>
-            <p>{detail}</p>
+            <ReceiptCard purchase={purchase} />
             <p className="muted">You can close this tab.</p>
           </>
         )}

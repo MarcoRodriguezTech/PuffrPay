@@ -55,12 +55,12 @@
   /* request statuses: one token per canonical status (src/lib/status.tsx),
      each >=4.5:1 on card surfaces. --ok/--warn/--danger stay reserved for
      genuine warnings (cap line, errors, delta chips). */
-  --st-bought: #2bc48a;
+  --st-bought: #3b82f6;
   --st-paypal: #60a5fa;
-  --st-waiting: #f2b84b;
+  --st-waiting: #93c5fd;
   --st-blocked: #ff6b5e;
-  --st-rejected: #94a3b8;
-  --st-failed: #fb923c;
+  --st-rejected: #64748b;
+  --st-failed: #94a3b8;
   --glow: radial-gradient(900px 520px at 0% 0%, rgba(56, 189, 248, 0.1), transparent 65%);
   --shadow-raise: 0 12px 32px rgba(2, 6, 12, 0.55);
   --shadow-raise-sm: 0 6px 18px rgba(2, 6, 12, 0.4);
@@ -142,12 +142,15 @@
      neutral/stopped. --gold/--warn stay as the "needs attention" accent. */
   --paper: #f1f5f9;
   --card: rgba(255, 255, 255, 0.65);
+  /* frosted white glass (view-toggle track) — dark theme's navy would
+     read as a black pill on the light canvas */
+  --glass: rgba(255, 255, 255, 0.55);
   --card-grad: linear-gradient(150deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.62) 50%, rgba(232, 240, 252, 0.6) 100%);
   --card-sheen: radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.7), transparent 55%);
   --hero-grad:
     radial-gradient(90% 55% at 100% 0%, rgba(191, 219, 254, 0.4), transparent 60%),
-    linear-gradient(180deg, #4f78c4 0%, #3f67b3 24%, #355a9f 41%, rgba(232, 240, 255, 0.92) 50%, rgba(255, 255, 255, 0.84) 66%, rgba(248, 250, 255, 0.82) 100%);
-  --hero-glow: 0 24px 60px -22px rgba(37, 99, 235, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.9);
+    linear-gradient(180deg, #60a5fa 0%, #3b82f6 24%, #2f6fe0 41%, rgba(232, 240, 255, 0.92) 50%, rgba(255, 255, 255, 0.84) 66%, rgba(248, 250, 255, 0.82) 100%);
+  --hero-glow: 0 24px 60px -22px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.9);
   --glow-white: drop-shadow(0 0 4px rgba(37, 99, 235, 0.55)) drop-shadow(0 0 10px rgba(59, 130, 246, 0.35));
   --tip-bg: #0b1736;
   --tip-ink: #ffffff;
@@ -163,10 +166,13 @@
   --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --gold: #c98a12;
   --gold-soft: rgba(201, 138, 18, 0.1);
-  --tide: #2563eb;
-  --deep: #1d4ed8;
+  /* blues match the dark theme's bright fish-tank family instead of the
+     old navy set — pale hues go on fills/borders, badges deepen their own
+     text with color-mix below */
+  --tide: #3b82f6;
+  --deep: #2563eb;
   --ocean-soft: #dbeafe;
-  --btn-grad: linear-gradient(135deg, #2563eb, #0284c7);
+  --btn-grad: linear-gradient(135deg, #3b82f6, #06b6d4);
   --ok: #059669;
   --ok-soft: rgba(5, 150, 105, 0.1);
   --warn: #8a5a00;
@@ -175,12 +181,12 @@
   --danger-soft: rgba(220, 38, 38, 0.08);
   --danger-line: rgba(220, 38, 38, 0.3);
   --reject: #64748b;
-  --st-bought: #047857;
-  --st-paypal: #2563eb;
-  --st-waiting: #8a5a00;
+  --st-bought: #3b82f6;
+  --st-paypal: #60a5fa;
+  --st-waiting: #93c5fd;
   --st-blocked: #dc2626;
   --st-rejected: #64748b;
-  --st-failed: #c2410c;
+  --st-failed: #475569;
   --glow: none;
   --shadow-raise: 0 16px 48px rgba(15, 23, 42, 0.08);
   --shadow-raise-sm: 0 8px 32px rgba(15, 23, 42, 0.05);
@@ -210,9 +216,11 @@ body {
   line-height: 1.45;
 }
 
-/* Dark glassmorphism: the UI is backlit by soft colored lights — blurred
-   radial blobs of electric blue, cyan and indigo fixed behind every panel.
-   The translucent cards + backdrop-filter blur let this glow bleed through. */
+/* Dark glassmorphism: the UI is backlit by soft colored lights — radial
+   blobs of electric blue, cyan and indigo fixed behind every panel, glowing
+   through the translucent cards. The softness is built into the gradients
+   (wide ellipses, an eased mid stop) rather than a filter: blur(), which
+   would cost a full-viewport GPU render pass on every frame. */
 body::before {
   content: "";
   position: fixed;
@@ -222,22 +230,20 @@ body::before {
   /* Key light top-right behind the hero card, a fill light low-left behind
      the lower cards, and a faint cool wash across the top. */
   background:
-    radial-gradient(34% 40% at 86% 16%, rgba(37, 99, 235, 0.55), transparent 70%),
-    radial-gradient(22% 24% at 92% 6%, rgba(125, 211, 252, 0.28), transparent 70%),
-    radial-gradient(38% 36% at 14% 88%, rgba(29, 78, 216, 0.4), transparent 70%),
-    radial-gradient(44% 30% at 30% 0%, rgba(56, 189, 248, 0.16), transparent 70%),
-    radial-gradient(50% 40% at 60% 60%, rgba(30, 58, 138, 0.18), transparent 70%);
-  filter: blur(90px);
+    radial-gradient(44% 52% at 86% 16%, rgba(37, 99, 235, 0.42), rgba(37, 99, 235, 0.2) 35%, transparent 75%),
+    radial-gradient(30% 32% at 92% 6%, rgba(125, 211, 252, 0.2), rgba(125, 211, 252, 0.09) 35%, transparent 75%),
+    radial-gradient(48% 46% at 14% 88%, rgba(29, 78, 216, 0.3), rgba(29, 78, 216, 0.14) 35%, transparent 75%),
+    radial-gradient(54% 40% at 30% 0%, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.05) 35%, transparent 75%),
+    radial-gradient(60% 50% at 60% 60%, rgba(30, 58, 138, 0.14), rgba(30, 58, 138, 0.06) 35%, transparent 75%);
 }
 /* Light theme gets its own pastel lights: pale ocean and sky blue orbs,
-   blurred even harder, so the frosted panels float on soft color. */
+   softer still, so the frosted panels float on soft color. */
 :root[data-theme="light"] body::before {
   background:
-    radial-gradient(36% 40% at 86% 14%, rgba(96, 165, 250, 0.6), transparent 70%),
-    radial-gradient(40% 36% at 12% 90%, rgba(147, 197, 253, 0.55), transparent 70%),
-    radial-gradient(44% 34% at 28% 2%, rgba(186, 230, 253, 0.6), transparent 70%),
-    radial-gradient(40% 34% at 64% 52%, rgba(191, 219, 254, 0.4), transparent 70%);
-  filter: blur(110px);
+    radial-gradient(48% 52% at 86% 14%, rgba(96, 165, 250, 0.45), rgba(96, 165, 250, 0.2) 35%, transparent 75%),
+    radial-gradient(52% 48% at 12% 90%, rgba(147, 197, 253, 0.42), rgba(147, 197, 253, 0.18) 35%, transparent 75%),
+    radial-gradient(56% 46% at 28% 2%, rgba(186, 230, 253, 0.45), rgba(186, 230, 253, 0.2) 35%, transparent 75%),
+    radial-gradient(52% 46% at 64% 52%, rgba(191, 219, 254, 0.3), rgba(191, 219, 254, 0.13) 35%, transparent 75%);
 }
 
 a {
@@ -479,10 +485,21 @@ label {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 68px;
+  height: 68px;
   border-radius: 16px;
   flex: none;
+}
+.rail-logo img {
+  object-fit: contain;
+}
+/* theme-aware mark: lavender fish on dark, indigo on light */
+.rail-logo .logo-dark,
+:root[data-theme="dark"] .rail-logo .logo-light {
+  display: none;
+}
+:root[data-theme="dark"] .rail-logo .logo-dark {
+  display: block;
 }
 
 .rail-nav {
@@ -593,10 +610,77 @@ label {
   font-size: var(--t14);
 }
 
+/* Under the view-toggle pill the subtitle sits flush-left — indent it under
+   the pill's edge and drop it a touch. */
+.topbar-title:has(.view-toggle) p {
+  margin-left: 8px;
+  margin-top: 6px;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
   gap: var(--s3);
+}
+
+/* Segmented Activity / Classic log switcher — sits in the title slot, so it's
+   scaled to heading weight with the primary-button "white pill" active state. */
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--pill);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    var(--glass-hi),
+    0 10px 30px -14px color-mix(in srgb, var(--tide) 55%, transparent);
+}
+.view-toggle a {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-radius: var(--pill);
+  font-size: var(--t14);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+  text-decoration: none;
+  transition:
+    background var(--dur) var(--ease),
+    color var(--dur) var(--ease);
+}
+.view-toggle a:hover {
+  color: var(--ink);
+}
+.view-toggle a[aria-current="page"] {
+  /* the fish-tank's light blue — not the plain-white primary look */
+  background: var(--st-waiting);
+  color: #0b1736;
+  box-shadow:
+    0 8px 22px -8px rgba(2, 6, 23, 0.55),
+    0 0 18px -4px color-mix(in srgb, var(--st-waiting) 70%, transparent);
+}
+:root[data-theme="light"] .view-toggle a[aria-current="page"] {
+  /* light fields need the deeper fish-tank blue or the pill washes out */
+  background: var(--st-bought);
+  color: #ffffff;
+  box-shadow:
+    0 8px 22px -10px rgba(29, 78, 216, 0.4),
+    0 0 16px -4px rgba(59, 130, 246, 0.4);
+}
+:root[data-theme="light"] .view-toggle a:not([aria-current="page"]) {
+  color: #3d5a8f;
+}
+:root[data-theme="light"] .view-toggle a:hover:not([aria-current="page"]) {
+  color: var(--ink-hover);
+  background: rgba(219, 234, 254, 0.6);
+}
+@media (max-width: 719px) {
+  .view-toggle a {
+    padding: 6px 13px;
+  }
 }
 
 .topbar .theme-toggle {
@@ -1019,6 +1103,14 @@ img[src*="/mascot/"] {
   color: var(--st-waiting);
   border-color: var(--st-waiting);
 }
+/* pale status hues stay on the border; text gets deepened so it still
+   reads on the light theme's white cards */
+:root[data-theme="light"] .status-badge.PAYPAL {
+  color: color-mix(in srgb, var(--st-paypal) 55%, #172554);
+}
+:root[data-theme="light"] .status-badge.WAITING {
+  color: color-mix(in srgb, var(--st-waiting) 45%, #172554);
+}
 .status-badge.BLOCKED {
   color: var(--st-blocked);
   border-color: var(--st-blocked);
@@ -1028,6 +1120,16 @@ img[src*="/mascot/"] {
   border-color: var(--st-failed);
 }
 .status-badge.REJECTED {
+  color: var(--st-rejected);
+  border-color: var(--st-rejected);
+}
+/* Option-card row states (Recent activity shelf rows): Offered = live on the
+   carousel; Skipped = unchosen — same human-declined gray as rejected asks. */
+.status-badge.OFFERED {
+  color: var(--st-paypal);
+  border-color: var(--st-paypal);
+}
+.status-badge.SKIPPED {
   color: var(--st-rejected);
   border-color: var(--st-rejected);
 }
@@ -1337,6 +1439,10 @@ img[src*="/mascot/"] {
   background: var(--danger-soft);
 }
 
+:root[data-theme="light"] .opt-chip.ask {
+  color: color-mix(in srgb, var(--st-waiting) 45%, #172554);
+}
+
 .opt-pick {
   margin-top: auto;
   min-height: 38px;
@@ -1505,6 +1611,18 @@ img[src*="/mascot/"] {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 320px;
+}
+
+/* link to the merchant page — replaces the duplicated name/price text */
+.stack-link {
+  color: var(--tide);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.stack-link:hover {
+  text-decoration: underline;
 }
 
 .stack-pick-btn {
@@ -1686,7 +1804,6 @@ img[src*="/mascot/"] {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card-grad);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
@@ -2020,10 +2137,8 @@ img[src*="/mascot/"] {
 }
 
 .side-title {
-  font-family: var(--mono);
   font-size: var(--t12);
   font-weight: 600;
-  letter-spacing: 0.12em;
   color: var(--ink-soft);
   margin-bottom: var(--s4);
 }
@@ -2156,8 +2271,8 @@ img[src*="/mascot/"] {
 
 .policy-layout {
   display: grid;
-  /* Rules and the queue share the row evenly */
-  grid-template-columns: 1fr 1fr;
+  /* rules ~40%, queue ~60% — rules keep room for a two-across form */
+  grid-template-columns: minmax(380px, 2fr) 3fr;
   gap: var(--s8);
 }
 
@@ -2192,7 +2307,7 @@ img[src*="/mascot/"] {
 
 /* rules ruler: live bar of the three zones */
 .rules-ruler {
-  margin-top: var(--s6);
+  margin-top: var(--s4);
 }
 
 .rules-ruler .bar {
@@ -2227,8 +2342,13 @@ img[src*="/mascot/"] {
 
 .rules-ruler .marks {
   position: relative;
-  height: 20px;
+  height: 34px;
   margin-top: var(--s1);
+}
+
+/* two-row stagger: crowded marks ($0/$20) can't overlap in the narrow column */
+.rules-ruler .mark:nth-child(even) {
+  top: 16px;
 }
 
 .rules-ruler .mark {
@@ -2308,10 +2428,22 @@ img[src*="/mascot/"] {
 }
 
 .policy-form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* Two-across so every rule fits above the fold */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s4);
-  margin-top: var(--s6);
+  margin-top: var(--s4);
+}
+
+.policy-form .error,
+.policy-form .form-foot {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .policy-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .field {
@@ -2443,7 +2575,7 @@ img[src*="/mascot/"] {
   border-radius: var(--radius);
   background: var(--card-grad);
   padding: var(--s4);
-  margin-top: var(--s6);
+  margin-top: var(--s4);
 }
 
 .tryit .row {
@@ -2531,14 +2663,25 @@ img[src*="/mascot/"] {
 .wait-card .title-row {
   display: flex;
   justify-content: space-between;
-  gap: var(--s4);
+  gap: var(--s3);
   align-items: baseline;
 }
 
+.wait-card .title-row strong {
+  min-width: 0;
+}
+
 .wait-card .amount {
+  flex-shrink: 0;
   font-weight: 700;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* action buttons wrap inside the card instead of spilling past the edge */
+.wait-card .row {
+  flex-wrap: wrap;
+  gap: var(--s2);
 }
 
 .clamp3 {
@@ -2546,6 +2689,169 @@ img[src*="/mascot/"] {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* ---------- receipts ---------- */
+
+/* topbar icon button — matches the 36px avatar chip rhythm */
+.receipts-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+
+.receipts-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--ocean-soft);
+  filter: none;
+}
+
+.receipts-btn[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--ocean-soft);
+}
+
+/* unseen-receipt dot */
+.receipts-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--st-bought, var(--tide));
+  border: 2px solid var(--paper, var(--bg, #fff));
+}
+
+/* right-edge drawer — same geometry as the filters/AI panels */
+.receipts-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 90;
+  width: min(380px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--card-sheen, var(--card-grad)), var(--panel-grad, var(--card-grad));
+  backdrop-filter: var(--glass-blur, none);
+  border: 1px solid var(--glass-line, var(--line));
+  border-radius: 28px;
+  box-shadow: var(--shadow-raise);
+  overflow: hidden;
+  animation: ask-panel-in var(--dur) var(--ease);
+}
+
+.receipts-sum {
+  font-size: var(--t14);
+  font-family: var(--mono);
+}
+
+.receipts-panel .receipt-card {
+  margin-top: 0;
+}
+
+/* the receipt slip itself */
+.receipt-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card-grad);
+  padding: var(--s4);
+}
+
+.rc-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.rc-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-ctl);
+  object-fit: cover;
+  border: 1px solid var(--line);
+  flex: none;
+}
+
+.rc-thumb-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ocean-soft);
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.rc-title {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rc-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-amt {
+  flex: none;
+  font-weight: 700;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* dashed divider + mono meta rows — the "paper slip" part */
+.rc-slip {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-family: var(--mono);
+  font-size: var(--t12);
+}
+
+.rc-slip > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.rc-slip > div > span:first-child {
+  color: var(--ink-soft);
+}
+
+.rc-slip > div > span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.rc-link {
+  display: inline-block;
+  margin-top: var(--s3);
+  font-size: var(--t14);
+}
+
+/* receipt inside the chat feed */
+.chat-receipt {
+  margin-top: var(--s3);
+  max-width: 460px;
 }
 
 .card-err {
@@ -3264,11 +3570,13 @@ img[src*="/mascot/"] {
 }
 
 /* Widget cards: lit glass. The container is the rounded, clipped box that
-   Studio draws the border on, so the gradient + blur live here. */
+   Studio draws the border on, so the gradient lives here. No backdrop
+   blur (see the dark glassmorphism block) — `isolation` keeps the stacking
+   context the widget body and skeleton veil were laid out against. */
 .studio-card .ag-studio-layout-widget-container {
   background: var(--card-sheen), var(--card-grad);
   border-color: var(--glass-line);
-  backdrop-filter: var(--glass-blur);
+  isolation: isolate;
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
 
@@ -3282,7 +3590,6 @@ img[src*="/mascot/"] {
 }
 .studio-card .ag-studio-layout-widget:has(.kpi-row) .ag-studio-layout-widget-container {
   background: none;
-  backdrop-filter: none;
   box-shadow: none;
 }
 
@@ -3302,16 +3609,15 @@ img[src*="/mascot/"] {
 }
 
 /* Widget-loading veil — the same glass recipe as the bento panels it covers:
-   translucent card gradient, glass edge, radius, blur + raise shadow. The
+   translucent card gradient, glass edge, radius + raise shadow. The
    --glass-* tokens resolve per theme (navy glass dark / frosted white light). */
 .studio-card .ag-studio-layout-widget-skeleton-overlay-container {
   background: var(--card-grad);
   border: 1px solid var(--glass-line);
   border-radius: var(--radius);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
   /* The veil stays mounted at opacity:0 after its widget loads — and the
-     backdrop-filter on .ag-studio-layout-widget-container makes it a
+     isolation on .ag-studio-layout-widget-container makes it a
      stacking context, so this later sibling sits above the widget body in
      hit order and eats every click. Purely visual: never let it hit-test. */
   pointer-events: none;
@@ -3379,6 +3685,274 @@ img[src*="/mascot/"] {
   overflow: visible;
 }
 
+/* ---------- Studio drawer internals (Filters + AI assistant) ---------- */
+
+/* flatten AG's default chrome — every wrapper surface goes transparent so
+   the drawer's glass card is the only panel */
+.studio-card .ag-studio-panel .ag-studio-panel-search-container,
+.studio-card .ag-studio-panel .ag-studio-panel-search-container-contents,
+.studio-card .ag-studio-panel .ag-group,
+.studio-card .ag-studio-panel .ag-group-container,
+.studio-card .ag-studio-panel .ag-studio-ai-assistant-panel,
+.studio-card .ag-studio-panel .ag-studio-ai-scroll-container,
+.studio-card .ag-studio-panel .ag-studio-ai-scroll-content {
+  background: transparent;
+}
+
+/* header → flat title row with a quiet collapse affordance */
+.studio-card .ag-studio-panel .ag-studio-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: 15px var(--s5) 14px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t14);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+.studio-card .ag-studio-panel .ag-studio-panel-title {
+  flex: 1;
+  text-align: left;
+}
+.studio-card .ag-studio-panel .ag-studio-panel-chevron {
+  display: inline-flex;
+  color: var(--ink-soft);
+}
+.studio-card .ag-studio-panel .ag-studio-panel-header:hover .ag-studio-panel-chevron {
+  color: var(--ink);
+}
+.studio-card .ag-studio-panel .ag-studio-panel-chevron .ag-icon {
+  width: 14px;
+  height: 14px;
+}
+/* inside the open drawer only the "close" icon is meaningful — the
+   collapsed-state glyph is dead chrome here */
+.studio-card .ag-studio-panel:not(.ag-studio-panel-collapsed) .ag-studio-panel-chevron-collapsed {
+  display: none;
+}
+
+/* resizer strip: dead chrome — the drawer sizes itself via --ask-w */
+.studio-card .ag-studio-panel .ag-studio-panel-divider {
+  display: none;
+}
+
+.studio-card .ag-studio-panel .ag-studio-panel-content {
+  padding: var(--s4) var(--s5) var(--s5);
+  overflow-y: auto;
+}
+
+/* --- Filters drawer --- */
+
+/* the shipped search field is disabled — dead chrome */
+.studio-card .ag-studio-filters-panel .ag-studio-search {
+  display: none;
+}
+
+.studio-card .ag-studio-filters-panel .ag-studio-filters-panel-no-filters {
+  padding: var(--s8) var(--s3);
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: var(--t12);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-ctl);
+}
+.studio-card .ag-studio-filters-panel .ag-studio-filters-panel-no-filters::after {
+  content: "Filters from Ask or a Leash status click appear here.";
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* section group headers → quiet small-caps labels */
+.studio-card .ag-studio-filters-panel .ag-group-title-bar {
+  padding: var(--s2) 0;
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.studio-card .ag-studio-filters-panel .ag-group-title-bar-icon {
+  color: var(--ink-soft);
+}
+
+/* filter cards (when any exist) → glass chips */
+.studio-card .ag-studio-filters-panel .ag-studio-filters-panel-content > * {
+  background: var(--card-grad);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius-ctl);
+  padding: var(--s3);
+  margin-bottom: var(--s2);
+  font-size: var(--t12);
+}
+.studio-card .ag-studio-filters-panel .ag-studio-filters-panel-drop-preview {
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: none;
+}
+
+/* --- AI assistant drawer --- */
+
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--s3);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-control {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 7px var(--s3);
+  border-radius: var(--radius-ctl);
+  border: 1px solid var(--glass-line);
+  background: var(--card-grad);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t12);
+  font-weight: 600;
+  cursor: pointer;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-thread-new-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px var(--s3);
+  border-radius: var(--radius-ctl);
+  border: 1px solid var(--glass-line);
+  background: var(--ocean-soft);
+  color: var(--tide);
+  font-family: var(--sans);
+  font-size: var(--t12);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.studio-card .ag-studio-ai-panel .ag-studio-ai-scroll-container {
+  flex: 1;
+  min-height: 0;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-message-container > * {
+  max-width: 88%;
+  padding: var(--s3);
+  border-radius: var(--radius-ctl);
+  background: var(--card-grad);
+  border: 1px solid var(--glass-line);
+  margin-bottom: var(--s2);
+  font-size: var(--t14);
+}
+
+.studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar {
+  font-size: var(--t12);
+  color: var(--ink-soft);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar button {
+  font-family: var(--sans);
+  font-size: var(--t12);
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-status-bar button:hover {
+  color: var(--ink);
+}
+
+/* prompt starters → full-width ghost chips */
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3);
+  border-radius: var(--radius-ctl);
+  border: 1px solid var(--glass-line);
+  background: var(--card-grad);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t12);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-prompt-starter:hover {
+  border-color: color-mix(in srgb, var(--tide) 45%, transparent);
+  background: var(--ocean-soft);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-widget-icon-container:empty {
+  display: none;
+}
+
+/* input → glass card with a tide focus ring, gradient send */
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--radius-ctl);
+  border: 1px solid var(--glass-line);
+  background: var(--card-grad);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-input:focus-within {
+  border-color: color-mix(in srgb, var(--tide) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tide) 18%, transparent);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-textarea {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t14);
+  resize: none;
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-textarea::placeholder {
+  color: var(--ink-soft);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-input-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+.studio-card .ag-studio-ai-panel .ag-studio-ai-assistant-send-button {
+  border: none;
+  border-radius: var(--pill);
+  background: var(--btn-grad);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: var(--t12);
+  font-weight: 700;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
 /* custom grid cells */
 .status-cell {
   display: inline-flex;
@@ -3437,9 +4011,8 @@ img[src*="/mascot/"] {
 
 /* ---------- dark glassmorphism ---------- */
 
-/* Every panel: translucent navy (via --card-grad), backdrop blur so the
-   ambient lights bleed through, hairline edge, and an inner top highlight —
-   the "lit glass" edge. */
+/* Every panel: translucent navy (via --card-grad), hairline edge, and an
+   inner top highlight — the "lit glass" edge. */
 :root[data-theme="dark"] .ag-studio-widget,
 :root[data-theme="dark"] .kpi-tile,
 :root[data-theme="dark"] .rail,
@@ -3456,8 +4029,19 @@ img[src*="/mascot/"] {
 :root[data-theme="dark"] .approval-card,
 :root[data-theme="dark"] .wait-card,
 :root[data-theme="dark"] .studio-skeleton {
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
+}
+
+/* Backdrop blur only where real content moves underneath: floating
+   overlays. In-page cards sit on the already-soft light field, where a blur
+   is invisible but costs an extra GPU render pass per card on every frame
+   (the main source of scroll jank). */
+:root[data-theme] .ask-panel,
+:root[data-theme] .drawer,
+:root[data-theme] .customize-menu,
+:root[data-theme] .ag-studio-panel-container,
+:root[data-theme] .toast {
+  backdrop-filter: var(--glass-blur);
 }
 
 /* The standalone fun money card is the same lit glass as the widgets; the
@@ -3474,7 +4058,8 @@ img[src*="/mascot/"] {
 }
 
 /* Frosted light glass: same panel list as dark — translucent white bg comes
-   from --card-grad; blur 20px, crisp white edge, soft diffuse shadow. */
+   from --card-grad; crisp white edge, soft diffuse shadow (overlay blur is
+   set above). */
 :root[data-theme="light"] .ag-studio-widget,
 :root[data-theme="light"] .kpi-tile,
 :root[data-theme="light"] .rail,
@@ -3491,7 +4076,6 @@ img[src*="/mascot/"] {
 :root[data-theme="light"] .approval-card,
 :root[data-theme="light"] .wait-card,
 :root[data-theme="light"] .studio-skeleton {
-  backdrop-filter: var(--glass-blur);
   border-color: var(--glass-line);
   box-shadow: var(--glass-hi), var(--shadow-raise-sm);
 }
@@ -3524,7 +4108,7 @@ img[src*="/mascot/"] {
   box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.25);
 }
 .funmoney.funrecent .fm-bar-fill {
-  background: linear-gradient(90deg, #bae6fd, #ffffff);
+  background: var(--st-bought);
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.75);
 }
 .funmoney.funrecent .fm-actions .primary {
@@ -3799,7 +4383,7 @@ img[src*="/mascot/"] {
 /* requested-but-not-bought sits on top of the bought gradient in a lighter
    tint of the same ocean blue so the stack reads as one money series */
 .bento-chart .bar-requested {
-  fill: var(--tide);
+  fill: var(--st-bought);
   fill-opacity: 0.3;
   rx: 6;
 }
@@ -3815,10 +4399,10 @@ img[src*="/mascot/"] {
   filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.35));
 }
 .legend-pills .lp i.dot-bought {
-  background: linear-gradient(180deg, var(--tide), var(--deep));
+  background: var(--st-bought);
 }
 .legend-pills .lp i.dot-requested {
-  background: var(--tide);
+  background: var(--st-bought);
   opacity: 0.3;
 }
 @keyframes bar-in {
@@ -3836,7 +4420,9 @@ img[src*="/mascot/"] {
 /* floating tooltip chip for chart hover */
 /* solid pill: white on dark, navy on light — the brightest thing on the card */
 .chart-tip {
-  position: absolute;
+  /* fixed + body-level portal: draws over the widget edge instead of
+     being clipped by Studio's overflow-hidden chrome */
+  position: fixed;
   transform: translate(-50%, -115%);
   background: var(--tip-bg);
   color: var(--tip-ink);
@@ -3846,7 +4432,7 @@ img[src*="/mascot/"] {
   font-size: var(--t12);
   pointer-events: none;
   white-space: nowrap;
-  z-index: 5;
+  z-index: 220;
 }
 .chart-tip::after {
   content: "";
@@ -3919,10 +4505,21 @@ img[src*="/mascot/"] {
   position: relative;
   z-index: 0;
   pointer-events: none;
-  will-change: transform;
+  will-change: translate;
 }
-.funmoney .fm-mascot img.art.flip {
-  scale: -1 1;
+/* Activity-only: flip the fish so it faces the other way. The wrap carries no
+   transform of its own (the img's bob/scale live one level deeper), and the
+   Max tag counter-flips so its text doesn't mirror. */
+.funmoney .fm-mascot .art-wrap {
+  transform: scaleX(-1);
+}
+.funmoney .fm-mascot .max-tag {
+  transform: scaleX(-1);
+}
+/* off-screen: the swim animations pause (JS) and the gauge's idle CSS
+   animations pause with them */
+.funmoney.fm-paused .fm-mascot * {
+  animation-play-state: paused;
 }
 .funmoney .fm-amount {
   flex: none;
@@ -4184,11 +4781,8 @@ img[src*="/mascot/"] {
   font-variant-numeric: tabular-nums;
 }
 .statusbars-label {
-  font-family: var(--mono);
-  font-size: 10px;
+  font-size: var(--t12);
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--ink-soft);
 }
 .statusbars-label:not(:first-child) {
@@ -4206,31 +4800,12 @@ img[src*="/mascot/"] {
 .bento.leash {
   overflow-y: auto;
   overflow-x: hidden;
-  gap: 6px;
-  /* Card-local status palette: blue for what went through or is pending,
-     red for what the rules stopped, gray for dead ends. Re-declaring the
-     shared --st-* tokens here recolors the bar, legend badges and tips in
-     this card only — every other widget keeps the app-wide colors. */
-  --st-bought: #3b82f6;
-  --st-paypal: #60a5fa;
-  --st-waiting: #93c5fd;
-  --st-blocked: var(--danger);
-  --st-rejected: #64748b;
-  --st-failed: #94a3b8;
-}
-:root[data-theme="light"] .bento.leash {
-  --st-bought: #1e40af;
-  --st-paypal: #2563eb;
-  --st-waiting: #0369a1;
-  --st-rejected: #64748b;
-  --st-failed: #475569;
+  gap: 10px;
 }
 
 .leash-stats {
   display: grid;
-  /* the hero tile is text-heaviest — it gets the widest share so the row
-     doesn't balloon to 5 wrapped lines */
-  grid-template-columns: 0.85fr 1.55fr 0.85fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 .leash-stat {
@@ -4325,7 +4900,8 @@ img[src*="/mascot/"] {
 .leash-outcome {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 2px;
 }
 .leashbar {
   display: flex;
@@ -4371,6 +4947,7 @@ img[src*="/mascot/"] {
 .leash-legend {
   margin-top: 0;
 }
+/* one line: verdicts (pass/ask/blocked) | outcomes (picked/skipped/open) */
 .leash-foot {
   font-size: var(--t12);
   color: var(--ink-soft);
@@ -4387,13 +4964,20 @@ img[src*="/mascot/"] {
   background: var(--ocean-soft);
   box-shadow: inset 2px 0 0 var(--ink);
 }
+/* zero-count statuses stay listed but read as quiet labels, not stats */
+.leash-legend .ag-row.leash-row-empty {
+  opacity: 0.45;
+}
 .leash-legend .leash-col-num {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* glue the count to the amount: minimal gap at the shared boundary */
+  padding-right: 4px;
 }
 .leash-legend .leash-col-amt {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
+  padding-left: 6px;
 }
 .leash-legend .status-badge {
   height: 22px;

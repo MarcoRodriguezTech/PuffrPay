@@ -3,9 +3,11 @@
 // The slim bar above page content: page title + subtitle on the left, the
 // owner avatar chip on the right.
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ASSETS } from "@/lib/assets";
+import { ReceiptsDrawer } from "./ReceiptsDrawer";
 import { ThemeToggle } from "./ThemeToggle";
 
 const TITLES: [match: RegExp, title: string, subtitle: string][] = [
@@ -46,15 +48,35 @@ export function TopBar() {
   const [, title, subtitle] =
     TITLES.find(([re]) => re.test(pathname)) ?? [null, "PuffrPay", ""];
 
+  const viewToggle =
+    pathname.startsWith("/activity") || pathname.startsWith("/audit");
+
   return (
     <header className="topbar">
       <div className="topbar-title">
-        <h1>{title}</h1>
+        {viewToggle ? (
+          <nav className="view-toggle" aria-label="Switch view">
+            <Link
+              href="/activity"
+              aria-current={pathname.startsWith("/activity") ? "page" : undefined}
+            >
+              Activity
+            </Link>
+            <Link
+              href="/audit/classic"
+              aria-current={pathname.startsWith("/audit") ? "page" : undefined}
+            >
+              Classic log
+            </Link>
+          </nav>
+        ) : null}
+        <h1 className={viewToggle ? "visually-hidden" : undefined}>{title}</h1>
         <p className="muted">{subtitle}</p>
       </div>
       {/* Page-level actions (e.g. Activity filters) portal in here. */}
       <div id="topbar-actions" className="topbar-actions" />
       <div className="topbar-right">
+        <ReceiptsDrawer />
         <ThemeToggle />
         <AvatarChip />
       </div>

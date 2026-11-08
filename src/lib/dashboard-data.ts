@@ -22,6 +22,7 @@ function requestRows(purchases: PurchaseRequest[], policy: Policy) {
     const purchased = p.status === "PURCHASED";
     return {
       ref: String(p.id),
+      kind: "request" as const,
       // 1-based rank newest-first — the grid pager widget filters on it.
       rowIdx: i + 1,
       createdAt: p.createdAt,
@@ -79,11 +80,14 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
   // show what happened *before* a purchase row exists: how many options were
   // auto-ok / needed approval / blocked by rules, and the set's outcome.
   return sets.map((s) => {
+    // Cards the owner X'd out are archived on the payload — they were still
+    // offered, so every card-level total includes them.
+    const all = [...s.items, ...s.removed];
     const by = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
     const amt = { ALLOW: 0, ASK: 0, BLOCK: 0 } as Record<string, number>;
     let pickedAmt: number | null = null;
     let totalAmt = 0;
-    for (const i of s.items) {
+    for (const i of all) {
       totalAmt += i.priceCents / 100;
       by[i.decision] = (by[i.decision] ?? 0) + 1;
       amt[i.decision] = (amt[i.decision] ?? 0) + i.priceCents / 100;
@@ -92,7 +96,9 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
     return {
       ref: String(s.id),
       createdAt: s.createdAt,
-      options: s.items.length,
+      options: all.length,
+      live: s.items.length,
+      removed: s.removed.length,
       picked: s.picked != null,
       dismissed: s.dismissed,
       open: s.picked == null && !s.dismissed,
@@ -108,6 +114,69 @@ function optionSetRows(sets: Awaited<ReturnType<typeof listOptionSets>>) {
   });
 }
 
+function optionCardRows(
+  sets: Awaited<ReturnType<typeof listOptionSets>>,
+  policy: Policy
+) {
+  // One flat ledger row per offered card — the shelf layer shown alongside
+  // request rows in the Recent feed and the "All activity" grid. The picked
+  // card is excluded: its request row already carries the real request
+  // status (flip-on-pick). X'd-out cards (`removed`) resolve to skipped even
+  // while their set is still open — the owner declined that card already.
+  return sets.flatMap((s) => {
+    const open = s.picked == null && !s.dismissed;
+    return [...s.items, ...s.removed]
+      .filter((i) => i.id !== s.picked)
+      .map((i) => {
+        const isRemoved = s.removed.some((r) => r.id === i.id);
+        const state = (
+          i.decision === "BLOCK" ? "blocked" : open && !isRemoved ? "offered" : "skipped"
+        ) as "blocked" | "offered" | "skipped";
+        return {
+          ref: `set${s.id}:${i.id}`,
+          kind: "card" as const,
+          // rowIdx is ranked over the merged ledger in getDashboardData.
+          rowIdx: 0,
+          createdAt: s.createdAt,
+          title: i.title,
+          merchantUrl: i.merchantUrl,
+          imageUrl: i.imageUrl,
+          category: i.category ?? "Uncategorised",
+          amount: i.priceCents / 100,
+          currency: "USD",
+          decision: i.decision,
+          // Reuses request status values so badges + status filters work:
+          // skipped cards render the same "Skipped" label as declined asks.
+          status:
+            state === "offered" ? "OFFERED" : state === "blocked" ? "BLOCKED" : "REJECTED",
+          decidedBy:
+            state === "blocked" ? "policy" : state === "offered" ? "—" : "owner",
+          reason:
+            state === "offered"
+              ? "awaiting pick"
+              : state === "blocked"
+                ? (i.decisionReason ?? "blocked by rules")
+                : "not picked",
+          reasoning: null,
+          orderId: null,
+          isStub: false,
+          // Cards never count toward request measures — they stay 0 so any
+          // sum over the merged table keeps request scope.
+          spent: 0,
+          cumulative: 0,
+          purchased: 0,
+          blocked: state === "blocked" ? 1 : 0,
+          waiting: 0,
+          autoApproved: 0,
+          monthlyCap: policy.monthlyCapCents / 100,
+          perPurchaseMax: policy.perPurchaseMaxCents / 100,
+          autoApproveUnder: policy.autoApproveUnderCents / 100,
+          state,
+        };
+      });
+  });
+}
+
 export async function getDashboardData(asOf = new Date()) {
   const [policy, purchases, optionSets] = await Promise.all([
     getPolicy(),
@@ -115,10 +184,21 @@ export async function getDashboardData(asOf = new Date()) {
     listOptionSets(),
   ]);
 
+  const requests = requestRows(purchases, policy);
+  const cards = optionCardRows(optionSets, policy);
+  // The ledger the Studio "requests" table + grid pager read: every request
+  // plus every offered/skipped/blocked shelf card. Requests keep their own
+  // rows in `requests` so request-scope widgets and footers never see cards.
+  const activity = [...requests, ...cards]
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .map((r, i) => ({ ...r, rowIdx: i + 1 }));
+
   return {
     asOf: asOf.toISOString(),
-    requests: requestRows(purchases, policy),
+    requests,
     optionSets: optionSetRows(optionSets),
+    cards,
+    activity,
     policy: policyRow(policy),
   };
 }

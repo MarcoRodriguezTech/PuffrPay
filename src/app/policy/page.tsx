@@ -23,6 +23,7 @@ interface Purchase {
   policyReason: string;
   agentReasoning: string | null;
   paypalOrderId: string | null;
+  paypalApproveUrl: string | null;
   errorMessage: string | null;
 }
 
@@ -69,6 +70,7 @@ export default function PolicyPage() {
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [waiting, setWaiting] = useState<Purchase[] | null>(null);
+  const [pending, setPending] = useState<Purchase[] | null>(null);
   const [cardBusy, setCardBusy] = useState<number | null>(null);
   const [cardErr, setCardErr] = useState<Record<number, string>>({});
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -99,11 +101,11 @@ export default function PolicyPage() {
       });
     }
     if (w?.purchases) {
+      const all: Purchase[] = w.purchases;
       setWaiting(
-        w.purchases.filter(
-          (x: Purchase) => x.policyDecision === "ASK" && !x.paypalOrderId
-        )
+        all.filter((x) => x.policyDecision === "ASK" && !x.paypalOrderId)
       );
+      setPending(all.filter((x) => x.paypalApproveUrl));
     }
   }, []);
 
@@ -236,6 +238,36 @@ export default function PolicyPage() {
     }
   }
 
+  async function pendingAct(p: Purchase, action: "capture" | "cancel") {
+    if (cardBusy) return;
+    setCardBusy(p.id);
+    setCardErr((e) => ({ ...e, [p.id]: "" }));
+    try {
+      const res = await fetch(`/api/purchases/${p.id}/${action}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `${action} failed`);
+      setPending((l) => (l ?? []).filter((x) => x.id !== p.id));
+      toast(
+        action === "capture"
+          ? "Payment captured (sandbox)"
+          : "Checkout cancelled"
+      );
+      refreshBudget();
+    } catch (err) {
+      const em = err instanceof Error ? err.message : String(err);
+      setCardErr((e) => ({
+        ...e,
+        [p.id]: em.includes("ORDER_NOT_APPROVED")
+          ? "Not approved in PayPal yet — finish the checkout, then capture."
+          : friendlyClientError(err),
+      }));
+    } finally {
+      setCardBusy(null);
+    }
+  }
+
   const capC = parseDollars(form.cap) ?? 0;
   const maxC = parseDollars(form.max) ?? 0;
   const autoC = parseDollars(form.auto) ?? 0;
@@ -333,7 +365,7 @@ export default function PolicyPage() {
             </div>
 
             {saveErr && <div className="error">{saveErr}</div>}
-            <div>
+            <div className="form-foot">
               <button type="submit" disabled={!valid || !dirty || saving}>
                 {saving ? (
                   <span className="spinner" aria-hidden="true" />
@@ -439,6 +471,86 @@ export default function PolicyPage() {
                   disabled={cardBusy === w.id}
                 >
                   Reject
+                </button>
+              </div>
+            </div>
+          ))}
+          </div>
+
+          <h2 style={{ marginTop: 24 }}>
+            AWAITING PAYPAL ({pending?.length ?? 0})
+          </h2>
+          {pending === null && <p className="empty-note">Loading...</p>}
+          {pending?.length === 0 && (
+            <p className="empty-note">
+              No open checkouts. Payments you start in the PayPal tab wait here
+              until they&apos;re captured or cancelled.
+            </p>
+          )}
+          <div className="queue-grid">
+            {pending?.map((w) => (
+              <div className="wait-card" key={w.id}>
+              {w.imageUrl && (
+                <img
+                  className="product-thumb wc-thumb"
+                  src={w.imageUrl}
+                  alt={w.productTitle}
+                  width={64}
+                  height={64}
+                />
+              )}
+              <div className="title-row">
+                <strong>{w.productTitle}</strong>
+                <span className="amount">{fmtDollars(w.amountCents)}</span>
+              </div>
+              <div className="muted" style={{ marginTop: 4 }}>
+                Sandbox checkout open
+                {w.paypalOrderId ? ` · order ${w.paypalOrderId}` : ""}
+              </div>
+              {w.merchantUrl && (
+                <div style={{ marginTop: 4 }}>
+                  <a href={w.merchantUrl} target="_blank" rel="noreferrer">
+                    View product ({storeOf(w.merchantUrl)})
+                  </a>
+                </div>
+              )}
+              {cardErr[w.id] && (
+                <div className="card-err">
+                  {cardErr[w.id]}
+                  <button
+                    className="text"
+                    onClick={() => pendingAct(w, "capture")}
+                  >
+                    Retry capture
+                  </button>
+                </div>
+              )}
+              <div className="row" style={{ marginTop: 12 }}>
+                <button
+                  onClick={() =>
+                    w.paypalApproveUrl &&
+                    window.open(w.paypalApproveUrl, "_blank", "noreferrer")
+                  }
+                  disabled={cardBusy === w.id}
+                >
+                  Resume checkout
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => pendingAct(w, "capture")}
+                  disabled={cardBusy === w.id}
+                >
+                  {cardBusy === w.id && (
+                    <span className="spinner" aria-hidden="true" />
+                  )}
+                  Capture now
+                </button>
+                <button
+                  className="secondary danger"
+                  onClick={() => pendingAct(w, "cancel")}
+                  disabled={cardBusy === w.id}
+                >
+                  Cancel
                 </button>
               </div>
             </div>

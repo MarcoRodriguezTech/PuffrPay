@@ -9,6 +9,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useLayoutEffect, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AgGridReact } from "ag-grid-react";
 import {
   AllCommunityModule,
@@ -28,7 +29,7 @@ import type {
 } from "ag-studio";
 import type { DashboardData } from "@/lib/dashboard-data";
 import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
-import { StatusBadge } from "@/components/StatusBadge";
+import { OptBadge, StatusBadge } from "@/components/StatusBadge";
 import {
   STATUSES,
   activeStatusKey,
@@ -46,6 +47,29 @@ type Ctx = AgWidgetParams<AgWidgetData<Record<string, never>, AgWidgetDataFormat
 
 const useRows = (params: Ctx): Row[] =>
   (params.context as { data?: DashboardData })?.data?.requests ?? [];
+
+/* Hover tooltips portal to <body> at fixed coordinates — Studio's widget
+   chrome clips overflow, so an in-chart tip gets cut at the card edge. */
+function ChartTip({
+  chartRef,
+  x,
+  y,
+  children,
+}: {
+  chartRef: React.RefObject<HTMLElement | null>;
+  x: number;
+  y: number;
+  children: React.ReactNode;
+}) {
+  const rect = chartRef.current?.getBoundingClientRect();
+  if (!rect) return null;
+  return createPortal(
+    <div className="chart-tip" style={{ left: rect.left + x, top: rect.top + y }}>
+      {children}
+    </div>,
+    document.body,
+  );
+}
 
 /* ---------- page-filter plumbing ---------- */
 
@@ -92,7 +116,7 @@ function matchCell(raw: unknown, op?: string, v?: unknown): boolean {
   }
 }
 
-function applyPageFilters(rows: Row[], filters: AgFilterState[]): Row[] {
+function applyPageFilters<T>(rows: T[], filters: AgFilterState[]): T[] {
   let out = rows;
   for (const f of filters) {
     const key = reqField(f?.field?.id);
@@ -107,6 +131,22 @@ function applyPageFilters(rows: Row[], filters: AgFilterState[]): Row[] {
 
 const useFilteredRows = (params: Ctx): Row[] =>
   applyPageFilters(useRows(params), usePageFilters(params));
+
+// The merged ledger (requests + offered/skipped cards) the grid table and
+// its pager count over — `useFilteredRows` stays request-scope for metrics.
+type ActivityRow = NonNullable<DashboardData>["activity"][number];
+const useActivity = (params: Ctx): ActivityRow[] =>
+  (params.context as { data?: DashboardData })?.data?.activity ?? [];
+const useFilteredActivity = (params: Ctx): ActivityRow[] =>
+  applyPageFilters(useActivity(params), usePageFilters(params));
+
+// Feed cards honor the same page filters — their `status` values
+// (OFFERED/REJECTED/BLOCKED) line up with the request statuses they display.
+const useFilteredCards = (params: Ctx): CardRow[] =>
+  applyPageFilters(
+    (params.context as { data?: DashboardData })?.data?.cards ?? [],
+    usePageFilters(params)
+  );
 
 const noMap = ({ createDefaults }: { createDefaults: (o: object) => unknown }) =>
   createDefaults({ dataMappingItems: [] });
@@ -329,10 +369,10 @@ function SpendTrend(params: Ctx) {
           </svg>
         )}
         {hover != null && pts[hover] && (
-          <div className="chart-tip" style={{ left: pts[hover][0], top: pts[hover][1] - 8 }}>
+          <ChartTip chartRef={ref} x={pts[hover][0]} y={pts[hover][1] - 8}>
             <span className="tip-date">{dayOf(days[hover].key + "T12:00:00")}</span>
             <span className="tip-amt">{money(days[hover].cum)}</span>
-          </div>
+          </ChartTip>
         )}
       </div>
       <div className="legend-pills">
@@ -356,29 +396,36 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
 
   // The mascot drifts around its card like a fish in a tank, bouncing off the
   // card's side walls, the head bottom, and the top of the budget bar. Layout
-  // position stays put — we only animate transform — so nothing reflows.
+  // position stays put — we only animate `translate` — so nothing reflows.
+  //
+  // A constant-speed bounce is a triangle wave on each axis, so it runs as
+  // Web Animations instead of a per-frame JS loop: linear back-and-forth on
+  // X (outer span) and Y (inner gauge), plus a flip of the art at every X
+  // turnaround. These run on the compositor — no main-thread work per frame,
+  // where the old rAF loop drove a full style/paint pass at display rate.
   useEffect(() => {
     const mascot = mascotRef.current;
     const card = mascot?.closest<HTMLElement>(".funmoney");
     const head = card?.querySelector<HTMLElement>(".fm-head");
     const bar = card?.querySelector<HTMLElement>(".fm-bar");
+    const swimY = mascot?.querySelector<HTMLElement>(".puffer");
     const img = mascot?.querySelector<HTMLElement>("img.art");
-    if (!mascot || !card || !head || !bar) return;
+    if (!mascot || !card || !head || !bar || !swimY) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    let pos = { x: 0, y: 0 };
-    let vel = { x: 60, y: 45 };
-    let flipped = false;
-    let raf = 0;
-    let last = performance.now();
+    // px per second — the same speeds as the old loop
+    const VX = 60;
+    const VY = 45;
+    let anims: Animation[] = [];
+    let onScreen = true;
+    let key = "";
 
-    const step = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
-
-      // Displacement bounds derived from the mascot's transform-free home
-      // position. The gauge box pads the art ~1.5x for fx, so the bounds use
-      // the art's edge — the fish visibly touches the walls and the bar.
+    // Displacement bounds derived from the mascot's transform-free home
+    // position. The gauge box pads the art ~1.5x for fx, so the bounds use
+    // the art's edge — the fish visibly touches the walls and the bar.
+    // Re-measured (and the swim rebuilt) only when something in the card
+    // resizes.
+    const build = () => {
       const cardR = card.getBoundingClientRect();
       const cs = getComputedStyle(card);
       const padL = parseFloat(cs.paddingLeft) || 0;
@@ -393,27 +440,74 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
       const minY = headB - mascot.offsetTop - inset;
       const maxY = barT - h - mascot.offsetTop + inset;
 
-      pos.x += vel.x * dt;
-      pos.y += vel.y * dt;
-      if (pos.x <= minX) { pos.x = minX; vel.x = Math.abs(vel.x); }
-      else if (pos.x >= maxX) { pos.x = maxX; vel.x = -Math.abs(vel.x); }
-      if (minY <= maxY) {
-        if (pos.y <= minY) { pos.y = minY; vel.y = Math.abs(vel.y); }
-        else if (pos.y >= maxY) { pos.y = maxY; vel.y = -Math.abs(vel.y); }
-      } else {
-        pos.y = 0;
-      }
+      // Resize callbacks fire for every observed child — skip no-op rebuilds
+      // so the fish doesn't restart its path.
+      const next = [minX, maxX, minY, maxY].map(Math.round).join();
+      if (next === key) return;
+      key = next;
 
-      const wantFlip = vel.x < 0;
-      if (wantFlip !== flipped && img) {
-        flipped = wantFlip;
-        img.classList.toggle("flip", flipped);
+      anims.forEach((a) => a.cancel());
+      anims = [];
+      const loop = { iterations: Infinity, direction: "alternate", easing: "linear" } as const;
+      const spanX = maxX - minX;
+      if (spanX > 0) {
+        const tx = (spanX / VX) * 1000;
+        const ax = mascot.animate(
+          [{ translate: `${minX}px 0` }, { translate: `${maxX}px 0` }],
+          { ...loop, duration: tx }
+        );
+        // Start from the home position, heading right, like the old loop.
+        ax.currentTime = (Math.max(0, Math.min(spanX, -minX)) / spanX) * tx;
+        anims.push(ax);
+        if (img) {
+          // Facing follows the X leg: right-bound half of the cycle unflipped,
+          // left-bound half mirrored (the paired 0.5 offsets make it a jump).
+          const af = img.animate(
+            [
+              { scale: "1 1", offset: 0 },
+              { scale: "1 1", offset: 0.5 },
+              { scale: "-1 1", offset: 0.5 },
+              { scale: "-1 1", offset: 1 },
+            ],
+            { duration: tx * 2, iterations: Infinity, easing: "linear" }
+          );
+          af.currentTime = ax.currentTime;
+          anims.push(af);
+        }
       }
-      mascot.style.transform = `translate(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px)`;
-      raf = requestAnimationFrame(step);
+      const spanY = maxY - minY;
+      if (spanY > 0) {
+        const ty = (spanY / VY) * 1000;
+        const ay = swimY.animate(
+          [{ translate: `0 ${minY}px` }, { translate: `0 ${maxY}px` }],
+          { ...loop, duration: ty }
+        );
+        ay.currentTime = (Math.max(0, Math.min(spanY, -minY)) / spanY) * ty;
+        anims.push(ay);
+      }
+      if (!onScreen) anims.forEach((a) => a.pause());
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    build();
+    // Any child changing size can move the head/bar edges.
+    const ro = new ResizeObserver(build);
+    ro.observe(card);
+    for (const el of card.children) ro.observe(el);
+
+    // Swim only while the card is on screen; scrolled away, the swim and the
+    // gauge's CSS bob/bubble animations pause (hidden tabs pause on their own).
+    const io = new IntersectionObserver((entries) => {
+      // Entries can arrive batched (e.g. "hidden" while Studio mounts the
+      // widget, then "visible") — only the newest one is current.
+      onScreen = entries[entries.length - 1].isIntersecting;
+      card.classList.toggle("fm-paused", !onScreen);
+      anims.forEach((a) => (onScreen ? a.play() : a.pause()));
+    });
+    io.observe(card);
+    return () => {
+      anims.forEach((a) => a.cancel());
+      ro.disconnect();
+      io.disconnect();
+    };
   }, []);
 
   return (
@@ -425,7 +519,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
         <PufferGauge ratio={ratio} size={96} showLabel={false} />
       </span>
       <div className="fm-amount">
-        {money(spent)} <span className="of">of {money(cap)}</span>
+        {money(spent)} <span className="of">/ {money(cap)}</span>
       </div>
       <div className="fm-bar" role="presentation">
         <span className="fm-bar-fill" style={{ width: `${pct}%` }} />
@@ -452,10 +546,20 @@ function FunMoney(params: Ctx) {
 
 /* ---------- Recent activity ---------- */
 
-function RecentBody({ rows }: { rows: Row[] }) {
+type CardRow = NonNullable<DashboardData>["cards"][number];
+
+function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
+  // Requests and offered cards share one newest-first feed — a picked card
+  // shows only its request row, so each product lands once.
   const latest = useMemo(
-    () => [...rows].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 6),
-    [rows]
+    () =>
+      [
+        ...rows.map((r) => ({ kind: "req" as const, at: +new Date(r.createdAt), r })),
+        ...cards.map((c) => ({ kind: "opt" as const, at: +new Date(c.createdAt), c })),
+      ]
+        .sort((a, b) => b.at - a.at)
+        .slice(0, 5),
+    [rows, cards]
   );
 
   const viewAll = () => {
@@ -472,26 +576,33 @@ function RecentBody({ rows }: { rows: Row[] }) {
         <button className="recent-viewall" onClick={viewAll}>View all</button>
       </div>
       <div className="recent-list">
-        {latest.map((r) => (
-          <div className="recent-row" key={r.ref}>
-            {r.imageUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img className="recent-thumb" src={r.imageUrl} alt="" />
-            ) : (
-              <span className="recent-thumb letter" aria-hidden="true">
-                {r.title?.[0]?.toUpperCase() ?? "?"}
+        {latest.map((e) => {
+          const item = e.kind === "req" ? e.r : e.c;
+          return (
+            <div className="recent-row" key={`${e.kind}-${item.ref}`}>
+              {item.imageUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img className="recent-thumb" src={item.imageUrl} alt="" />
+              ) : (
+                <span className="recent-thumb letter" aria-hidden="true">
+                  {item.title?.[0]?.toUpperCase() ?? "?"}
+                </span>
+              )}
+              <span className="recent-meta">
+                <span className="t">{item.title}</span>
+                <span className="s">{timeOf(item.createdAt)}</span>
               </span>
-            )}
-            <span className="recent-meta">
-              <span className="t">{r.title}</span>
-              <span className="s">{timeOf(r.createdAt)}</span>
-            </span>
-            <span className="recent-right">
-              <span className="a">{money(r.amount)}</span>
-              <StatusBadge status={r.status} decision={r.decision} />
-            </span>
-          </div>
-        ))}
+              <span className="recent-right">
+                <span className="a">{money(item.amount)}</span>
+                {e.kind === "req" ? (
+                  <StatusBadge status={e.r.status} decision={e.r.decision} />
+                ) : (
+                  <OptBadge state={e.c.state} />
+                )}
+              </span>
+            </div>
+          );
+        })}
         {latest.length === 0 && <p className="muted">Nothing yet.</p>}
       </div>
     </>
@@ -500,9 +611,10 @@ function RecentBody({ rows }: { rows: Row[] }) {
 
 function Recent(params: Ctx) {
   const rows = useFilteredRows(params);
+  const cards = useFilteredCards(params);
   return (
     <div className="bento">
-      <RecentBody rows={rows} />
+      <RecentBody rows={rows} cards={cards} />
     </div>
   );
 }
@@ -511,11 +623,12 @@ function Recent(params: Ctx) {
 
 function FunRecent(params: Ctx) {
   const rows = useFilteredRows(params);
+  const cards = useFilteredCards(params);
   return (
     <div className="funmoney funrecent">
       <FunMoneyBody rows={rows} />
       <hr className="fr-sep" />
-      <RecentBody rows={rows} />
+      <RecentBody rows={rows} cards={cards} />
     </div>
   );
 }
@@ -617,7 +730,7 @@ function SpendByDay(params: Ctx) {
           >
             <defs>
               <linearGradient id="barBought" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--tide)" />
+                <stop offset="0%" stopColor="var(--st-bought)" />
                 <stop offset="100%" stopColor="var(--deep)" />
               </linearGradient>
             </defs>
@@ -677,19 +790,17 @@ function SpendByDay(params: Ctx) {
           </svg>
         )}
         {hover != null && days[hover] && (
-          <div
-            className="chart-tip"
-            style={{
-              left: PAD.l + hover * slot + slot / 2,
-              top: yAt(days[hover].bought + days[hover].requested) - 8,
-            }}
+          <ChartTip
+            chartRef={ref}
+            x={PAD.l + hover * slot + slot / 2}
+            y={yAt(days[hover].bought + days[hover].requested) - 8}
           >
             <span className="tip-date">{dayOf(days[hover].key + "T12:00:00")}</span>
             <span className="tip-amt">
               {money(days[hover].bought)} bought
               {days[hover].requested > 0 && ` · ${money(days[hover].requested)} requested`}
             </span>
-          </div>
+          </ChartTip>
         )}
       </div>
     </div>
@@ -717,7 +828,7 @@ const legendTheme = themeQuartz.withParams({
   foregroundColor: "var(--ink)",
   borderColor: "transparent",
   rowHoverColor: "var(--ocean-soft)",
-  rowHeight: 28,
+  rowHeight: 32,
   headerHeight: 0,
   fontSize: 12,
   spacing: 4,
@@ -730,7 +841,7 @@ const legendTheme = themeQuartz.withParams({
 const legendCols: ColDef<LegendRow>[] = [
   {
     field: "status",
-    flex: 1,
+    width: 220,
     cellRenderer: (p: ICellRendererParams<LegendRow>) =>
       p.data ? (
         <StatusBadge status={p.data.status} decision={p.data.decision} />
@@ -738,15 +849,17 @@ const legendCols: ColDef<LegendRow>[] = [
   },
   {
     field: "n",
-    width: 44,
+    flex: 1,
     cellClass: "leash-col-num",
-    cellStyle: { justifyContent: "flex-end" },
+    cellStyle: { textAlign: "right" },
   },
   {
+    // narrow fixed amount column — n right-aligns into it, so the pair
+    // "8  $184.33" glues together at the row's right edge
     field: "amt",
-    width: 84,
+    width: 88,
     cellClass: "leash-col-amt",
-    cellStyle: { justifyContent: "flex-end" },
+    cellStyle: { textAlign: "left" },
     valueFormatter: (p) => money(p.value ?? 0),
   },
 ];
@@ -799,38 +912,65 @@ function LeashReport(params: Ctx) {
     setActive(next);
   };
 
-  // Carousel layer, item level: everything Puffr ever put on the stack.
+  // Carousel layer, per option card: everything Puffr ever put on the stack,
+  // including cards the owner X'd out (kept on the payload as `removed`).
   const offered = sets.reduce((a, s) => a + s.options, 0);
   const auto = sets.reduce((a, s) => a + s.autoOk, 0);
   const needs = sets.reduce((a, s) => a + s.needsOk, 0);
   const stopped = sets.reduce((a, s) => a + s.blocked, 0);
+  // Per-card outcomes reconcile exactly: offered = picked + skipped + open.
+  // Skipped covers X'd-out cards, every card in a dismissed set, and the
+  // unchosen rest of a picked set.
   const picked = sets.reduce((a, s) => a + (s.picked ? 1 : 0), 0);
-  const skipped = sets.reduce((a, s) => a + (s.dismissed ? 1 : 0), 0);
+  const open = sets.reduce((a, s) => a + (s.open ? s.live : 0), 0);
+
+  // Skipped and Blocked merge the shelf layer with the request layer —
+  // declined requests + unchosen cards, rule-killed requests + refused
+  // cards — so the legend number, the bar segment and the grid's status
+  // filter all agree.
+  const cardStates: Partial<Record<StatusKey, "skipped" | "blocked">> = {
+    REJECTED: "skipped",
+    BLOCKED: "blocked",
+  };
+  const cardsAll = data?.cards ?? [];
 
   // Pick outcomes, one canonical status per segment — the bar, legend, badges
   // and charts all read the same status config.
   const segs = STATUSES.map((st) => {
     const list = rows.filter((r) => statusKey(r.status, r.decision) === st.key);
-    const amt = list.reduce((a, r) => a + r.amount, 0);
+    const cardList = cardStates[st.key]
+      ? cardsAll.filter((c) => c.state === cardStates[st.key])
+      : [];
+    const n = list.length + cardList.length;
+    const amt =
+      list.reduce((a, r) => a + r.amount, 0) +
+      cardList.reduce((a, c) => a + c.amount, 0);
     return {
       key: st.key,
       label: st.label,
       color: st.colorVar,
-      n: list.length,
+      n,
       amt,
-      tip: `${st.label}: ${list.length} — ${money(amt)}`,
+      tip: `${st.label}: ${n} — ${money(amt)}`,
       legend: {
         key: st.key,
         status: st.key === "PAYPAL" ? "WAITING" : st.key,
         decision:
           st.key === "PAYPAL" ? "ALLOW" : st.key === "WAITING" ? "ASK" : null,
-        n: list.length,
+        n,
         amt,
       } as LegendRow,
     };
-  }).filter((s) => s.n > 0);
+  });
+  // The colored bar shows only real counts; the legend lists every status so
+  // the vocabulary (e.g. "Waiting for you") is visible even at zero.
+  const barSegs = segs.filter((s) => s.n > 0);
+  // Failed stays out of the always-on legend — it only matters when real.
+  const legendSegs = segs.filter((s) => s.key !== "FAILED");
   const totalPicks = segs.reduce((a, s) => a + s.n, 0);
-  const ariaBar = segs.map((s) => `${s.label} ${s.n} — ${money(s.amt)}`).join("; ");
+  const ariaBar = barSegs
+    .map((s) => `${s.label} ${s.n} — ${money(s.amt)}`)
+    .join("; ");
 
   const offeredC = useCountUp(offered, 400);
   const stoppedC = useCountUp(stopped, 400);
@@ -861,7 +1001,7 @@ function LeashReport(params: Ctx) {
           <div className="leash-stats">
             <div className="leash-stat">
               <span className="leash-num">{offeredC}</span>
-              <span className="leash-cap">Offered</span>
+              <span className="leash-cap">Options offered</span>
             </div>
             <div className="leash-stat hero">
               <svg
@@ -888,12 +1028,11 @@ function LeashReport(params: Ctx) {
                 />
               </svg>
               <span className="leash-num">{stoppedC}</span>
-              <span className="leash-cap">Stopped by the rules</span>
-              <span className="leash-helper">before you could pick them</span>
+              <span className="leash-cap">Refused on the shelf</span>
             </div>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
-              <span className="leash-cap">You picked</span>
+              <span className="leash-cap">Options you picked</span>
             </div>
           </div>
 
@@ -910,7 +1049,7 @@ function LeashReport(params: Ctx) {
                   role="group"
                   aria-label={`Picks by status: ${ariaBar}`}
                 >
-                  {segs.map((s) => (
+                  {barSegs.map((s) => (
                     <button
                       type="button"
                       key={s.key}
@@ -935,7 +1074,7 @@ function LeashReport(params: Ctx) {
                 <div className="leash-legend" aria-label="Purchases by status">
                   <AgGridReact<LegendRow>
                     theme={legendTheme}
-                    rowData={segs.map((s) => s.legend)}
+                    rowData={legendSegs.map((s) => s.legend)}
                     columnDefs={legendCols}
                     domLayout="autoHeight"
                     headerHeight={0}
@@ -946,6 +1085,8 @@ function LeashReport(params: Ctx) {
                     rowClassRules={{
                       "leash-row-active": (p: RowClassParams<LegendRow>) =>
                         p.data?.key === active,
+                      "leash-row-empty": (p: RowClassParams<LegendRow>) =>
+                        p.data?.n === 0,
                     }}
                     getRowId={(p) => p.data.key}
                   />
@@ -955,8 +1096,10 @@ function LeashReport(params: Ctx) {
           </div>
 
           <span className="leash-foot">
-            {auto} pass · {needs} ask · {stopped} blocked
-            {skipped > 0 && ` · ${skipped} skipped`}
+            {offered} offered — {auto} auto-ok · {needs} would-ask · {stopped} refused
+            {" → "}
+            {picked} picked
+            {open > 0 && ` · ${open} still open`}
           </span>
         </>
       )}
@@ -972,22 +1115,35 @@ const GRID_ID = "requests-grid";
 const ROWIDX = "requests.rowIdx";
 const PAGE_SIZE = 8;
 
+// First-paint widget filter: page 1 = the newest 8 rows of the unfiltered
+// ledger (rowIdx is the merged rank). Once the pager or a page filter is
+// involved, `go` re-emits the concrete `isIn` set of the filtered slice —
+// a range on absolute rank returns nothing for rows filtered to old pages.
 const pageFilter = (page: number) => [
   { field: { id: ROWIDX }, model: { operator: "greaterThanOrEqual", value: (page - 1) * PAGE_SIZE + 1 } },
   { field: { id: ROWIDX }, model: { operator: "lessThanOrEqual", value: page * PAGE_SIZE } },
 ];
 export const gridPageFilter = pageFilter;
 
+const inFilter = (rowIdx: number[]) => [
+  { field: { id: ROWIDX }, model: { operator: "isIn", value: rowIdx } },
+];
+
 function GridPager(params: Ctx) {
-  const rows = useFilteredRows(params);
+  // Filtered rows in ledger order — the same set the grid sees before its
+  // own widget (rowIdx) filter, so each page's slice is the exact `isIn` set.
+  const rows = useFilteredActivity(params);
   const api = params.api;
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const [page, setPage] = useState(1);
 
-  const go = (p: number) => {
-    const clamped = Math.min(Math.max(1, p), pages);
+  const go = (p: number, list = rows) => {
+    const clamped = Math.min(Math.max(1, p), Math.max(1, Math.ceil(list.length / PAGE_SIZE)));
     setPage(clamped);
+    const slice = list
+      .slice((clamped - 1) * PAGE_SIZE, clamped * PAGE_SIZE)
+      .map((r) => r.rowIdx);
     const st = api.getState();
     api.setState({
       ...st,
@@ -999,7 +1155,7 @@ function GridPager(params: Ctx) {
                 ...pg.filter,
                 widget: {
                   ...pg.filter?.widget,
-                  [GRID_ID]: pageFilter(clamped) as never,
+                  [GRID_ID]: inFilter(slice) as never,
                 },
               },
             }
@@ -1008,13 +1164,21 @@ function GridPager(params: Ctx) {
     });
   };
 
+  // The filtered set changed (status pill, Ask filter, new data): land back
+  // on page 1 of the new set instead of pointing at stale rank values.
+  const rowsSig = rows.map((r) => r.ref).join(",");
+  useEffect(() => {
+    go(1, rows);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowsSig]);
+
   const lo = (page - 1) * PAGE_SIZE + 1;
   const hi = Math.min(page * PAGE_SIZE, total);
 
   return (
     <div className="grid-pager">
       <span className="grid-pager-info">
-        {total === 0 ? "No requests" : `${lo}–${hi} of ${total} requests · ${PAGE_SIZE} per page`}
+        {total === 0 ? "No items" : `${lo}–${hi} of ${total} items · ${PAGE_SIZE} per page`}
       </span>
       <div className="grid-pager-nav">
         <button
