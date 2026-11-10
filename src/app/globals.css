@@ -149,8 +149,8 @@
   --card-grad: linear-gradient(150deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.62) 50%, rgba(232, 240, 252, 0.6) 100%);
   --card-sheen: radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.7), transparent 55%);
   --hero-grad:
-    radial-gradient(90% 55% at 100% 0%, rgba(191, 219, 254, 0.4), transparent 60%),
-    linear-gradient(180deg, #60a5fa 0%, #3b82f6 24%, #2f6fe0 41%, rgba(232, 240, 255, 0.92) 50%, rgba(255, 255, 255, 0.84) 66%, rgba(248, 250, 255, 0.82) 100%);
+    radial-gradient(90% 55% at 100% 0%, rgba(191, 219, 254, 0.55), transparent 60%),
+    linear-gradient(180deg, #93c5fd 0%, #6ea6f4 24%, #4f8fe9 40%, rgba(229, 239, 255, 0.94) 52%, rgba(255, 255, 255, 0.86) 66%, rgba(248, 250, 255, 0.84) 100%);
   --hero-glow: 0 24px 60px -22px rgba(59, 130, 246, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.9);
   --glow-white: drop-shadow(0 0 4px rgba(37, 99, 235, 0.55)) drop-shadow(0 0 10px rgba(59, 130, 246, 0.35));
   --tip-bg: #0b1736;
@@ -521,6 +521,14 @@ label {
   width: 60px;
   height: 60px;
   border-radius: 18px;
+  /* rail items can be <a> or <button> — strip the global button chrome so
+     only the rail look applies */
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  min-height: 0;
+  cursor: pointer;
   color: var(--ink-soft);
   text-decoration: none;
   font-size: 11px;
@@ -690,9 +698,10 @@ label {
 }
 
 .avatar-chip {
+  position: relative;
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -700,11 +709,20 @@ label {
   flex: none;
 }
 
+/* theme-swapped art: both variants stack; CSS shows the matching one
+   (same trick as the rail logo's logo-dark/logo-light) */
 .avatar-chip img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+:root[data-theme="dark"] .avatar-chip .av-light,
+:root[data-theme="light"] .avatar-chip .av-dark {
+  display: none;
 }
 
 .avatar-initials {
@@ -713,7 +731,7 @@ label {
   justify-content: center;
   width: 100%;
   height: 100%;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--tide);
 }
@@ -1285,6 +1303,114 @@ img[src*="/mascot/"] {
   height: calc(100dvh - 72px - 12px);
 }
 
+/* Agent segmented group — clicking Agent reveals the New-chat segment under
+   it, view-toggle style. Agent's active gradient never leaves. */
+.rail-agent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  transition:
+    padding var(--dur) var(--ease),
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
+}
+
+.rail-agent.open {
+  padding: 4px 0;
+  background: var(--glass);
+  border-color: var(--glass-line);
+  box-shadow: var(--glass-hi);
+}
+
+/* grid-rows 0fr→1fr animates real height; the button slides down inside */
+.rail-sub {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--dur) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+
+.rail-agent.open .rail-sub {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.rail-sub-in {
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.rail-new {
+  color: var(--tide);
+  transform: translateY(-12px);
+  transition:
+    color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.rail-agent.open .rail-new {
+  transform: translateY(0);
+}
+
+.rail-new:active {
+  background: var(--ocean-soft);
+  color: var(--ink);
+}
+
+/* click feedback — flashes the view-toggle "current segment" look briefly */
+.rail-new.fired {
+  background: var(--st-waiting);
+  color: #0b1736;
+}
+
+:root[data-theme="light"] .rail-new.fired {
+  background: var(--st-bought);
+  color: #fff;
+}
+
+/* bottom-tab rail: the segment expands sideways instead of downward */
+@media (max-width: 1099px) {
+  .rail-agent {
+    flex-direction: row;
+  }
+
+  .rail-agent.open {
+    padding: 0 4px;
+  }
+
+  .rail-sub {
+    grid-template-rows: none;
+    grid-template-columns: 0fr;
+  }
+
+  .rail-agent.open .rail-sub {
+    grid-template-columns: 1fr;
+  }
+
+  .rail-sub-in {
+    padding-top: 0;
+    padding-left: 4px;
+  }
+
+  .rail-new {
+    transform: translateX(-12px);
+  }
+
+  .rail-agent.open .rail-new {
+    transform: translateX(0);
+  }
+}
+
 .chat-scroll {
   flex: 1;
   min-height: 0;
@@ -1466,10 +1592,25 @@ img[src*="/mascot/"] {
   cursor: default;
 }
 
+/* blocked verdict — replaces the pick button with a status pill (not a faux
+   button), so it reads as "the rules said no" and centres cleanly against
+   the × in the stack's button row */
 .opt-blocked {
-  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--st-blocked) 35%, transparent);
+  border-radius: 999px;
+  background: var(--danger-soft);
   color: var(--st-blocked);
   font-size: var(--t12);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* …but on carousel cards it still anchors to the card's bottom edge */
+.opt-card .opt-blocked {
+  margin-top: auto;
 }
 
 .opt-card.blocked {
@@ -1547,6 +1688,12 @@ img[src*="/mascot/"] {
   position: absolute;
   inset: 0;
   background: #000;
+}
+
+/* on the light canvas, back cards wash toward the paper color — a fog fade,
+   not a murky darkening */
+:root[data-theme="light"] .stack-shade {
+  background: var(--paper);
 }
 
 .stack-badge {
@@ -2009,7 +2156,7 @@ img[src*="/mascot/"] {
   gap: var(--s2);
 }
 
-/* once-per-ask pointer — text left, × right */
+/* once-per-ask pointer — text with the × tucked right beside the link */
 .ask-note {
   display: flex;
   align-items: center;
@@ -2018,6 +2165,7 @@ img[src*="/mascot/"] {
 
 .ask-note .ac-dismiss {
   position: static;
+  margin-left: var(--s2);
   width: 20px;
   height: 20px;
   min-height: 20px;
@@ -2804,21 +2952,26 @@ img[src*="/mascot/"] {
 
 /* ---------- receipts ---------- */
 
-/* topbar icon button — matches the 36px avatar chip rhythm */
+/* topbar icon button — matches the 44px avatar chip rhythm */
 .receipts-btn {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-height: 36px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 50%;
   background: transparent;
   color: var(--ink-soft);
   box-shadow: none;
+}
+
+.receipts-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 .receipts-btn:hover:not(:disabled) {
@@ -4047,6 +4200,24 @@ img[src*="/mascot/"] {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* AG anchors this popup to the studio root, which ends left of the AI
+   panel — it pops out to the left of the button. Re-pin it under the
+   thread button: the panel is a fixed right-docked overlay, so fixed
+   viewport insets keep the dropdown aligned with it. */
+.ag-studio-ai-thread-dropdown {
+  position: fixed !important;
+  left: auto !important;
+  top: 127px !important;
+  /* 100vw counts the page scrollbar, 100% doesn't — the difference
+     auto-compensates so the edge tracks the fixed AI panel exactly. */
+  right: calc(124px - (100vw - 100%)) !important;
+  /* the fixed AI panel sits at z:90 — the dropdown must paint above it */
+  z-index: 100 !important;
+  /* same width as the thread button — left and right edges stay flush,
+     so it reads as the button's own dropdown rather than a popup */
+  width: 285px !important;
+  min-width: 0 !important;
+}
 /* the shipped glyph reads as a native select caret — draw a clean chevron */
 .studio-card .ag-studio-ai-panel .ag-studio-ai-thread-button .ag-icon {
   display: none;
@@ -4395,12 +4566,37 @@ img[src*="/mascot/"] {
 :root[data-theme="light"] .funmoney.funrecent .fr-sep {
   border-top-color: transparent;
 }
+/* light hero: the readout stays white like the dark theme — a soft blue
+   shadow keeps it from washing out on the pastel field */
+:root[data-theme="light"] .funmoney.funrecent .fm-amount {
+  color: #ffffff;
+  text-shadow: 0 1px 10px rgba(29, 78, 216, 0.4);
+}
+:root[data-theme="light"] .funmoney.funrecent .fm-head .bento-title,
+:root[data-theme="light"] .funmoney.funrecent .fm-state,
+:root[data-theme="light"] .funmoney.funrecent .fm-amount .of {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 8px rgba(29, 78, 216, 0.35);
+}
+:root[data-theme="light"] .funmoney.funrecent .fm-bar {
+  background: rgba(11, 42, 91, 0.1);
+  box-shadow: none;
+}
+:root[data-theme="light"] .funmoney.funrecent .fm-bar-fill {
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+:root[data-theme="light"] .funmoney.funrecent .fm-actions .primary {
+  box-shadow: 0 8px 22px -10px rgba(29, 78, 216, 0.45);
+}
+:root[data-theme="light"] .funmoney.funrecent .fm-actions .ghost {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(11, 42, 91, 0.18);
+  color: rgba(11, 42, 91, 0.82);
+  box-shadow: none;
+}
 /* the Recent heading sits where the blue fades out — full ink so it reads */
 :root[data-theme="light"] .funmoney.funrecent .bento-head:not(.fm-head) .bento-title {
   color: var(--ink);
-}
-:root[data-theme="light"] .funmoney.funrecent .recent-viewall {
-  color: var(--deep);
 }
 /* rows read as a list, not centred captions */
 .funmoney.funrecent .recent-list {
@@ -5036,24 +5232,6 @@ img[src*="/mascot/"] {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.recent-viewall {
-  flex: none;
-  align-self: flex-start;
-  background: none;
-  border: none;
-  box-shadow: none;
-  color: var(--tide);
-  min-height: 0;
-  padding: var(--s1) 0;
-  font-size: var(--t14);
-  font-weight: 600;
-}
-.recent-viewall:hover:not(:disabled) {
-  transform: none;
-  filter: none;
-  text-decoration: underline;
-}
-
 /* status pill bars — evenly spaced, vertically centered */
 .statusbars {
   display: flex;
@@ -5216,17 +5394,18 @@ img[src*="/mascot/"] {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 2px;
 }
 .leashbar {
   display: flex;
   gap: 2px;
-  height: 16px;
+  height: 12px;
   width: 100%;
   border-radius: 999px;
   background: var(--ocean-soft);
   overflow: visible;
 }
+/* One continuous allocation meter — squared segments, flat color. The 2px
+   track gaps read as separators; only the outer ends stay rounded. */
 .leash-seg {
   position: relative;
   display: block;
@@ -5234,46 +5413,41 @@ img[src*="/mascot/"] {
   min-height: 0;
   border: 0;
   padding: 0;
-  border-radius: 999px;
+  border-radius: 0;
   cursor: pointer;
-  /* pill depth: top-lit edge, shaded base, faint halo in the seg's own
-     status color (set as `color` inline) — flat paint reads glossy */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.22),
-    0 0 10px -3px currentColor;
+  /* flat fill — the status color carries it; faint glow for presence */
+  box-shadow: 0 0 8px -4px currentColor;
   transition:
     filter var(--dur-fast) var(--ease),
     box-shadow var(--dur-fast) var(--ease);
 }
-/* glass sheen across the top half — sits above the flat fill, below the tip */
-.leash-seg::before {
-  content: "";
-  position: absolute;
-  inset: 1px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.5),
-    rgba(255, 255, 255, 0.1) 45%,
-    rgba(255, 255, 255, 0) 60%
-  );
-  pointer-events: none;
+.leash-seg:first-child {
+  border-top-left-radius: 999px;
+  border-bottom-left-radius: 999px;
+}
+.leash-seg:last-child {
+  border-top-right-radius: 999px;
+  border-bottom-right-radius: 999px;
 }
 .leash-seg:hover {
-  filter: brightness(1.12) saturate(1.1);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.22),
-    0 0 14px -2px currentColor;
+  filter: brightness(1.08) saturate(1.15);
+  box-shadow: 0 0 10px -3px currentColor;
 }
 .leash-seg:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 1px;
 }
-.leash-seg.active {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+/* active = a marker dot under the segment, not a button outline */
+.leash-seg.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
 }
 .leashbar.empty {
   height: 32px;
@@ -5290,7 +5464,8 @@ img[src*="/mascot/"] {
 /* Legend: compact ag-grid table — transparent so the card's glass shows
    through; rows are click filters like the bar segments. */
 .leash-legend {
-  margin-top: 0;
+  /* clear the bar's glow halo — the flex gap alone felt cramped */
+  margin-top: 8px;
 }
 /* one line: verdicts (pass/ask/blocked) | outcomes (picked/skipped/open) */
 .leash-foot {

@@ -83,10 +83,13 @@ export class GeminiLLM implements LLM {
 
   async planSearch(message: string): Promise<SearchPlan> {
     const raw = await this.generateJson(
-      `You are the search planner for a shopping agent. Decide whether the owner's message is a request to buy or find a product.
-If it is a shopping request: turn it into a product search query and a budget in cents (USD). Infer maxPriceCents from the message; if none is given, use 5000. Keep the query short (2-6 words), product-focused, no prices or filler words.
-If it is NOT a shopping request — greetings, questions about you or this app, chit-chat — return {"query": null, "maxPriceCents": 0}.
-Return ONLY JSON: {"query": string|null, "maxPriceCents": number}
+      `You are Puffr, a shopping agent that spends inside rules the owner sets. Decide what the owner's message is.
+1) A shopping request naming something findable (a product, category, gift idea, or "something like X"): turn it into a product search query and a budget in cents (USD). Infer maxPriceCents from the message; if none is given, use 5000. Keep the query short (2-6 words), product-focused, no prices or filler words. Return {"query": "...", "maxPriceCents": n}.
+   A price given as "over $X" or "more than $X" is a floor, not a budget — the owner is fishing for pricey items on purpose. Set maxPriceCents to X * 10 and search anyway.
+2) Shopping intent but too vague to search — like "buy me a thing" or "find me a gift" with no product type at all: don't guess a product. Ask one short clarifying question in Puffr's voice. Return {"query": null, "maxPriceCents": n, "reply": "..."}.
+3) Not a shopping request — greetings, questions about you or this app, chit-chat: answer briefly in Puffr's voice (one or two sentences). Return {"query": null, "maxPriceCents": 0, "reply": "..."}.
+Never return {"query": null} without a "reply". Replies stay in character: a pufferfish mascot guarding the owner's fun money — playful, dry, short.
+Return ONLY JSON: {"query": string|null, "maxPriceCents": number, "reply": string|null}
 Owner request: ${JSON.stringify(message)}`
     );
     const parsed = JSON.parse(raw);
@@ -99,6 +102,10 @@ Owner request: ${JSON.stringify(message)}`
           ? null
           : String(q).slice(0, 200),
       maxPriceCents: Math.max(0, Math.round(Number(parsed.maxPriceCents) || 5000)),
+      reply:
+        typeof parsed.reply === "string" && parsed.reply.trim()
+          ? parsed.reply.slice(0, 500)
+          : null,
     };
   }
 
@@ -145,6 +152,7 @@ ${list}`
       `You are a shopping agent curating options for the owner. Pick exactly ${maxPicks} DIFFERENT products from the list that fit the owner's request (fewer only if the list itself has fewer) — vary the angle (e.g. a playful pick, a practical pick, a wildcard) so they feel like genuinely different suggestions, best first.
 Give each a "tag" (1-3 words naming its angle) and a one-sentence "reasoning" why it fits.
 Prefer imperfect fits over returning nothing: if no product is a perfect match, still pick the closest options and say what's off in "reasoning". Return [] only when the products are completely unrelated to the request.
+The tags "Cheapest" and "Priciest" are reserved — do not use them.
 Return ONLY JSON: [{"productId": string, "tag": string, "reasoning": string}]
 Owner request: ${JSON.stringify(message)}
 Products:

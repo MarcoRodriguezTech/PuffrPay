@@ -25,18 +25,33 @@ function AvatarChip() {
         <span className="avatar-initials" aria-hidden="true">PP</span>
       ) : (
         /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={ASSETS.ownerAvatar}
-          alt="Owner"
-          width={36}
-          height={36}
-          onError={() => setBroken(true)}
-          // If the image 404'd before hydration, onError never fires — check
-          // the completed-but-empty state on mount too.
-          ref={(el) => {
-            if (el && el.complete && el.naturalWidth === 0) setBroken(true);
-          }}
-        />
+        <>
+          <img
+            className="av-dark"
+            src={ASSETS.ownerAvatar}
+            alt="Owner"
+            width={36}
+            height={36}
+            onError={() => setBroken(true)}
+            // If the image 404'd before hydration, onError never fires — check
+            // the completed-but-empty state on mount too.
+            ref={(el) => {
+              if (el && el.complete && el.naturalWidth === 0) setBroken(true);
+            }}
+          />
+          <img
+            className="av-light"
+            src={ASSETS.ownerAvatarLight ?? ASSETS.ownerAvatar}
+            alt=""
+            width={36}
+            height={36}
+            aria-hidden="true"
+            onError={() => setBroken(true)}
+            ref={(el) => {
+              if (el && el.complete && el.naturalWidth === 0) setBroken(true);
+            }}
+          />
+        </>
       )}
     </span>
   );

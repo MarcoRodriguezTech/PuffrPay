@@ -156,8 +156,10 @@ const eq = (id: string, value: string | number): AgFilterState =>
 // Filter entries selecting exactly this status — WAITING splits on whether a
 // PayPal order exists (mirroring Policy's Awaiting PayPal queue), not the
 // policy decision: an approved ASK keeps decision=ASK while carrying an
-// order id, so decision-based filtering would mis-bucket it.
-export function statusFilterEntries(key: StatusKey): AgFilterState[] {
+// order id, so decision-based filtering would mis-bucket it. SKIPPED is a
+// card-only status value: the filter matches shelf cards only, never
+// requests (no request row can carry it).
+export function statusFilterEntries(key: StatusKey | "SKIPPED"): AgFilterState[] {
   if (key === "PAYPAL")
     return [eq(STATUS_FIELD, "WAITING"), eq(ORDER_FIELD, 1)];
   if (key === "WAITING")
@@ -175,9 +177,11 @@ export function isStatusFilterEntry(f: AgFilterState): boolean {
 
 // The status a page-filter set currently selects, or null. Reads equals- and
 // null-test entries only, so ask-set status filters light up the bar too.
+// SKIPPED passes through as itself — it's the shelf-card status, not a
+// StatusKey, and the Leash Skipped segment keys on it.
 export function activeStatusKey(
   filters: AgFilterState[] | undefined | null
-): StatusKey | null {
+): StatusKey | "SKIPPED" | null {
   if (!filters) return null;
   let status: string | null = null;
   let decision: string | null = null;
@@ -194,5 +198,7 @@ export function activeStatusKey(
     }
   }
   if (!status) return null;
-  return statusKey(status.toUpperCase(), decision?.toUpperCase() ?? null, hasOrder);
+  const up = status.toUpperCase();
+  if (up === "SKIPPED") return "SKIPPED";
+  return statusKey(up, decision?.toUpperCase() ?? null, hasOrder);
 }

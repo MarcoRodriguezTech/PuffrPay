@@ -6,7 +6,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ASSETS } from "@/lib/assets";
+import { NEW_CHAT_EVENT } from "@/lib/ui";
 import { ThemeToggle } from "./ThemeToggle";
 
 const NAV = [
@@ -51,6 +53,21 @@ const isActive = (href: string, pathname: string) =>
 
 export function SideRail() {
   const pathname = usePathname();
+  const isAgent = isActive("/", pathname);
+  const [newOpen, setNewOpen] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  // the segment follows the route — arriving on Agent opens it, leaving
+  // collapses it; on-page Agent clicks still toggle it
+  useEffect(() => {
+    setNewOpen(isAgent);
+  }, [isAgent]);
+
+  const fireNewChat = () => {
+    window.dispatchEvent(new Event(NEW_CHAT_EVENT));
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), 450);
+  };
 
   return (
     <nav className="rail" aria-label="Main">
@@ -62,21 +79,60 @@ export function SideRail() {
       </Link>
 
       <div className="rail-nav">
-        {NAV.map((n) => (
-          <Link
-            key={n.href}
-            href={n.href}
-            // Activity carries ~5.6MB of ag-studio/ag-grid chunks — don't let
-            // the viewport prefetch pull them on every page.
-            prefetch={n.href === "/activity" ? false : undefined}
-            className={`rail-btn${isActive(n.href, pathname) ? " active" : ""}`}
-            aria-label={n.label}
-            title={n.label}
-          >
-            <span className="rail-ico">{n.icon}</span>
-            <span className="rail-label">{n.label}</span>
-          </Link>
-        ))}
+        {NAV.map((n) =>
+          n.href === "/" ? (
+            // Agent is a segmented group: its segment never loses the active
+            // color — clicking it expands the New-chat segment underneath.
+            <div key={n.href} className={`rail-agent${isAgent && newOpen ? " open" : ""}`}>
+              <Link
+                href={n.href}
+                className={`rail-btn${isAgent ? " active" : ""}`}
+                aria-label={n.label}
+                title={n.label}
+                aria-expanded={isAgent ? newOpen : undefined}
+                onClick={() => {
+                  if (isAgent) setNewOpen((o) => !o);
+                }}
+              >
+                <span className="rail-ico">{n.icon}</span>
+                <span className="rail-label">{n.label}</span>
+              </Link>
+              <div className="rail-sub" aria-hidden={isAgent && newOpen ? undefined : true}>
+                <div className="rail-sub-in">
+                  <button
+                    type="button"
+                    className={`rail-btn rail-new${flash ? " fired" : ""}`}
+                    aria-label="New chat"
+                    title="New chat — earlier activity stays in Activity"
+                    tabIndex={isAgent && newOpen ? 0 : -1}
+                    onClick={fireNewChat}
+                  >
+                    <span className="rail-ico">
+                      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                        <path d="M12 6v12M6 12h12" />
+                      </svg>
+                    </span>
+                    <span className="rail-label">New</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Link
+              key={n.href}
+              href={n.href}
+              // Activity carries ~5.6MB of ag-studio/ag-grid chunks — don't let
+              // the viewport prefetch pull them on every page.
+              prefetch={n.href === "/activity" ? false : undefined}
+              className={`rail-btn${isActive(n.href, pathname) ? " active" : ""}`}
+              aria-label={n.label}
+              title={n.label}
+            >
+              <span className="rail-ico">{n.icon}</span>
+              <span className="rail-label">{n.label}</span>
+            </Link>
+          )
+        )}
       </div>
 
       <div className="rail-foot">

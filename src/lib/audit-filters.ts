@@ -28,7 +28,11 @@ const OP_SYM: Record<string, string> = {
   contains: "contains",
 };
 
-const fmtDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const fmtDollars = (cents: number) =>
+  `$${(cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 export function filterLabel(f: AuditFilter): string {
   if (f.field === "created_at" && f.value === "week") return "last 7 days";

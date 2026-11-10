@@ -13,8 +13,8 @@ export type PufferState = "calm" | "swelling" | "puffed" | "super" | "maxed";
 
 // One render per gauge state; maxed reuses the super-puffed art plus the Max tag.
 const MASCOT_ART: Record<PufferState, string> = {
-  calm: "/mascot/puffr-calm-v2.png",
-  swelling: "/mascot/puffr-swelling-v2.png",
+  calm: "/mascot/puffr-calm-v4.png",
+  swelling: "/mascot/puffr-swelling-v4.png",
   puffed: "/mascot/puffr-puffed-v2.png",
   super: "/mascot/puffr-super-puffed-v2.png",
   maxed: "/mascot/puffr-super-puffed-v2.png",

@@ -47,13 +47,13 @@ const isFooter = (
 function StatusCell({ value, data }: CustomCellRendererProps) {
   const rows = useContext(DashRowsContext);
   if (!value) return null;
-  // OFFERED only exists on shelf cards — it isn't a request status, so it
-  // takes the option badge rather than StatusBadge's FAILED fallback.
-  // (Card REJECTED rows render "Skipped" through the normal path.)
-  if (value === "OFFERED") {
+  // OFFERED/SKIPPED only exist on shelf cards — they aren't request
+  // statuses, so they take option badges rather than StatusBadge's FAILED
+  // fallback.
+  if (value === "OFFERED" || value === "SKIPPED") {
     return (
       <span className="status-cell">
-        <OptBadge state="offered" />
+        <OptBadge state={value === "OFFERED" ? "offered" : "skipped"} />
       </span>
     );
   }
@@ -79,6 +79,10 @@ function StatusCell({ value, data }: CustomCellRendererProps) {
   );
 }
 
+// '$8,686.49' — thousands-separated, two decimals.
+const usd2 = (v: number) =>
+  v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 function FirstColCell({ value, data, node }: CustomCellRendererProps) {
   const rows = useContext(DashRowsContext);
   // Footer row: "Total bought" matches the Spent KPI tile (PURCHASED rows only).
@@ -86,7 +90,7 @@ function FirstColCell({ value, data, node }: CustomCellRendererProps) {
     const bought = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
     return (
       <span className="grand-total-label">
-        Total bought <b>${bought.toFixed(2)}</b>
+        Total bought <b>${usd2(bought)}</b>
       </span>
     );
   }
@@ -105,7 +109,7 @@ function ItemCell({ value, data, node }: CustomCellRendererProps) {
     const listed = rows.reduce((s, r) => s + r.amount, 0);
     return (
       <span className="grand-total-label muted">
-        Total listed (all rows) <b>${listed.toFixed(2)}</b>
+        Total listed (all rows) <b>${usd2(listed)}</b>
       </span>
     );
   }
@@ -124,7 +128,7 @@ function AmountCell({ value, data, node }: CustomCellRendererProps) {
   // computed over every request, so it stays empty.
   if (isFooter(data, node)) return null;
   const n = Number(value);
-  return isNaN(n) ? null : <span className="grid-amount">${n.toFixed(2)}</span>;
+  return isNaN(n) ? null : <span className="grid-amount">${usd2(n)}</span>;
 }
 
 export function createCellRenderer(

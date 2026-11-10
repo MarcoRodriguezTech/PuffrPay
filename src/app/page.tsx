@@ -15,6 +15,7 @@ import {
   GENERIC_ERROR,
   isRateLimitMsg,
   openReceipts,
+  NEW_CHAT_EVENT,
   refreshBudget,
   storeOf,
   toast,
@@ -139,7 +140,7 @@ interface Policy {
 const EXAMPLES = [
   "Find a birthday gift for my sister under $50",
   "I need a phone charger under $20",
-  "Find something over $100",
+  "Find me a smartwatch over $100",
 ];
 
 const MONTH = new Date().toLocaleString("en-US", { month: "long" });
@@ -205,8 +206,9 @@ export default function AgentPage() {
   // the last successfully bought purchase — kept so a receipt card can show
   const [receipt, setReceipt] = useState<Purchase | null>(null);
   // once the owner hides an approval card, no WAITING ask surfaces in the
-  // agent view again this session — they still queue in Controls. hideAsksAt
-  // also gates the pointer: only asks created after the mute get one flash.
+  // agent view again — persisted in localStorage so the mute survives
+  // navigation and reloads; they still queue in Controls. hideAsksAt also
+  // gates the pointer: only asks created after the mute get one flash.
   const [hideAsks, setHideAsks] = useState(false);
   const [hideAsksAt, setHideAsksAt] = useState(0);
   // asks the "waiting" pointer has already flashed for — it shows once each
@@ -217,6 +219,9 @@ export default function AgentPage() {
   // start of the in-flight request — the waiting-poll only surfaces asks
   // created after this, never stale queued ones
   const requestStartRef = useRef(0);
+  // asks already queued when the page loaded get the quiet Controls pointer,
+  // not the full card — only asks created during this session earn the pop
+  const sessionStartRef = useRef(Date.now());
 
   const appendStep = useCallback((s: Step) => {
     setSteps((prev) => [...prev, s]);
@@ -254,6 +259,10 @@ export default function AgentPage() {
 
   useEffect(() => {
     setBlockedAt(consumePuffFlag());
+    // the hide-approvals mute persists — navigating to Controls and back
+    // shouldn't resurrect a card the owner already X'd
+    setHideAsks(localStorage.getItem("puffr:hideAsks") === "1");
+    setHideAsksAt(Number(localStorage.getItem("puffr:hideAsksAt") ?? 0) || 0);
     refresh();
     const w = window as unknown as {
       SpeechRecognition?: unknown;
@@ -491,6 +500,33 @@ export default function AgentPage() {
     }
   }, [busy, choosing]);
 
+  // "New chat" archives the conversation server-side (rows stay for the
+  // dashboard's card layer) and resets the feed to the hero state.
+  const newChat = useCallback(async () => {
+    if (busy || choosing != null) return;
+    try {
+      await fetch("/api/agent", { method: "DELETE" });
+    } catch {
+      /* archived or not — the feed resets either way */
+    }
+    setMessages([]);
+    setSteps([]);
+    setShown(0);
+    setPurchase(null);
+    setApproveUrl(null);
+    setReceipt(null);
+    setOutcome(null);
+    refresh();
+    toast("New chat — earlier activity still lives in Activity.");
+  }, [busy, choosing, refresh]);
+
+  // the rail "New" action triggers the same reset from outside the page
+  useEffect(() => {
+    const onNewChat = () => void newChat();
+    window.addEventListener(NEW_CHAT_EVENT, onNewChat);
+    return () => window.removeEventListener(NEW_CHAT_EVENT, onNewChat);
+  }, [newChat]);
+
   async function decide(action: "approve" | "reject") {
     // id 0 is the optimistic card — no real purchase to act on yet
     if (!purchase || purchase.id === 0 || deciding) return;
@@ -541,16 +577,37 @@ export default function AgentPage() {
     purchase?.status === "WAITING" &&
     purchase.policyDecision === "ASK" &&
     !purchase.paypalOrderId;
-  const awaitingOwner = askWaiting && !hideAsks;
   const askId = askWaiting ? purchase.id : null;
+  const askIsNew =
+    purchase != null &&
+    askId != null &&
+    new Date(purchase.createdAt).getTime() > sessionStartRef.current;
+  const awaitingOwner = askWaiting && !hideAsks && askIsNew;
+  // The live options set is the latest options message — live only while
+  // nothing's been picked from it. Older unpicked sets render as the plain
+  // inline carousel; picked ones collapse to the chosen product's card.
+  const activeOptions = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== "agent") continue;
+      const p = parseOptions(m.content);
+      if (!p) continue;
+      const done = p.picked || p.dismissed || p.items.length === 0;
+      return done ? null : { msgId: m.id, payload: p };
+    }
+    return null;
+  }, [messages]);
+
   const showAskNote =
     askWaiting &&
-    hideAsks &&
     askId != null &&
+    !awaitingOwner &&
+    // a live shelf owns the bottom of the feed — never nag about a queued
+    // approval while the owner has items to pick through
+    !activeOptions &&
     !seenAsks.has(askId) &&
-    // only asks that arrived after the mute flash — old queued asks were
-    // already sitting there when the owner hid the card
-    new Date(purchase.createdAt).getTime() > hideAsksAt;
+    // a mute keeps asks older than it fully quiet — newer ones still nudge
+    (!hideAsks || new Date(purchase.createdAt).getTime() > hideAsksAt);
 
   // While a request is in flight, surface an ASK the moment its row exists —
   // the card doesn't wait for the full round-trip. Gated to asks created
@@ -631,21 +688,6 @@ export default function AgentPage() {
     const iv = setInterval(sweep, 8_000);
     return () => clearInterval(iv);
   }, [paymentPending, purchaseId, appendStep, refresh]);
-
-  // The live options set is the latest options message — live only while
-  // nothing's been picked from it. Older unpicked sets render as the plain
-  // inline carousel; picked ones collapse to the chosen product's card.
-  const activeOptions = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role !== "agent") continue;
-      const p = parseOptions(m.content);
-      if (!p) continue;
-      const done = p.picked || p.dismissed || p.items.length === 0;
-      return done ? null : { msgId: m.id, payload: p };
-    }
-    return null;
-  }, [messages]);
 
   const visibleSteps = steps.slice(0, shown);
   const pickIndex = visibleSteps.findIndex((s) => s.step === "pick");
@@ -815,7 +857,10 @@ export default function AgentPage() {
                   title="Hide approvals — still waiting in Controls"
                   onClick={() => {
                     setHideAsks(true);
-                    setHideAsksAt(Date.now());
+                    const at = Date.now();
+                    setHideAsksAt(at);
+                    localStorage.setItem("puffr:hideAsks", "1");
+                    localStorage.setItem("puffr:hideAsksAt", String(at));
                     // dismissing the card also counts as having seen the
                     // pointer for this ask — no immediate re-flash
                     setSeenAsks((s) => new Set(s).add(purchase.id));

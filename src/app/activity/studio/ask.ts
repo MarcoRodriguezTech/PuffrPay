@@ -84,7 +84,7 @@ export function specSummary(
     return { text: `${filtered.length} rows`, count: filtered.length };
   const totalCents = filtered.reduce((s, r) => s + (r.amountCents ?? 0), 0);
   return {
-    text: `${filtered.length} rows - $${(totalCents / 100).toFixed(2)} total`,
+    text: `${filtered.length} rows - $${(totalCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total`,
     count: filtered.length,
   };
 }

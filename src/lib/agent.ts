@@ -1,5 +1,6 @@
 import { getLLM } from "./llm";
 import type { OptionPick } from "./llm/types";
+import { ensurePriceEnds } from "./price-ends";
 import { searchProducts } from "./channel3";
 import { evaluatePolicy, matchesBlocked } from "./policy";
 import type { PolicyDecision } from "./types";
@@ -82,15 +83,38 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
-  // Not a shopping request — greetings/questions get a canned persona
-  // reply; Channel3, policy and PayPal are never touched.
+  // Not searchable — the planner either wrote a clarifying question for a
+  // vague shopping ask or answered chit-chat in persona; the canned intro
+  // only survives as a fallback. Channel3, policy and PayPal are never
+  // touched. If the ask's own budget already busts the per-purchase cap,
+  // say so — that's a policy answer, not a search.
   if (!plan.query) {
-    const reply =
-      "I'm Puffr — a shopping agent that spends inside rules the owner sets. " +
-      "Tell me what to find and I'll search for it; the policy engine decides whether the money moves.";
+    // A dropped reply needs the right fallback: the "vague shopping" branch
+    // carries a budget, chit-chat reports maxPriceCents 0 — use that to ask
+    // a real clarifying question instead of always reciting the intro.
+    let reply =
+      plan.reply?.trim() ||
+      (plan.maxPriceCents > 0
+        ? `Over $${(plan.maxPriceCents / 100).toFixed(0)} of what? Name a thing — headphones, a gift, a watch — and I'll go fishing.`
+        : "I'm Puffr — a shopping agent that spends inside rules the owner sets. " +
+          "Tell me what to find and I'll search for it; the policy engine decides whether the money moves.");
+    if (plan.maxPriceCents > policy.perPurchaseMaxCents) {
+      reply += ` Heads up though — anything over $${(policy.perPurchaseMaxCents / 100).toFixed(0)} is past your per-purchase max, so the policy engine will say no.`;
+    }
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
+  // "over $X" asks are price floors, not budgets — the model's ceiling is a
+  // guess, so clamp it deterministically: at least 10× the floor lets the
+  // catalog reach the expensive end (policy blocks what's over max anyway).
+  const overMatch = message.match(
+    /(?:over|more than|above)\s*\$?\s*(\d+(?:\.\d+)?)/i
+  );
+  const priceFloor = overMatch ? Math.round(parseFloat(overMatch[1]) * 100) : 0;
+  if (priceFloor > 0 && plan.maxPriceCents < priceFloor * 10) {
+    plan.maxPriceCents = priceFloor * 10;
+  }
+
   // --- server: Channel3 search ---
   let products: ProductResult[] = [];
   try {
@@ -100,7 +124,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     steps.push({ step: "search", detail: `Channel3 error: ${msg.slice(0, 120)}` });
   }
   const affordable = products.filter(
-    (p) => p.priceCents <= plan.maxPriceCents
+    (p) => p.priceCents <= plan.maxPriceCents && p.priceCents >= priceFloor
   );
   steps.push({
     step: "search",
@@ -119,9 +143,11 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
   // The model curates first; if it returned fewer than a full hand while
   // more candidates exist, top up in Channel3 relevance order so the
-  // carousel always offers min(MAX_OPTIONS, catalog size) cards.
+  // carousel always offers min(MAX_OPTIONS, catalog size) cards. Then the
+  // price bookends are enforced — the cheapest and priciest of the
+  // affordable pool always get offered under their reserved tags.
   const seen = new Set<string>();
-  const items = picks
+  const hand = picks
     .map((pk) => {
       const p = affordable.find((x) => x.id === pk.productId);
       return p ? { ...p, tag: pk.tag, reasoning: pk.reasoning } : null;
@@ -132,17 +158,21 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
     );
   const want = Math.min(MAX_OPTIONS, affordable.length);
   for (const p of affordable) {
-    if (items.length >= want) break;
+    if (hand.length >= want) break;
     if (seen.has(p.id)) continue;
     seen.add(p.id);
-    items.push({
+    hand.push({
       ...p,
       tag: "Also found",
       reasoning: "Also matches the request — added to fill the options.",
     });
   }
+  const items = ensurePriceEnds(hand, affordable, want);
   if (items.length === 0) {
-    const reply = `I couldn't find anything under $${(plan.maxPriceCents / 100).toFixed(2)} matching "${plan.query}". Nothing was requested.`;
+    const range = priceFloor > 0
+      ? `over $${(priceFloor / 100).toFixed(2)}`
+      : `under $${(plan.maxPriceCents / 100).toFixed(2)}`;
+    const reply = `I couldn't find anything ${range} matching "${plan.query}". Nothing was requested.`;
     steps.push({ step: "pick", detail: "no product fit the budget" });
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
@@ -192,7 +222,10 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   const reply = JSON.stringify({
     v: 1,
     kind: "options",
-    text: `Found ${optionsItems.length} picks under $${(plan.maxPriceCents / 100).toFixed(0)} — choose one:`,
+    text:
+      priceFloor > 0
+        ? `Found ${optionsItems.length} picks over $${(priceFloor / 100).toFixed(0)} — choose one:`
+        : `Found ${optionsItems.length} picks under $${(plan.maxPriceCents / 100).toFixed(0)} — choose one:`,
     items: optionsItems,
   } satisfies AgentOptionsPayload);
   // The new shelf supersedes any older still-open carousels — dismiss them
@@ -213,7 +246,7 @@ export async function chooseOption(
 ): Promise<AgentRunResult> {
   const steps: AgentStep[] = [];
   const rows = await query<{ content: string }>(
-    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent'",
+    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent' AND cleared_at IS NULL",
     [messageId]
   );
   let payload: AgentOptionsPayload | null = null;
@@ -269,7 +302,7 @@ export async function updateOptions(
   change: { dismiss?: boolean; removeId?: string }
 ): Promise<AgentOptionsPayload | null> {
   const rows = await query<{ content: string }>(
-    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent'",
+    "SELECT content FROM chat_messages WHERE id = $1 AND role = 'agent' AND cleared_at IS NULL",
     [messageId]
   );
   let payload: AgentOptionsPayload | null = null;
@@ -473,7 +506,7 @@ export async function getChatHistory(limit = 50) {
     content: string;
     created_at: Date;
   }>(
-    "SELECT id, role, content, created_at FROM chat_messages ORDER BY created_at DESC LIMIT $1",
+    "SELECT id, role, content, created_at FROM chat_messages WHERE cleared_at IS NULL ORDER BY created_at DESC LIMIT $1",
     [limit]
   );
   return rows.reverse().map((r) => ({

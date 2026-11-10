@@ -2,10 +2,14 @@ import type { ProductResult } from "../types";
 
 /** What the agent's first call returns: a search plan for Channel3. */
 export interface SearchPlan {
-  /** null when the message wasn't a shopping request — chat gets a
-      canned persona reply instead of a product search. */
+  /** null when the message isn't searchable — "reply" is said to the owner
+      instead (clarifying question for vague shopping asks, persona answer
+      for chit-chat). */
   query: string | null;
   maxPriceCents: number;
+  /** What the agent says when query is null. Missing means use the canned
+      persona fallback. */
+  reply?: string | null;
 }
 
 /** What the agent's second call returns: the chosen product + reasoning. */

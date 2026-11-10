@@ -16,6 +16,7 @@ export function refreshBudget() {
 export const BUDGET_EVENT = "puffr:budget";
 export const TOAST_EVENT = "puffr:toast";
 export const RECEIPTS_EVENT = "puffr:receipts";
+export const NEW_CHAT_EVENT = "puffr:newchat";
 
 /** Open the receipts drawer (TopBar listens for this). */
 export function openReceipts() {
@@ -45,13 +46,17 @@ export function consumePuffFlag(): number | null {
   }
 }
 
-export const fmtDollars = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+const usd = (dollars: number, whole: boolean) =>
+  dollars.toLocaleString("en-US", {
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
+  });
+
+export const fmtDollars = (cents: number) => `$${usd(cents / 100, false)}`;
 
 /** '$172' style — drops the cents when the amount is whole dollars. */
 export const fmtWhole = (cents: number) =>
-  cents % 100 === 0
-    ? `$${Math.round(cents / 100)}`
-    : `$${(cents / 100).toFixed(2)}`;
+  `$${usd(cents / 100, cents % 100 === 0)}`;
 
 export const isRateLimitMsg = (msg: string) =>
   /429|rate|quota|resource_exhausted|too many|busy/i.test(msg);

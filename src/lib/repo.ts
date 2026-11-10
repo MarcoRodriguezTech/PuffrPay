@@ -370,3 +370,16 @@ export async function dismissOpenOptionSets(
   }
   return n;
 }
+
+/**
+ * "New chat": archive every message so the feed starts empty, without
+ * deleting anything — the dashboard's card layer (option-set payloads) and
+ * the audit trail keep reading archived rows. Open shelves are closed first
+ * so their cards resolve to Skipped instead of Offered on hidden messages.
+ */
+export async function clearChat(): Promise<void> {
+  await dismissOpenOptionSets();
+  await query(
+    "UPDATE chat_messages SET cleared_at = now() WHERE cleared_at IS NULL"
+  );
+}

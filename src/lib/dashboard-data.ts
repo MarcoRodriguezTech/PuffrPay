@@ -148,10 +148,11 @@ function optionCardRows(
           amount: i.priceCents / 100,
           currency: "USD",
           decision: i.decision,
-          // Reuses request status values so badges + status filters work:
-          // skipped cards render the same "Skipped" label as declined asks.
+          // OFFERED and BLOCKED coincide with request statuses; SKIPPED is
+          // card-only vocabulary — it must not reuse REJECTED, the status the
+          // Leash "Rejected" filter matches against owner-declined requests.
           status:
-            state === "offered" ? "OFFERED" : state === "blocked" ? "BLOCKED" : "REJECTED",
+            state === "offered" ? "OFFERED" : state === "blocked" ? "BLOCKED" : "SKIPPED",
           decidedBy:
             state === "blocked" ? "policy" : state === "offered" ? "—" : "owner",
           reason:

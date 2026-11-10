@@ -13,9 +13,11 @@ export const ASSETS = {
   icon512: "/icons/icon-512.png",
   iconMaskable512: "/icons/icon-maskable-512.png",
   appleTouchIcon: "/icons/apple-touch-icon.png", // 180x180
-  // No owner.png exists yet — null skips the request entirely and TopBar
-  // renders the initials avatar. Point this at the file once it ships.
-  ownerAvatar: null as string | null,
+  // Owner avatar — diver art, shown in the topbar chip; initials render if
+  // the file ever 404s. The -light variant swaps the navy backdrop for a
+  // pale tint so the chip reads on the light theme.
+  ownerAvatar: "/avatar/owner.png",
+  ownerAvatarLight: "/avatar/owner-light.png",
   productPlaceholder: "/placeholders/product.svg",
   og: "/og.png", // 1200x630
   emptyAgent: "/empty/agent.svg",

@@ -133,8 +133,19 @@ function applyPageFilters<T>(rows: T[], filters: AgFilterState[]): T[] {
   return out;
 }
 
-const useFilteredRows = (params: Ctx): Row[] =>
-  applyPageFilters(useRows(params), usePageFilters(params));
+// status:false strips the outcome filter family (status/decision/hasOrder)
+// for budget-state widgets — a status click drills the lists, not the
+// gauges. Other page filters (date, category, ask-set) still apply.
+const useEffectiveFilters = (params: Ctx, status: boolean): AgFilterState[] => {
+  const filters = usePageFilters(params);
+  return status ? filters : filters.filter((f) => !isStatusFilterEntry(f));
+};
+
+const useFilteredRows = (params: Ctx, opts?: { status?: boolean }): Row[] =>
+  applyPageFilters(
+    useRows(params),
+    useEffectiveFilters(params, opts?.status !== false)
+  );
 
 // The merged ledger (requests + offered/skipped cards) the grid table and
 // its pager count over — `useFilteredRows` stays request-scope for metrics.
@@ -144,12 +155,12 @@ const useActivity = (params: Ctx): ActivityRow[] =>
 const useFilteredActivity = (params: Ctx): ActivityRow[] =>
   applyPageFilters(useActivity(params), usePageFilters(params));
 
-// Feed cards honor the same page filters — their `status` values
-// (OFFERED/REJECTED/BLOCKED) line up with the request statuses they display.
-const useFilteredCards = (params: Ctx): CardRow[] =>
+// Feed cards honor the same page filters — their `status` field shares
+// values with request statuses, plus card-only OFFERED/SKIPPED extras.
+const useFilteredCards = (params: Ctx, opts?: { status?: boolean }): CardRow[] =>
   applyPageFilters(
     (params.context as { data?: DashboardData })?.data?.cards ?? [],
-    usePageFilters(params)
+    useEffectiveFilters(params, opts?.status !== false)
   );
 
 const noMap = ({ createDefaults }: { createDefaults: (o: object) => unknown }) =>
@@ -174,9 +185,13 @@ const dayKey = (iso: string) => iso.slice(0, 10);
 const fmtKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const todayKey = () => fmtKey(new Date());
-const money = (v: number) => `$${v % 1 === 0 ? v.toFixed(0) : v.toFixed(2)}`;
+const money = (v: number) =>
+  `$${v.toLocaleString("en-US", {
+    minimumFractionDigits: v % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: v % 1 === 0 ? 0 : 2,
+  })}`;
 // Axis ticks always round to whole dollars: '$200', never '$200.00'.
-const axisMoney = (v: number) => `$${Math.round(v)}`;
+const axisMoney = (v: number) => `$${Math.round(v).toLocaleString("en-US")}`;
 
 /* ---------- svg helpers ---------- */
 
@@ -223,7 +238,7 @@ const eachDay = function* (from: string, to: string) {
 };
 
 function SpendTrend(params: Ctx) {
-  const rows = useFilteredRows(params);
+  const rows = useFilteredRows(params, { status: false });
   const [range, setRange] = useState<RangeKey>("month");
   const [hover, setHover] = useState<number | null>(null);
   const [ref, { w, h }] = useSize<HTMLDivElement>();
@@ -517,7 +532,9 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
   return (
     <>
       <div className="bento-head fm-head">
-        <h3 className="bento-title">Fish tank money</h3>
+        <h3 className="bento-title">
+          Fun money — {new Date().toLocaleString("en-US", { month: "long" })}
+        </h3>
       </div>
       <span className="fm-mascot" ref={mascotRef}>
         <PufferGauge ratio={ratio} size={96} showLabel={false} />
@@ -540,7 +557,7 @@ function FunMoneyBody({ rows }: { rows: Row[] }) {
 }
 
 function FunMoney(params: Ctx) {
-  const rows = useFilteredRows(params);
+  const rows = useFilteredRows(params, { status: false });
   return (
     <div className="funmoney">
       <FunMoneyBody rows={rows} />
@@ -566,18 +583,10 @@ function RecentBody({ rows, cards }: { rows: Row[]; cards: CardRow[] }) {
     [rows, cards]
   );
 
-  const viewAll = () => {
-    const grid = [...document.querySelectorAll(".ag-studio-layout-widget")].find(
-      (w) => w.querySelector(".ag-grid")
-    );
-    grid?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
     <>
       <div className="bento-head">
         <h3 className="bento-title">Recent activity</h3>
-        <button className="recent-viewall" onClick={viewAll}>View all</button>
       </div>
       <div className="recent-list">
         {latest.map((e) => {
@@ -631,10 +640,11 @@ function Recent(params: Ctx) {
 
 function FunRecent(params: Ctx) {
   const rows = useFilteredRows(params);
+  const rowsGlobal = useFilteredRows(params, { status: false });
   const cards = useFilteredCards(params);
   return (
     <div className="funmoney funrecent">
-      <FunMoneyBody rows={rows} />
+      <FunMoneyBody rows={rowsGlobal} />
       <hr className="fr-sep" />
       <RecentBody rows={rows} cards={cards} />
     </div>
@@ -644,25 +654,30 @@ function FunRecent(params: Ctx) {
 /* ---------- KPI tile row ---------- */
 
 function KpiRow(params: Ctx) {
-  const rows = useFilteredRows(params);
+  const rows = useFilteredRows(params, { status: false });
+  const cards = useFilteredCards(params, { status: false });
   const spent = rows.reduce((s, r) => s + (r.spent ?? 0), 0);
-  const kept = rows.reduce((s, r) => s + (r.blocked ? r.amount : 0), 0);
-  const waiting = rows.reduce((s, r) => s + (r.waiting ?? 0), 0);
+  // Everything the rules refused, both layers: picked requests (BLOCKED) plus
+  // shelf cards stamped BLOCK — same coverage as the "Blocked by puffr" stat.
+  const kept =
+    rows.reduce((s, r) => s + (r.blocked ? r.amount : 0), 0) +
+    cards.reduce((s, c) => s + (c.blocked ? c.amount : 0), 0);
+  const bought = rows.reduce((s, r) => s + (r.purchased ?? 0), 0);
 
   const keptC = useCountUp(Math.round(kept * 100));
   const spentC = useCountUp(Math.round(spent * 100));
   const reqC = useCountUp(rows.length);
-  const waitC = useCountUp(waiting);
+  const boughtC = useCountUp(bought);
 
   const tiles = [
     { label: "Spent", value: fmtDollars(spentC), helper: "Paid via PayPal sandbox" },
     {
       label: "Kept by the leash",
       value: fmtDollars(keptC),
-      helper: "Purchases the rules stopped",
+      helper: "Blocked by your rules",
     },
     { label: "Requests", value: String(reqC), helper: "Purchase requests made" },
-    { label: "Waiting on you", value: String(waitC), helper: "Need your approval" },
+    { label: "Bought", value: String(boughtC), helper: "Completed purchases" },
   ];
 
   return (
@@ -681,7 +696,7 @@ function KpiRow(params: Ctx) {
 /* ---------- Spend by day ---------- */
 
 function SpendByDay(params: Ctx) {
-  const rows = useFilteredRows(params);
+  const rows = useFilteredRows(params, { status: false });
   const [hover, setHover] = useState<number | null>(null);
   // Paged 7-day window — 0 = the week ending today, 1 = the week before, ...
   const [weekOffset, setWeekOffset] = useState(0);
@@ -936,7 +951,7 @@ function LeashReport(params: Ctx) {
   // react. Active state derives from the live page filter so it mirrors an
   // ask-set status filter too.
   const pageFilters = usePageFilters(params);
-  const [active, setActive] = useState<StatusKey | null>(() =>
+  const [active, setActive] = useState<StatusKey | "SKIPPED" | null>(() =>
     activeStatusKey(pageFilters)
   );
   const filtersSig = JSON.stringify(pageFilters);
@@ -945,7 +960,7 @@ function LeashReport(params: Ctx) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersSig]);
 
-  const toggleStatus = (key: StatusKey) => {
+  const toggleStatus = (key: StatusKey | "SKIPPED") => {
     const st = params.api.getState();
     const current = activeStatusKey(
       (st.pages.find((p) => p.id === st.selectedPageId)?.filter?.page ??
@@ -996,7 +1011,7 @@ function LeashReport(params: Ctx) {
   // and charts all read the same status config. Request-layer statuses only:
   // BLOCKED merges into the "Refused" stat above. Skipped is appended
   // separately — it's shelf-layer (offered, never picked) not a request
-  // status, so it isn't a click-through filter like the rest.
+  // status, but it filters like the rest via the card-only SKIPPED value.
   const segs: Seg[] = STATUSES.filter((st) => st.key !== "BLOCKED").map((st) => {
     const list = rows.filter(
       (r) => statusKey(r.status, r.decision, r.orderId != null) === st.key
@@ -1021,8 +1036,9 @@ function LeashReport(params: Ctx) {
     };
   });
   // Skipped — cards offered but never picked (X'd out, dismissed sets, the
-  // unchosen rest of a picked set). Shelf-layer, not a request status, so it
-  // doesn't get a status filter.
+  // unchosen rest of a picked set). Shelf-layer, not a request status — its
+  // filter selects card rows via the SKIPPED status value, which no request
+  // row can carry.
   const skippedCards = (data?.cards ?? []).filter((c) => c.state === "skipped");
   const skippedAmt = skippedCards.reduce((a, c) => a + c.amount, 0);
   segs.push({
@@ -1133,16 +1149,10 @@ function LeashReport(params: Ctx) {
                       key={s.key}
                       className={`leash-seg${s.key === active ? " active" : ""}`}
                       aria-pressed={s.key === active}
-                      aria-label={`${s.label}: ${s.n} — ${money(s.amt)}.${
-                        s.key === "SKIPPED"
-                          ? ""
-                          : ` ${
-                              s.key === active ? "Clear" : "Apply"
-                            } the status filter.`
-                      }`}
-                      onClick={() =>
-                        s.key !== "SKIPPED" && toggleStatus(s.key)
-                      }
+                      aria-label={`${s.label}: ${s.n} — ${money(s.amt)}. ${
+                        s.key === active ? "Clear" : "Apply"
+                      } the status filter.`}
+                      onClick={() => toggleStatus(s.key)}
                       style={{
                         flexGrow: s.n,
                         minWidth: 10,
@@ -1167,9 +1177,7 @@ function LeashReport(params: Ctx) {
                     headerHeight={0}
                     suppressCellFocus
                     onRowClicked={(e: RowClickedEvent<LegendRow>) =>
-                      e.data &&
-                      e.data.key !== "SKIPPED" &&
-                      toggleStatus(e.data.key)
+                      e.data && toggleStatus(e.data.key)
                     }
                     rowClassRules={{
                       "leash-row-active": (p: RowClassParams<LegendRow>) =>

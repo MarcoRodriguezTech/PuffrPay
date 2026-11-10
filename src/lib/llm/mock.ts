@@ -28,7 +28,14 @@ export class MockLLM implements LLM {
       /\b(buy|find|get|order|search|shop|gift|need|want|look(ing)? for)\b/.test(
         m
       );
-    if (chatty && !shopping) return { query: null, maxPriceCents: 0 };
+    if (chatty && !shopping) {
+      return {
+        query: null,
+        maxPriceCents: 0,
+        reply:
+          "[mock] I'm Puffr — tell me what to find and I'll search for it; the policy engine decides whether the money moves.",
+      };
+    }
 
     const budget = dollarsToCents(message) ?? 50_00;
     // strip budget phrasing to leave a usable search term
@@ -57,7 +64,9 @@ export class MockLLM implements LLM {
     products: ProductResult[],
     maxPicks: number
   ): Promise<OptionPick[]> {
-    const tags = ["Cheapest", "Solid pick", "Wildcard", "Splurge", "Dark horse"];
+    // "Priciest" stays out of the rotation — the agent's ensurePriceEnds
+    // post-pass owns it and stamps it on the true max of the affordable pool.
+    const tags = ["Cheapest", "Solid pick", "Wildcard", "Dark horse", "Lucky dip"];
     return [...products]
       .sort((a, b) => a.priceCents - b.priceCents)
       .slice(0, maxPicks)
