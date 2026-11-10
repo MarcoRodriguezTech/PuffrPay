@@ -42,9 +42,9 @@ Policy order (`src/lib/policy.ts`): blocked category → per-purchase max → mo
 | B5 | × every card in the set | Set auto-dismisses; chat shows "Skipped — nothing picked" |
 | B6 | Dismiss whole set (bail-out ×) | `dismissed: true`; message collapses to "Skipped — nothing picked" |
 | B7 | Reload page mid-carousel | Stack still live, removal/dismiss state persisted from DB |
-| B8 | Old unpicked sets in history | Render as flat OptionCarousel — verify whether old sets should still be pickable (see GAP-8) |
+| B8 | Old unpicked sets in history | Render as flat OptionCarousel; sets cleared by New chat or dismissed/picked are server-guarded against picks/dismissals (`cleared_at IS NULL` checks) |
 | B9 | Picked set in history | Collapses to single picked card with "Picked" chip |
-| B10 | Pick card A, then replay POST `/api/agent/choose` with card B's id on the SAME set | See GAP-4 — currently creates a second purchase |
+| B10 | Pick card A, then replay POST `/api/agent/choose` with card B's id on the SAME set | Fixed via GAP-4 — `payload.picked` guard returns null, no second purchase |
 | B11 | Reduced-motion OS setting | OptionStack renders plain scrollable fallback row, all actions still work |
 | B12 | Two different open sets, pick one card from each | Two purchases — decide if allowed (see GAP-9) |
 
@@ -110,7 +110,7 @@ Policy order (`src/lib/policy.ts`): blocked category → per-purchase max → mo
 
 | ID | Scenario | Expected |
 |---|---|---|
-| H1 | Load | 7 widgets + KPI tiles + grid render; no skeleton veil blocking clicks |
+| H1 | Load | Bento widgets + KPI tiles (Spent / Kept by the leash / Requests / Bought) + grid render; no skeleton veil blocking clicks |
 | H2 | Purchases grid | Rows newest-first; status badges correct per canonical map |
 | H3 | Pager "Next ›" | Filters `rowIdx` → page 2 content; "Page N of M" accurate |
 | H4 | Range pills Week/Month/All | Spend trend x-domain changes; active pill highlights |
@@ -157,7 +157,7 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 |---|---|---|
 | K1 | `/agent` → `/`, `/dashboard` → `/activity`, `/audit` → `/activity` | Redirects work |
 | K2 | 404 page | Renders, navigable |
-| K3 | Chat history persistence | Messages incl. options payloads survive reload (`GET /api/chat` wait — it's POST-only; history loads on page render) |
+| K3 | Chat history persistence | Messages incl. options payloads survive reload; New chat stamps `cleared_at` (archive, not delete) — feed resets but Activity's card layer keeps reading the rows |
 | K4 | `/policy` hydration | Watch console — a caret SSR/client mismatch was seen earlier (GAP-13) |
 
 ## L. Cross-cutting / edge cases
@@ -171,6 +171,26 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 | L5 | Payload `removed` on choose attempt | Removed card cannot be picked (not in `items`) |
 | L6 | Memory: long session, many messages | `optionsCache` unbounded growth (GAP-14, minor) |
 
+## M. Recent additions (verify these)
+
+| ID | Scenario | Expected |
+|---|---|---|
+| M1 | Rail "+" segment under Agent | Visible only on the Agent page; expands on Agent click with the glass-segmented look, click again collapses; sideways expansion on the mobile bottom rail |
+| M2 | New chat with a live option set | Feed resets to hero, rows get `cleared_at`, open shelf resolves to skipped in the leash report, pending approvals survive, Activity card totals grow (offered/skipped), toast confirms |
+| M3 | New chat from /policy or /activity | Rail shows the three sections only — no "+" segment |
+| M4 | Fresh load with a queued ask | No full approval card — quiet "An approval is waiting — decide it in Controls" note (auto-dismiss ~8s; × mutes via localStorage) |
+| M5 | Ask created mid-session | Full "Puffr needs your OK" card pops immediately |
+| M6 | Queued ask + live shelf | Ask-note suppressed while the shelf is open; returns when the shelf resolves |
+| M7 | Option stack | Drag browses; front card picks; end cards tagged Cheapest/Priciest; × removes a card (skipped); bail × dismisses the set; blocked pill sits level with the × |
+| M8 | "Find me a smartwatch over $100" chip | Agent searches (no clarifier), 5 cards ≥ $100 arrive, all stamped BLOCK "over per purchase max" — picking surfaces "Puffr says no" |
+| M9 | Dead PayPal checkout next day | Reconcile (Controls load or agent sweep) → REJECTED "checkout expired on PayPal" — never "Skipped" |
+| M10 | Status chip / leash segment click | Grid + card layer drill down to that status; gauges, KPIs, charts, global budget metrics unchanged; click again clears |
+| M11 | Light mode | Fun money hero = pastel blue + white shadowed readout; stack back cards fade toward paper (not murky); all text readable |
+| M12 | Topbar cluster | 44px avatar + receipts buttons; owner avatar image renders (initials fallback if 404); receipts drawer opens with unseen-dot cleared |
+| M13 | Voice dictation | Mic button in the composer fills the input with dictated text |
+| M14 | Money formatting | Thousands separators everywhere: "$9,411.90", grid footers, leash legend |
+| M15 | Approval card × dismiss | Mute persists across reloads in the same browser (localStorage) |
+
 ---
 
 ## Findings — suspected bugs & gaps (triage these)
@@ -180,7 +200,7 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 | GAP-1 | **high** | `finalizePick` writes `status: PURCHASED` *before* `startPayment`. If `createOrder` throws (PayPal outage), the row stays PURCHASED with no order/capture — a phantom "Bought" that **inflates monthly spend**. (`agent.ts` ~line 304 vs executor catch) |
 | GAP-2 | ~~high~~ **fixed** | ~~"Awaiting PayPal" never expires~~ → `reconcileWaiting()` sweeps open checkouts on every `/policy` load and every 8s while the agent page shows an open checkout (`POST /api/purchases/reconcile`): PayPal `APPROVED` → capture → PURCHASED, dead order (404) → REJECTED "checkout expired", CREATED → untouched. Manual "Capture now" buttons removed — approval in the sandbox window resolves on its own. |
 | GAP-3 | ~~medium~~ **fixed** | ~~No in-app cancel once an order exists~~ → `paypal_approve_url` is now persisted (migration 002, backfilled), open checkouts appear under "AWAITING PAYPAL" in the `/policy` queue with Resume / Capture now / Cancel (`cancelPurchase` → REJECTED). `capturePurchase` also guards `status !== "WAITING"` so cancelled rows can't resurrect via a stale PayPal tab. |
-| GAP-4 | **high** | `chooseOption` does not check `payload.picked` — replaying `/api/agent/choose` with a different card id on an already-picked set creates a **second purchase**. UI disables buttons but the endpoint itself is unguarded. |
+| GAP-4 | ~~high~~ **fixed** | ~~`chooseOption` does not check `payload.picked`~~ → `chooseOption` now returns null when `payload.picked`/`dismissed` is set or the set was archived by New chat (`agent.ts:317`, `cleared_at IS NULL` guards) — replays can't create a second purchase. |
 | GAP-5 | low (data) | Pre-change payloads lost their X'd cards permanently — leash "offered/skipped" undercounts old sets. Unrecoverable; going forward is correct. |
 | GAP-6 | question | Leash report ignores page/date filters entirely (reads raw rows + sets). Decide whether funnel stats should respond to range pills / ask-box filters. |
 | GAP-7 | low | X'ing the last card auto-dismisses the set — fine, but confirm "Skipped — nothing picked" copy is wanted when user deliberately removed each card. |
@@ -195,7 +215,6 @@ skipped = X'd cards + all cards in dismissed sets + unchosen leftovers of picked
 
 ## Suggested first triage
 
-1. **GAP-4** (double-purchase) — cheap fix, real money-path bug.
-2. **GAP-1** (phantom PURCHASED) — corrupts spend totals; the cap then mis-decides future requests.
-3. ~~GAP-2/GAP-3~~ — both fixed: reconcile sweep expires dead orders and captures approved ones.
-4. **GAP-6** — product question: should leash numbers follow the date filters?
+1. **GAP-1** (phantom PURCHASED) — corrupts spend totals; the cap then mis-decides future requests.
+2. ~~GAP-2/GAP-3/GAP-4~~ — fixed: reconcile sweep expires dead orders, checkout queue cancels/resumes, `payload.picked` guards replays.
+3. **GAP-6** — product question: should leash numbers follow the date filters?
