@@ -36,24 +36,46 @@ function ReturnInner() {
   }, [token]);
 
   return (
-    <main className="page">
-      <div className="card" style={{ maxWidth: 520 }}>
-        {state === "working" && <p>Capturing the sandbox payment…</p>}
-        {state === "ok" && purchase && (
-          <>
-            <h3 style={{ marginTop: 0 }}>Payment captured</h3>
+    <main className="page cap-stage">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="cap-fish"
+        src="/mascot/puffr-swelling-v4.png"
+        alt="Puffr"
+        width={132}
+        height={132}
+      />
+      {state === "working" && (
+        <>
+          <h1 className="cap-title">Capturing…</h1>
+          <p className="cap-sub">Puffr is ringing up the sandbox payment.</p>
+        </>
+      )}
+      {state === "ok" && purchase && (
+        <>
+          <p className="cap-eyebrow">Payment captured · PayPal sandbox</p>
+          <h1 className="cap-title">It&rsquo;s yours.</h1>
+          <p className="cap-sub">
+            The leash held — Puffr bought it inside your rules.
+          </p>
+          <div className="cap-card">
             <ReceiptCard purchase={purchase} />
-            <p className="muted">You can close this tab.</p>
-          </>
-        )}
-        {state === "err" && (
-          <>
-            <h3 style={{ marginTop: 0 }}>Capture did not complete</h3>
-            <p className="error">{detail}</p>
-          </>
-        )}
-        <Link href="/">← Back to the agent</Link>
-      </div>
+          </div>
+          <Link className="cap-cta" href="/">
+            ← Back to the agent
+          </Link>
+          <p className="cap-close muted">You can close this tab.</p>
+        </>
+      )}
+      {state === "err" && (
+        <>
+          <h1 className="cap-title">Capture did not complete</h1>
+          <p className="cap-sub error">{detail}</p>
+          <Link className="cap-cta" href="/">
+            ← Back to the agent
+          </Link>
+        </>
+      )}
     </main>
   );
 }
