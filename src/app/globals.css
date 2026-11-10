@@ -5306,6 +5306,8 @@ img[src*="/mascot/"] {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 1px;
   min-width: 0;
   min-height: 44px;
@@ -5336,7 +5338,7 @@ img[src*="/mascot/"] {
 button.leash-stat {
   font: inherit;
   color: inherit;
-  text-align: left;
+  text-align: center;
   appearance: none;
 }
 .leash-stat.hero {
