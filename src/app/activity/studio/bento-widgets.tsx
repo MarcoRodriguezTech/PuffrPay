@@ -1097,7 +1097,17 @@ function LeashReport(params: Ctx) {
               <span className="leash-num">{offeredC}</span>
               <span className="leash-cap">Options offered</span>
             </div>
-            <div className="leash-stat hero">
+            <button
+              type="button"
+              // BLOCKED is both layers (shelf cards + picked requests) — the
+              // status filter catches both in Recent and the grid.
+              className={`leash-stat hero${active === "BLOCKED" ? " active" : ""}`}
+              aria-pressed={active === "BLOCKED"}
+              aria-label={`Blocked by puffr: ${stopped}. ${
+                active === "BLOCKED" ? "Clear" : "Apply"
+              } the status filter.`}
+              onClick={() => toggleStatus("BLOCKED")}
+            >
               <svg
                 className="leash-shield"
                 width="14"
@@ -1123,7 +1133,12 @@ function LeashReport(params: Ctx) {
               </svg>
               <span className="leash-num">{stoppedC}</span>
               <span className="leash-cap">Blocked by puffr</span>
-            </div>
+              <span className="leash-tip" role="tooltip">
+                {active === "BLOCKED"
+                  ? "Clear the filter — show everything"
+                  : "Show everything Puffr blocked"}
+              </span>
+            </button>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
               <span className="leash-cap">Options you picked</span>
