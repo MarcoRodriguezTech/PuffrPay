@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { LeashBar } from "@/components/LeashBar";
-import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
+import { PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import { ReceiptCard } from "@/components/ReceiptCard";
 import {
   consumePuffFlag,
@@ -777,9 +776,6 @@ export default function AgentPage() {
         <div className="chat-scroll" ref={scrollRef}>
           {messages.length === 0 && steps.length === 0 && !busy ? (
             <div className="chat-empty">
-              {/* Art is 1024x629 — dims match its real ratio; height:auto
-                  keeps it undistorted if the file is ever swapped. */}
-              <Image src={MASCOT_SRC} alt="" width={140} height={86} quality={90} style={{ height: "auto" }} />
               <h1>What should I buy?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">

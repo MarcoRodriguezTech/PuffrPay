@@ -8,8 +8,8 @@ export function LeashBar({
 }: {
   /** spent / cap, can exceed 1 */
   ratio: number;
-  /** bar width in px */
-  width?: number;
+  /** bar width — px number or any CSS length */
+  width?: number | string;
   label?: string;
 }) {
   const pct = Math.min(100, Math.max(0, Math.round(ratio * 100)));
