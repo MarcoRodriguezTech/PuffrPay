@@ -2000,6 +2000,13 @@ img[src*="/mascot/"] {
     width: calc(min(320px, 48vh) * 0.74);
   }
 }
+/* Full-viewport 20px backdrop blur is the heaviest GPU cost in this popup —
+   halve it on short screens, which are exactly the weaker laptops it hurts. */
+@media (max-height: 700px) {
+  .offer-scrim {
+    backdrop-filter: blur(10px);
+  }
+}
 
 @media (max-width: 639px) {
   .stack-zone {

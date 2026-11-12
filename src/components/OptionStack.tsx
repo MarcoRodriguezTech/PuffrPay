@@ -61,7 +61,7 @@ const getConfig = (width: number): StackConfig => {
 const wrapIndex = (i: number, total: number) =>
   ((i % total) + total) % total;
 
-export function OptionStack({
+export const OptionStack = React.memo(function OptionStack({
   msgId,
   payload,
   busy,
@@ -99,8 +99,15 @@ export function OptionStack({
 
   const config = React.useMemo(() => getConfig(zoneW), [zoneW]);
 
+  // scrollProgress changes every spring frame — only setState when the
+  // rounded index actually moves, so drags don't schedule renders per frame.
+  const lastIdx = React.useRef(-1);
   useMotionValueEvent(scrollProgress, "change", (v) => {
-    setActiveIdx(wrapIndex(Math.round(v), total));
+    const idx = wrapIndex(Math.round(v), total);
+    if (idx !== lastIdx.current) {
+      lastIdx.current = idx;
+      setActiveIdx(idx);
+    }
   });
 
   const handleDragStart = () => {
@@ -215,13 +222,14 @@ export function OptionStack({
         {items.map((it, i) => (
           <StackCard
             key={it.id}
+            msgId={msgId}
             item={it}
             index={i}
             total={total}
             progress={scrollProgress}
             config={config}
             busy={busy}
-            onRemove={() => onRemove(msgId, it.id)}
+            onRemove={onRemove}
           />
         ))}
       </div>
@@ -280,9 +288,10 @@ export function OptionStack({
       </div>
     </LazyMotion>
   );
-}
+});
 
-function StackCard({
+const StackCard = React.memo(function StackCard({
+  msgId,
   item,
   index,
   total,
@@ -291,13 +300,14 @@ function StackCard({
   busy,
   onRemove,
 }: {
+  msgId: number;
   item: OptionsItem;
   index: number;
   total: number;
   progress: MotionValue<number>;
   config: StackConfig;
   busy: boolean;
-  onRemove: () => void;
+  onRemove: (messageId: number, productId: string) => void;
 }) {
   const offset = useTransform(progress, (p) => {
     let diff = (index - p) % total;
@@ -367,7 +377,7 @@ function StackCard({
         type="button"
         className="stack-remove"
         aria-label={`Remove ${item.title}`}
-        onClick={onRemove}
+        onClick={() => onRemove(msgId, item.id)}
         disabled={busy}
         style={{ pointerEvents: removePointer }}
       >
@@ -383,4 +393,4 @@ function StackCard({
       </motion.div>
     </motion.div>
   );
-}
+});

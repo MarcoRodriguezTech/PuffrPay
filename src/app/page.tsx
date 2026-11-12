@@ -501,6 +501,17 @@ export default function AgentPage() {
     }
   }, [busy, choosing]);
 
+  // Stable option callbacks — the live shelf (OptionStack) is memoized, so
+  // inline arrows here would defeat it on every unrelated page re-render.
+  const dismissOptions = useCallback(
+    (id: number) => editOptions(id, { dismiss: true }),
+    [editOptions]
+  );
+  const removeOption = useCallback(
+    (id: number, pid: string) => editOptions(id, { remove: pid }),
+    [editOptions]
+  );
+
   // "New chat" archives the conversation server-side (rows stay for the
   // dashboard's card layer) and resets the feed to the hero state.
   const newChat = useCallback(async () => {
@@ -989,15 +1000,15 @@ export default function AgentPage() {
               msgId={activeOptions.msgId}
               total={activeOptions.payload.items.length}
               busy={choosing === activeOptions.msgId}
-              onDismiss={(id) => editOptions(id, { dismiss: true })}
+              onDismiss={dismissOptions}
             >
               <OptionStack
                 msgId={activeOptions.msgId}
                 payload={activeOptions.payload}
                 busy={choosing === activeOptions.msgId}
                 onPick={choose}
-                onDismiss={(id) => editOptions(id, { dismiss: true })}
-                onRemove={(id, pid) => editOptions(id, { remove: pid })}
+                onDismiss={dismissOptions}
+                onRemove={removeOption}
               />
             </OfferPopup>
           )}
@@ -1266,6 +1277,13 @@ function OfferPopup({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  // Latest-ref: the parent passes an inline arrow (new identity per render) —
+  // without this the scroll-lock/keydown effect below would re-register on
+  // every parent render. The ref keeps the handler fresh without churn.
+  const dismissRef = useRef(onDismiss);
+  useEffect(() => {
+    dismissRef.current = onDismiss;
+  });
 
   useEffect(() => setMounted(true), []);
 
@@ -1277,7 +1295,28 @@ function OfferPopup({
 
   useEffect(() => {
     if (!mounted) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onDismiss(msgId);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        dismissRef.current(msgId);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Keep Tab cycling inside the dialog — a modal that leaks focus lets
+      // the user tab onto the chat input hidden under the scrim.
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusables = panel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const el = document.activeElement;
+      if (e.shiftKey ? el === first || el === panel : el === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
+    };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1285,12 +1324,12 @@ function OfferPopup({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [mounted, msgId, onDismiss]);
+  }, [mounted, msgId]);
 
   if (!mounted) return null;
 
   return createPortal(
-    <div className="offer-scrim" onClick={() => onDismiss(msgId)}>
+    <div className="offer-scrim" onClick={() => dismissRef.current(msgId)}>
       <div
         className="offer-modal"
         role="dialog"
