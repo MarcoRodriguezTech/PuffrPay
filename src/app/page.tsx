@@ -776,7 +776,7 @@ export default function AgentPage() {
         <div className="chat-scroll" ref={scrollRef}>
           {messages.length === 0 && steps.length === 0 && !busy ? (
             <div className="chat-empty">
-              <h1>What should I buy?</h1>
+              <h1>What can Puffr fetch for you?</h1>
               <p className="muted">Your fun money, on a leash.</p>
               <div className="examples">
                 {EXAMPLES.map((e) => (
@@ -1023,7 +1023,7 @@ export default function AgentPage() {
               id="agent-msg"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={listening ? "Listening…" : "What should I buy?"}
+              placeholder={listening ? "Listening…" : "Tell Puffr what you want…"}
               disabled={busy}
               autoComplete="off"
             />
