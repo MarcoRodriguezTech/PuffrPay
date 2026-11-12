@@ -2,7 +2,9 @@ import { GoogleGenAI } from "@google/genai";
 import type { ProductResult } from "../types";
 import type { AuditQuerySpec, LLM, OptionPick, PickResult, SearchPlan } from "./types";
 
-const MAX_ATTEMPTS = 4;
+// One retry per call — the run makes two sequential calls, so a 429 storm
+// must surface as the friendly snag line in seconds, not stall the chat.
+const MAX_ATTEMPTS = 2;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
