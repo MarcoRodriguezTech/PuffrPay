@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { LeashBar } from "@/components/LeashBar";
 import { MASCOT_SRC, PufferGauge, STATE_LABELS, stateForRatio } from "@/components/PufferGauge";
 import { ReceiptCard } from "@/components/ReceiptCard";
@@ -983,14 +984,22 @@ export default function AgentPage() {
           )}
 
           {activeOptions && (
-            <OptionStack
+            <OfferPopup
+              key={activeOptions.msgId}
               msgId={activeOptions.msgId}
-              payload={activeOptions.payload}
+              total={activeOptions.payload.items.length}
               busy={choosing === activeOptions.msgId}
-              onPick={choose}
               onDismiss={(id) => editOptions(id, { dismiss: true })}
-              onRemove={(id, pid) => editOptions(id, { remove: pid })}
-            />
+            >
+              <OptionStack
+                msgId={activeOptions.msgId}
+                payload={activeOptions.payload}
+                busy={choosing === activeOptions.msgId}
+                onPick={choose}
+                onDismiss={(id) => editOptions(id, { dismiss: true })}
+                onRemove={(id, pid) => editOptions(id, { remove: pid })}
+              />
+            </OfferPopup>
           )}
 
           <form
@@ -1234,5 +1243,81 @@ function OptionCarousel({
         })}
       </div>
     </div>
+  );
+}
+
+// The live offer set pops as a centered dialog over the chat — the old inline
+// shelf needed ~600px of chat column and clipped the card fan on smaller
+// laptops. Every close path (×, Escape, scrim) shares the same "skip these
+// picks" dismissal the shelf's × performed; picking resolves the set and the
+// popup unmounts with it.
+function OfferPopup({
+  msgId,
+  total,
+  busy,
+  onDismiss,
+  children,
+}: {
+  msgId: number;
+  total: number;
+  busy: boolean;
+  onDismiss: (msgId: number) => void;
+  children: ReactNode;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  // Focus the dialog once on open — parent re-renders (onDismiss identity
+  // changes each render) mustn't steal focus back from controls inside.
+  useEffect(() => {
+    if (mounted) panelRef.current?.focus();
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onDismiss(msgId);
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [mounted, msgId, onDismiss]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="offer-scrim" onClick={() => onDismiss(msgId)}>
+      <div
+        className="offer-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Puffr's picks"
+        tabIndex={-1}
+        ref={panelRef}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="offer-head">
+          <h3 className="offer-title">
+            Puffr&rsquo;s picks
+            <span className="muted">{total} options</span>
+          </h3>
+          <button
+            type="button"
+            className="stack-close"
+            aria-label="Skip these picks"
+            onClick={() => onDismiss(msgId)}
+            disabled={busy}
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    document.body
   );
 }

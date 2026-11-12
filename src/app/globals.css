@@ -1912,6 +1912,95 @@ img[src*="/mascot/"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- offer popup: the stack as a centered dialog ---------- */
+
+.offer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s5);
+  background: rgba(3, 8, 20, 0.55);
+  backdrop-filter: var(--glass-blur);
+  animation: offer-scrim-in var(--dur) var(--ease);
+}
+:root[data-theme="light"] .offer-scrim {
+  background: rgba(222, 234, 252, 0.55);
+}
+@keyframes offer-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.offer-modal {
+  width: min(1060px, 94vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: var(--s5) var(--s6) var(--s6);
+  background: var(--card-sheen, var(--card-grad)), var(--panel-grad, var(--card-grad));
+  border: 1px solid var(--glass-line, var(--line));
+  border-radius: 28px;
+  box-shadow: var(--glass-hi), var(--shadow-raise);
+  animation: cap-pop var(--dur-slow) var(--ease) both;
+}
+.offer-modal:focus-visible {
+  outline: none;
+}
+.offer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+}
+.offer-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.offer-title .muted {
+  margin-left: 8px;
+  font-size: var(--t12);
+  font-weight: 500;
+}
+/* Height-adaptive stage: desktop geometry keeps the 352px cards; shorter
+   laptop viewports (~768px) shrink the zone + cards so the fan still fits
+   instead of clipping. Mobile widths keep the existing <640px geometry. */
+@media (min-width: 640px) {
+  .offer-modal .stack-zone {
+    height: min(560px, 60vh);
+  }
+}
+@media (min-width: 640px) and (max-height: 860px) {
+  .offer-modal .stack-zone {
+    height: min(470px, 58vh);
+  }
+  .offer-modal .stack-card {
+    width: 300px;
+    height: 410px;
+  }
+}
+/* Real laptop worst case: a 1366×768 screen loses ~130px to taskbar +
+   browser chrome, leaving ~640px. Zone and cards shrink again so the fan
+   stays fully inside the dialog rather than clipping. */
+@media (min-width: 640px) and (max-height: 700px) {
+  .offer-modal .stack-zone {
+    height: min(340px, 52vh);
+  }
+  /* Card height tracks the zone (a few px of clearance) so even landscape
+     phones keep the whole card visible — width keeps the ~0.74 aspect. */
+  .offer-modal .stack-card {
+    height: min(320px, 48vh);
+    width: calc(min(320px, 48vh) * 0.74);
+  }
+}
+
 @media (max-width: 639px) {
   .stack-zone {
     height: 470px;
