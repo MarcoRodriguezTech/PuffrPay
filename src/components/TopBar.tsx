@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ASSETS } from "@/lib/assets";
+import { BudgetPill } from "./BudgetPill";
 import { ReceiptsDrawer } from "./ReceiptsDrawer";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -91,6 +92,7 @@ export function TopBar() {
       {/* Page-level actions (e.g. Activity filters) portal in here. */}
       <div id="topbar-actions" className="topbar-actions" />
       <div className="topbar-right">
+        {pathname.startsWith("/policy") && <BudgetPill />}
         <ReceiptsDrawer />
         <ThemeToggle />
         <AvatarChip />

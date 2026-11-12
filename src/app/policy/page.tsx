@@ -1,11 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LeashBar } from "@/components/LeashBar";
-import { PufferGauge } from "@/components/PufferGauge";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
-  BUDGET_EVENT,
   flagPuffNextLoad,
   fmtDollars,
   fmtWhole,
@@ -37,14 +34,6 @@ interface Policy {
   autoApproveUnderCents: number;
   blockedCategories: string[];
 }
-
-interface Budget {
-  spentCents: number;
-  capCents: number;
-  ratio: number;
-}
-
-const MONTH = new Date().toLocaleString("en-US", { month: "long" });
 
 const toDollars = (c: number) => (c / 100).toFixed(2);
 
@@ -98,20 +87,6 @@ export default function PolicyPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const dirtyRef = useRef(false);
   const lastAutoRef = useRef("20.00");
-  const [budget, setBudget] = useState<Budget | null>(null);
-
-  const loadBudget = useCallback(async () => {
-    const b = await fetch("/api/budget")
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null);
-    if (b?.capCents != null) setBudget(b);
-  }, []);
-
-  useEffect(() => {
-    loadBudget();
-    window.addEventListener(BUDGET_EVENT, loadBudget);
-    return () => window.removeEventListener(BUDGET_EVENT, loadBudget);
-  }, [loadBudget]);
 
   const load = useCallback(async () => {
     // Sweep open checkouts first — a buyer approval that never redirected
@@ -146,7 +121,6 @@ export default function PolicyPage() {
     const [p, w] = await Promise.all([
       fetch("/api/policy").then((r) => r.json()).catch(() => null),
       fetch("/api/purchases?status=WAITING").then((r) => r.json()).catch(() => null),
-      loadBudget(),
     ]);
     if (p?.monthlyCapCents != null && !dirtyRef.current) {
       const next = {
@@ -173,7 +147,7 @@ export default function PolicyPage() {
       );
       setPending(all.filter((x) => x.paypalApproveUrl));
     }
-  }, [loadBudget]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -392,7 +366,6 @@ export default function PolicyPage() {
 
   return (
     <main className="page">
-      <BudgetStrip budget={budget} />
       <div className="policy-layout">
         <section>
           <h2>Rules</h2>
@@ -764,39 +737,6 @@ function MoneyField({
 }
 
 /** Live bar showing the three rule zones across $0..cap. */
-/** Month-to-date receipt: small state fish, leash bar, spent / left. */
-function BudgetStrip({ budget }: { budget: Budget | null }) {
-  if (!budget) {
-    return <div className="budget-strip is-loading" aria-hidden="true" />;
-  }
-  const left = budget.capCents - budget.spentCents;
-  return (
-    <div className="budget-strip" role="group" aria-label="Fun money this month">
-      <PufferGauge ratio={budget.ratio} size={40} />
-      <div className="bs-main">
-        <div className="bs-title">Fun money — {MONTH}</div>
-        <LeashBar ratio={budget.ratio} width="100%" />
-      </div>
-      <div className="bs-amounts">
-        <div className="bs-spent">
-          <strong>{fmtDollars(budget.spentCents)}</strong> spent
-        </div>
-        <div className={left < 0 ? "bs-left over" : "bs-left"}>
-          {left < 0 ? (
-            <>
-              <strong>{fmtDollars(-left)}</strong> over {fmtWhole(budget.capCents)}
-            </>
-          ) : (
-            <>
-              <strong>{fmtDollars(left)}</strong> left of {fmtWhole(budget.capCents)}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RulesRuler({
   cap,
   max,

@@ -2672,81 +2672,6 @@ body.offer-open .shell *::after {
 
 /* ---------- policy screen ---------- */
 
-/* Controls: month-to-date fun-money receipt above both columns */
-.budget-strip {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: var(--s4);
-  padding: var(--s3) var(--s4);
-  margin-bottom: var(--s6);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--card-grad);
-}
-
-.budget-strip.is-loading {
-  height: 74px;
-  opacity: 0.6;
-}
-
-.budget-strip .puffer {
-  display: block;
-}
-
-.budget-strip .bs-main {
-  min-width: 0;
-}
-
-.budget-strip .bs-title {
-  font-size: var(--t12);
-  font-weight: 600;
-  color: var(--ink-soft);
-  margin-bottom: var(--s2);
-}
-
-.budget-strip .leash-bar {
-  display: block;
-  height: 10px;
-}
-
-.budget-strip .bs-amounts {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.budget-strip .bs-spent strong {
-  font-size: var(--t16);
-}
-
-.budget-strip .bs-left {
-  font-size: var(--t12);
-  color: var(--ink-soft);
-}
-
-.budget-strip .bs-left strong {
-  color: var(--ink);
-}
-
-.budget-strip .bs-left.over,
-.budget-strip .bs-left.over strong {
-  color: var(--danger);
-}
-
-@media (max-width: 640px) {
-  .budget-strip {
-    grid-template-columns: auto 1fr;
-  }
-  .budget-strip .bs-amounts {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    text-align: left;
-  }
-}
-
 .policy-layout {
   display: grid;
   /* rules ~40%, queue ~60% — rules keep room for a two-across form */
@@ -3177,6 +3102,71 @@ body.offer-open .shell *::after {
 /* ---------- receipts ---------- */
 
 /* topbar icon button — matches the 44px avatar chip rhythm */
+/* Controls top bar: compact fun-money receipt beside the receipts button */
+.budget-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 44px;
+  padding: 0 var(--s4) 0 var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  font-size: var(--t12);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.budget-pill.is-loading {
+  width: 190px;
+  opacity: 0.5;
+}
+
+.budget-pill .puffer {
+  display: block;
+}
+
+.budget-pill .bp-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+
+.budget-pill .bp-text {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  color: var(--ink-soft);
+  line-height: 1.1;
+}
+
+.budget-pill strong {
+  color: var(--ink);
+}
+
+.budget-pill .bp-left.over,
+.budget-pill .bp-left.over strong {
+  color: var(--danger);
+}
+
+.budget-pill .leash-bar {
+  display: block;
+  height: 6px;
+}
+
+/* phones: keep the fish + money left, drop "spent" */
+@media (max-width: 719px) {
+  .budget-pill {
+    padding-right: var(--s3);
+  }
+  .budget-pill .bp-main {
+    min-width: 64px;
+  }
+  .budget-pill .bp-spent {
+    display: none;
+  }
+}
+
 .receipts-btn {
   position: relative;
   display: inline-flex;
