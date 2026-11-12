@@ -363,9 +363,10 @@ const StackCard = React.memo(function StackCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             className="stack-img"
-            src={item.imageUrl}
+            // /_next/image downscales the full-res Channel3 art to card size;
+            // eager fetch keeps fetch+decode off the first swipe's frames.
+            src={`/_next/image?url=${encodeURIComponent(item.imageUrl)}&w=750&q=75`}
             alt={item.title}
-            loading="lazy"
             decoding="async"
           />
         ) : (
