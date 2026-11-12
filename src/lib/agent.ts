@@ -78,8 +78,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   try {
     plan = await llm.planSearch(message);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const reply = `The agent hit a snag talking to the model (${msg.slice(0, 120)}). Try again in a moment.`;
+    const reply = snagCopy(err);
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -97,9 +96,9 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
       (plan.maxPriceCents > 0
         ? `Over $${(plan.maxPriceCents / 100).toFixed(0)} of what? Name a thing — headphones, a gift, a watch — and I'll go fishing.`
         : "I'm Puffr — a shopping agent that spends inside rules the owner sets. " +
-          "Tell me what to find and I'll search for it; the policy engine decides whether the money moves.");
+          "Tell me what to find and I'll search for it; my rules decide whether the money moves.");
     if (plan.maxPriceCents > policy.perPurchaseMaxCents) {
-      reply += ` Heads up though — anything over $${(policy.perPurchaseMaxCents / 100).toFixed(0)} is past your per-purchase max, so the policy engine will say no.`;
+      reply += ` Heads up — anything over $${(policy.perPurchaseMaxCents / 100).toFixed(0)} is past your per-purchase max, so my rules will say no.`;
     }
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
@@ -117,18 +116,19 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
 
   // --- server: Channel3 search ---
   let products: ProductResult[] = [];
+  let searchDown = false;
   try {
     products = await searchProducts(plan.query, plan.maxPriceCents);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    steps.push({ step: "search", detail: `Channel3 error: ${msg.slice(0, 120)}` });
+  } catch {
+    searchDown = true;
+    steps.push({ step: "search", detail: "search hiccup — no results this time" });
   }
   const affordable = products.filter(
     (p) => p.priceCents <= plan.maxPriceCents && p.priceCents >= priceFloor
   );
   steps.push({
     step: "search",
-    detail: `Channel3 '${plan.query}' ... ${products.length} results`,
+    detail: `searched '${plan.query}' ... ${products.length} results`,
   });
 
   // --- call 2: curate options ---
@@ -136,8 +136,7 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   try {
     picks = await llm.pickProducts(message, affordable, MAX_OPTIONS);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const reply = `The agent hit a snag talking to the model (${msg.slice(0, 120)}). Try again in a moment.`;
+    const reply = snagCopy(err);
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -169,11 +168,13 @@ export async function runAgent(message: string): Promise<AgentRunResult> {
   }
   const items = ensurePriceEnds(hand, affordable, want);
   if (items.length === 0) {
-    const range = priceFloor > 0
-      ? `over $${(priceFloor / 100).toFixed(2)}`
-      : `under $${(plan.maxPriceCents / 100).toFixed(2)}`;
-    const reply = `I couldn't find anything ${range} matching "${plan.query}". Nothing was requested.`;
-    steps.push({ step: "pick", detail: "no product fit the budget" });
+    const reply = searchDown
+      ? "My product search hiccuped — give it another go in a minute."
+      : `I couldn't find anything matching "${plan.query}" in that price range — try different words or a bigger budget.`;
+    steps.push({
+      step: "pick",
+      detail: searchDown ? "search unavailable" : "nothing fit the ask",
+    });
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -260,7 +261,7 @@ export async function chooseOption(
   }
   const item = payload?.items.find((i) => i.id === productId);
   if (!payload || !item) {
-    const reply = "Those options expired — ask me again.";
+    const reply = "Those picks expired — ask again and I'll pull fresh ones.";
     await logChat("agent", reply);
     return { steps, reply, purchase: null, approveUrl: null, stub: false };
   }
@@ -349,7 +350,7 @@ async function finalizePick(
   const pending = await findPendingByProduct(product.id);
   if (pending) {
     steps.push({ step: "result", detail: "ALREADY WAITING" });
-    const reply = `Already waiting on that one — "${product.title}" is still pending.`;
+    const reply = `"${product.title}" is already in your queue — approve or drop it in Controls.`;
     await logChat("agent", reply);
     return { steps, reply, purchase: pending, approveUrl: null, stub: false };
   }
@@ -397,7 +398,7 @@ async function finalizePick(
   });
 
   if (decision.decision === "BLOCK") {
-    const reply = `Blocked: ${decision.reason}. "${product.title}" at $${(product.priceCents / 100).toFixed(2)} can't be bought under the current policy.`;
+    const reply = `Puffr says no — ${decision.reason}. "${product.title}" at $${(product.priceCents / 100).toFixed(2)} stays on the shelf.`;
     steps.push({ step: "result", detail: `BLOCKED: ${decision.reason}` });
     await logChat("agent", reply);
     return { steps, reply, purchase, approveUrl: null, stub: false };
@@ -417,25 +418,33 @@ async function finalizePick(
     if (purchase.status === "PURCHASED") {
       // Dev stub captured immediately — no real checkout involved.
       steps.push({ step: "result", detail: "BOUGHT" });
-      const reply = `Auto-approved and bought "${product.title}" for $${(product.priceCents / 100).toFixed(2)} (sandbox payment).`;
+      const reply = `Bought "${product.title}" for $${(product.priceCents / 100).toFixed(2)} — under your auto-approve limit, and it's all sandbox play money.`;
       await logChat("agent", reply);
       return { steps, reply, purchase, approveUrl: null, stub: exec.stub };
     }
     steps.push({ step: "result", detail: "PAYMENT STARTED" });
-    const reply = `Auto-approved: "${product.title}" for $${(product.priceCents / 100).toFixed(2)}. Approve it in the PayPal sandbox window and it shows as purchased.`;
+    const reply = `Auto-approved "${product.title}" for $${(product.priceCents / 100).toFixed(2)} — approve it in the PayPal window that popped up and it's yours.`;
     await logChat("agent", reply);
     return { steps, reply, purchase, approveUrl: exec.approveUrl, stub: exec.stub };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await logChat("agent", `Payment failed to start: ${msg.slice(0, 160)}`);
-    return {
-      steps,
-      reply: `Policy allowed it, but the payment could not be started: ${msg.slice(0, 160)}`,
-      purchase,
-      approveUrl: null,
-      stub: false,
-    };
+    console.error("[agent] payment start failed:", err);
+    steps.push({ step: "result", detail: "PAYMENT START FAILED" });
+    const reply =
+      "The rules said yes, but checkout wouldn't start — give it another try.";
+    await logChat("agent", reply);
+    return { steps, reply, purchase, approveUrl: null, stub: false };
   }
+}
+
+/** Friendly snag line for the chat feed — the real error stays server-side. */
+function snagCopy(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error("[agent] model call failed:", msg);
+  return /429|503|rate|quota|resource_exhausted|too many|high demand|overloaded|unavailable|busy/i.test(
+    msg
+  )
+    ? "My brain's overloaded right now — give me a minute and ask again."
+    : "I hit a snag thinking that through — try again in a minute.";
 }
 
 /** Wireframe-style per-check policy log lines with dot leaders. */

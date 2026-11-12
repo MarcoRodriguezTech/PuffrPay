@@ -59,7 +59,9 @@ export const fmtWhole = (cents: number) =>
   `$${usd(cents / 100, cents % 100 === 0)}`;
 
 export const isRateLimitMsg = (msg: string) =>
-  /429|rate|quota|resource_exhausted|too many|busy/i.test(msg);
+  /429|503|rate|quota|resource_exhausted|too many|high demand|overloaded|unavailable|busy/i.test(
+    msg
+  );
 
 export function storeOf(merchantUrl: string | null): string {
   if (!merchantUrl) return "store";
