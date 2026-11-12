@@ -24,9 +24,9 @@ Policy order (`src/lib/policy.ts`): blocked category → per-purchase max → mo
 | A1 | Send "buy me a yoga mat under $40" | Steps receipt shows search → pick → options; carousel appears with ≤5 cards, each with tag, price, verdict chip |
 | A2 | Request where search returns exactly 1 viable item | No carousel — goes straight through policy → purchase (no "options" step) |
 | A3 | Request where nothing fits budget | Reply "couldn't find anything…", no carousel, no purchase row |
-| A4 | LLM down/misbehaving (planSearch throws) | Friendly snag message, steps stop, no crash |
+| A4 | LLM down/misbehaving (planSearch throws) | Transient failures (503/429/quota) retry 2× invisibly first; still-failing shows a friendly snag message, steps stop, no crash |
 | A5 | LLM returns product ids not in results | "model picked products that aren't in the results", no purchase |
-| A6 | Channel3 error mid-run | Step logs "Channel3 error…", run continues/fails gracefully |
+| A6 | Channel3 error mid-run | Step logs "search hiccup", reply says the search hiccuped — no purchase row |
 | A7 | Empty/whitespace message | Input blocks send (button disabled) or API 400 |
 | A8 | Send while previous run in flight | Input disabled while `busy` |
 | A9 | Rapid duplicate requests for same product | Second run: "Already waiting on that one" (10-min dedupe window) |
