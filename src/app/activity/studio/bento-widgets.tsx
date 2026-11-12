@@ -71,6 +71,32 @@ function ChartTip({
   );
 }
 
+/* Same clipping problem on the leash bar: stat/segment tips were in-DOM
+   spans and Studio's overflow-hidden chrome cut them at the card edge.
+   Portal to <body> anchored on the trigger's rect — `below` hangs the tip
+   under the anchor (stat tiles keep their downward direction). */
+function HoverTip({
+  anchor,
+  below,
+  children,
+}: {
+  anchor: HTMLElement;
+  below?: boolean;
+  children: React.ReactNode;
+}) {
+  const r = anchor.getBoundingClientRect();
+  return createPortal(
+    <div
+      role="tooltip"
+      className={`chart-tip${below ? " tip-below" : ""}`}
+      style={{ left: r.left + r.width / 2, top: below ? r.bottom : r.top }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 /* ---------- page-filter plumbing ---------- */
 
 // `pages[].filter.page` is the cross-widget filter slot — the Ask box writes
@@ -960,6 +986,25 @@ function LeashReport(params: Ctx) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersSig]);
 
+  // One hover slot drives the portaled tip — whichever trigger the pointer
+  // is on wins. The isConnected guard clears a tip whose anchor unmounted
+  // (e.g. the bar re-rendered while it was showing).
+  const [tip, setTip] = useState<{
+    el: HTMLElement;
+    text: string;
+    below?: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (tip && !tip.el.isConnected) setTip(null);
+  }, [tip]);
+  const showTip = (below?: boolean) => (e: React.SyntheticEvent<HTMLElement>) =>
+    setTip({
+      el: e.currentTarget,
+      text:
+        e.currentTarget.getAttribute("data-tip") ?? "",
+      below,
+    });
+
   const toggleStatus = (key: StatusKey | "SKIPPED") => {
     const st = params.api.getState();
     const current = activeStatusKey(
@@ -1107,6 +1152,15 @@ function LeashReport(params: Ctx) {
                 active === "BLOCKED" ? "Clear" : "Apply"
               } the status filter.`}
               onClick={() => toggleStatus("BLOCKED")}
+              data-tip={
+                active === "BLOCKED"
+                  ? "Clear the filter — show everything"
+                  : "Show everything Puffr blocked"
+              }
+              onMouseEnter={showTip(true)}
+              onMouseLeave={() => setTip(null)}
+              onFocus={showTip(true)}
+              onBlur={() => setTip(null)}
             >
               <svg
                 className="leash-shield"
@@ -1133,11 +1187,6 @@ function LeashReport(params: Ctx) {
               </svg>
               <span className="leash-num">{stoppedC}</span>
               <span className="leash-cap">Blocked by puffr</span>
-              <span className="leash-tip" role="tooltip">
-                {active === "BLOCKED"
-                  ? "Clear the filter — show everything"
-                  : "Show everything Puffr blocked"}
-              </span>
             </button>
             <div className="leash-stat">
               <span className="leash-num">{pickedC}</span>
@@ -1168,6 +1217,11 @@ function LeashReport(params: Ctx) {
                         s.key === active ? "Clear" : "Apply"
                       } the status filter.`}
                       onClick={() => toggleStatus(s.key)}
+                      data-tip={s.tip}
+                      onMouseEnter={showTip()}
+                      onMouseLeave={() => setTip(null)}
+                      onFocus={showTip()}
+                      onBlur={() => setTip(null)}
                       style={{
                         flexGrow: s.n,
                         minWidth: 10,
@@ -1176,11 +1230,7 @@ function LeashReport(params: Ctx) {
                         // the segment's own status color via currentColor
                         color: s.color,
                       }}
-                    >
-                      <span className="leash-tip" role="tooltip">
-                        {s.tip}
-                      </span>
-                    </button>
+                    />
                   ))}
                 </div>
                 <div className="leash-legend" aria-label="Purchases by status">
@@ -1213,6 +1263,11 @@ function LeashReport(params: Ctx) {
             {picked} picked
             {open > 0 && ` · ${open} still open`}
           </span>
+          {tip && (
+            <HoverTip anchor={tip.el} below={tip.below}>
+              {tip.text}
+            </HoverTip>
+          )}
         </>
       )}
     </div>

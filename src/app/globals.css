@@ -5486,37 +5486,14 @@ button.leash-stat {
   color: var(--ink-soft);
 }
 
-/* hover/focus tooltips — same recipe as the chart tooltip chip */
-.leash-tip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: var(--tip-bg);
-  box-shadow: 0 10px 30px -6px rgba(2, 6, 23, 0.55);
-  font-size: var(--t12);
-  font-weight: 600;
-  color: var(--tip-ink);
-  width: max-content;
-  max-width: 220px;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur) var(--ease);
-  z-index: 6;
+/* Leash tips portal to <body> on .chart-tip (Studio clips in-card tips) —
+   .tip-below hangs the bubble under the anchor: stat tiles keep their
+   downward direction. */
+.chart-tip.tip-below {
+  transform: translate(-50%, 10px);
 }
-.leash-stat:hover .leash-tip,
-.leash-stat:focus-visible .leash-tip,
-.leash-seg:hover .leash-tip,
-.leash-seg:focus-visible .leash-tip {
-  opacity: 1;
-}
-/* Stat tiles sit at the card's top edge — their tooltip drops below instead
-   of clipping against the scroll container. */
-.leash-stat .leash-tip {
-  top: calc(100% + 6px);
+.chart-tip.tip-below::after {
+  top: -4px;
   bottom: auto;
 }
 
