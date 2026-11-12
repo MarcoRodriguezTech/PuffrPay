@@ -1659,6 +1659,10 @@ img[src*="/mascot/"] {
   pointer-events: none;
   display: flex;
   flex-direction: column;
+  /* drags move x/rotate/scale per frame — keep each card on its own
+     compositor layer so swipes composite instead of re-rasterizing the
+     gradient + rounded border + product image every frame */
+  will-change: transform;
 }
 
 .stack-imgwrap {
@@ -1688,6 +1692,8 @@ img[src*="/mascot/"] {
   position: absolute;
   inset: 0;
   background: #000;
+  /* opacity animates with card offset — own layer keeps fades cheap */
+  will-change: opacity;
 }
 
 /* on the light canvas, back cards wash toward the paper color — a fog fade,
@@ -1923,7 +1929,10 @@ img[src*="/mascot/"] {
   justify-content: center;
   padding: var(--s5);
   background: rgba(3, 8, 20, 0.55);
-  backdrop-filter: var(--glass-blur);
+  /* 20px full-viewport backdrop blur is the single biggest paint cost while
+     cards animate inside the scrim's stacking context — 12px reads the same
+     frosted at a fraction of the GPU work */
+  backdrop-filter: blur(12px);
   animation: offer-scrim-in var(--dur) var(--ease);
 }
 :root[data-theme="light"] .offer-scrim {
@@ -2000,11 +2009,10 @@ img[src*="/mascot/"] {
     width: calc(min(320px, 48vh) * 0.74);
   }
 }
-/* Full-viewport 20px backdrop blur is the heaviest GPU cost in this popup —
-   halve it on short screens, which are exactly the weaker laptops it hurts. */
+/* Short screens are the weakest laptops — take the scrim blur down again. */
 @media (max-height: 700px) {
   .offer-scrim {
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(6px);
   }
 }
 
