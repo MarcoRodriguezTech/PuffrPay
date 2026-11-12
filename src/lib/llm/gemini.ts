@@ -4,35 +4,7 @@ import type { AuditQuerySpec, LLM, OptionPick, PickResult, SearchPlan } from "./
 
 // One retry per call — the run makes two sequential calls, so a 429 storm
 // must surface as the friendly snag line in seconds, not stall the chat.
-const MAX_ATTEMPTS = 2;
-
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function isRateLimited(err: unknown): boolean {
-  const e = err as { status?: number; code?: number; message?: string };
-  return (
-    e?.status === 429 ||
-    e?.code === 429 ||
-    /429|rate limit|quota/i.test(e?.message ?? "")
-  );
-}
-
-/** Retry with exponential backoff on 429s; rethrows after MAX_ATTEMPTS. */
-async function withBackoff<T>(fn: () => Promise<T>): Promise<T> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      if (!isRateLimited(err) || attempt === MAX_ATTEMPTS - 1) throw err;
-      await sleep(2 ** attempt * 1000);
-    }
-  }
-  throw lastErr;
-}
+// No retries — a slow chat is worse than a fast "try again" snag line.
 
 function extractJson(text: string): string {
   // tolerate markdown fences or leading/trailing prose
@@ -72,14 +44,12 @@ export class GeminiLLM implements LLM {
   }
 
   private async generateJson(prompt: string): Promise<string> {
-    const res = await withBackoff(() =>
-      this.ai.models.generateContent({
-        model: this.model,
-        contents: prompt,
-        // no responseMimeType: it 500s on Gemma models, and prompts already
-        // demand JSON — extractJson tolerates fences/prose.
-      })
-    );
+    const res = await this.ai.models.generateContent({
+      model: this.model,
+      contents: prompt,
+      // no responseMimeType: it 500s on Gemma models, and prompts already
+      // demand JSON — extractJson tolerates fences/prose.
+    });
     return extractJson(res.text ?? "");
   }
 
