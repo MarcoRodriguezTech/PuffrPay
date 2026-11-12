@@ -1824,9 +1824,35 @@ img[src*="/mascot/"] {
 }
 
 .stack-close:disabled,
-.stack-remove:disabled {
+.stack-remove:disabled,
+.stack-arrow:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* Prev/next carousel buttons — same ghost-circle shape as stack-close but
+   a browsing accent (tide blue) instead of the destructive hover */
+.stack-arrow {
+  width: 40px;
+  height: 40px;
+  aspect-ratio: 1;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.stack-arrow:hover:not(:disabled) {
+  color: var(--tide);
+  border-color: var(--tide);
 }
 
 /* per-card × — pointer-events:auto escapes the card's pointer-events:none
@@ -1997,20 +2023,21 @@ body.offer-open .shell *::after {
   font-weight: 500;
 }
 /* Height-adaptive stage: desktop geometry keeps the 352px cards; shorter
-   laptop viewports (~768px) shrink the zone + cards so the fan still fits
-   instead of clipping. Mobile widths keep the existing <640px geometry. */
+   laptop viewports (~768px) shrink the zone + cards, and OptionStack
+   flattens the fan (zone height < 580px) so a side card's rotated bottom
+   corner stays inside the clip instead of getting cut. */
 @media (min-width: 640px) {
   .offer-modal .stack-zone {
-    height: min(560px, 60vh);
+    height: min(590px, 65vh);
   }
 }
 @media (min-width: 640px) and (max-height: 860px) {
   .offer-modal .stack-zone {
-    height: min(470px, 58vh);
+    height: min(480px, 62vh);
   }
   .offer-modal .stack-card {
-    width: 300px;
-    height: 410px;
+    width: 290px;
+    height: 395px;
   }
 }
 /* Real laptop worst case: a 1366×768 screen loses ~130px to taskbar +
@@ -2018,7 +2045,7 @@ body.offer-open .shell *::after {
    stays fully inside the dialog rather than clipping. */
 @media (min-width: 640px) and (max-height: 700px) {
   .offer-modal .stack-zone {
-    height: min(340px, 52vh);
+    height: min(360px, 54vh);
   }
   /* Card height tracks the zone (a few px of clearance) so even landscape
      phones keep the whole card visible — width keeps the ~0.74 aspect. */

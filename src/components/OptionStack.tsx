@@ -35,7 +35,7 @@ interface StackConfig {
   scaleReduction: number;
 }
 
-const getConfig = (width: number): StackConfig => {
+const getConfig = (width: number, height: number): StackConfig => {
   if (width < 640) {
     return {
       distanceDivisor: 120,
@@ -47,13 +47,28 @@ const getConfig = (width: number): StackConfig => {
       scaleReduction: 0.06,
     };
   }
+  // Short zones get a flatter fan: drop + rotation are what push a side
+  // card's bottom corner past the zone's clip edge, so scale both down
+  // with the space available instead of letting the card get cut. The full
+  // fan's tallest silhouette needs ~583px, so anything under 580 flattens.
+  if (height < 580) {
+    return {
+      distanceDivisor: 200,
+      velocityDivisor: 800,
+      sensitivity: 250,
+      xMultiplier: 300,
+      yMultiplier: 22,
+      rotationMultiplier: 6,
+      scaleReduction: 0.1,
+    };
+  }
   return {
     distanceDivisor: 200,
     velocityDivisor: 800,
     sensitivity: 250,
     xMultiplier: 300,
-    yMultiplier: 56,
-    rotationMultiplier: 10,
+    yMultiplier: 34,
+    rotationMultiplier: 8,
     scaleReduction: 0.1,
   };
 };
@@ -84,20 +99,25 @@ export const OptionStack = React.memo(function OptionStack({
   const startProgress = React.useRef(0);
   const zoneRef = React.useRef<HTMLDivElement>(null);
   const [zoneW, setZoneW] = React.useState(0);
+  const [zoneH, setZoneH] = React.useState(0);
   const [activeIdx, setActiveIdx] = React.useState(0);
 
   React.useEffect(() => {
     const el = zoneRef.current;
     if (!el) return;
     const ro = new ResizeObserver((es) => {
-      for (const e of es) setZoneW(e.contentRect.width);
+      for (const e of es) {
+        setZoneW(e.contentRect.width);
+        setZoneH(e.contentRect.height);
+      }
     });
     ro.observe(el);
     setZoneW(el.clientWidth);
+    setZoneH(el.clientHeight);
     return () => ro.disconnect();
   }, []);
 
-  const config = React.useMemo(() => getConfig(zoneW), [zoneW]);
+  const config = React.useMemo(() => getConfig(zoneW, zoneH), [zoneW, zoneH]);
 
   // scrollProgress changes every spring frame — only setState when the
   // rounded index actually moves, so drags don't schedule renders per frame.
@@ -124,6 +144,15 @@ export const OptionStack = React.memo(function OptionStack({
     totalShift = Math.max(-3, Math.min(3, totalShift));
     const target = Math.round(startProgress.current) + totalShift;
     animate(scrollProgress, target, {
+      type: "spring",
+      stiffness: 200,
+      damping: 30,
+      mass: 1,
+    });
+  };
+
+  const step = (dir: -1 | 1) => {
+    animate(scrollProgress, Math.round(scrollProgress.get()) + dir, {
       type: "spring",
       stiffness: 200,
       damping: 30,
@@ -258,6 +287,15 @@ export const OptionStack = React.memo(function OptionStack({
             )}
           </span>
           <span className="stack-btnrow">
+            <button
+              type="button"
+              className="stack-arrow"
+              aria-label="Previous option"
+              onClick={() => step(-1)}
+              disabled={busy}
+            >
+              ‹
+            </button>
             {activeBlocked ? (
               <span className="opt-blocked">{active.decisionReason}</span>
             ) : (
@@ -273,17 +311,15 @@ export const OptionStack = React.memo(function OptionStack({
             )}
             <button
               type="button"
-              className="stack-close"
-              aria-label="Skip these picks"
-              onClick={() => onDismiss(msgId)}
+              className="stack-arrow"
+              aria-label="Next option"
+              onClick={() => step(1)}
               disabled={busy}
             >
-              ×
+              ›
             </button>
           </span>
-          <span className="stack-hint">
-            {activeBlocked ? "drag to browse — × removes it" : "drag to browse · × to bail"}
-          </span>
+          <span className="stack-hint">drag to browse</span>
         </div>
       )}
       </div>
