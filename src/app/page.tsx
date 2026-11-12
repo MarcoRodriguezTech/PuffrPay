@@ -1320,9 +1320,14 @@ function OfferPopup({
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Freezes the page's looping animations (sidebar mascot bob/bubbles)
+    // behind the scrim — anything moving under its backdrop blur forces the
+    // full-viewport blur to recompute every frame, swiping or not.
+    document.body.classList.add("offer-open");
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      document.body.classList.remove("offer-open");
     };
   }, [mounted, msgId]);
 

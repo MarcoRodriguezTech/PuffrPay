@@ -1653,7 +1653,10 @@ img[src*="/mascot/"] {
   width: 352px;
   height: 488px;
   border-radius: var(--radius-ctl);
-  overflow: hidden;
+  /* No overflow:hidden — a rounded clip around the promoted shade/meta
+     layers below costs a GPU mask surface per card on every frame. The
+     inner pieces carry their own rounded corners instead. */
+  --stack-inner-radius: calc(var(--radius-ctl) - 1px);
   background: var(--card-grad);
   border: 1px solid var(--line);
   pointer-events: none;
@@ -1669,8 +1672,10 @@ img[src*="/mascot/"] {
   flex: 1;
   display: flex;
   background: var(--paper);
+  border-radius: var(--stack-inner-radius) var(--stack-inner-radius) 0 0;
   padding: 16px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .stack-img {
@@ -1691,6 +1696,7 @@ img[src*="/mascot/"] {
 .stack-shade {
   position: absolute;
   inset: 0;
+  border-radius: var(--stack-inner-radius);
   background: #000;
   /* opacity animates with card offset — own layer keeps fades cheap */
   will-change: opacity;
@@ -1720,6 +1726,9 @@ img[src*="/mascot/"] {
   padding: var(--s3) var(--s3) var(--s4);
   text-align: center;
   color: var(--ink);
+  /* title/price fade per frame with card offset — on its own layer the
+     fade composites instead of repainting the whole card (image included) */
+  will-change: opacity;
 }
 
 .stack-title {
@@ -1937,6 +1946,15 @@ img[src*="/mascot/"] {
 }
 :root[data-theme="light"] .offer-scrim {
   background: rgba(222, 234, 252, 0.55);
+}
+/* Nothing behind the blur may move while the popup is open (see
+   OfferPopup): a static backdrop lets the compositor reuse the blurred
+   result instead of re-blurring the whole viewport each frame. The scrim
+   is portaled to <body>, outside .shell, so the popup keeps animating. */
+body.offer-open .shell *,
+body.offer-open .shell *::before,
+body.offer-open .shell *::after {
+  animation-play-state: paused !important;
 }
 @keyframes offer-scrim-in {
   from {

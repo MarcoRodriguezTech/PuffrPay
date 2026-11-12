@@ -207,16 +207,17 @@ export const OptionStack = React.memo(function OptionStack({
     <LazyMotion features={domAnimation}>
       <div className="stack-wrap">
       <div className="stack-zone" ref={zoneRef}>
-        {/* transparent drag surface above the cards */}
+        {/* transparent gesture surface above the cards. A pan reports the
+            same offsets/velocity as a drag without moving the element — the
+            old elastic drag translated this (unlayered) surface every frame,
+            repainting the whole modal for an invisible element. */}
         <motion.div
-          drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          onDragStart={handleDragStart}
-          onDrag={(_, info) => {
+          onPanStart={handleDragStart}
+          onPan={(_, info) => {
             const delta = -info.delta.x / config.sensitivity;
             scrollProgress.set(scrollProgress.get() + delta);
           }}
-          onDragEnd={handleDragEnd}
+          onPanEnd={handleDragEnd}
           className="stack-surface"
         />
         {items.map((it, i) => (
@@ -339,8 +340,11 @@ const StackCard = React.memo(function StackCard({
   const removePointer = useTransform(offset, (o) =>
     Math.abs(o) < 1.2 ? ("auto" as const) : ("none" as const)
   );
+  // Whole-step buckets: the card nearest the center is still on top, but
+  // z-index only changes when a card crosses a half-step instead of every
+  // 0.1 of offset — each change forced a repaint of the whole popup.
   const zIndex = useTransform(offset, (o) =>
-    Math.round(100 - Math.abs(o) * 10)
+    100 - Math.round(Math.abs(o)) * 10
   );
   const shadeOpacity = useTransform(
     offset,
