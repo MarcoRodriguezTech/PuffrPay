@@ -5055,6 +5055,11 @@ body.offer-open .shell *::after {
   opacity: 0.35;
   cursor: default;
 }
+/* the docked AI/Ask panel squeezes the page — the week pager crowds the
+   head, so it hides until the panel closes */
+body.ask-open .wk-nav {
+  display: none;
+}
 /* tighter legend pills only where the centred week nav shares the head */
 .bento-head:has(.wk-nav) .legend-pills .lp {
   padding: 2px 8px;
